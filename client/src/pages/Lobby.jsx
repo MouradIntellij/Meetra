@@ -1,154 +1,817 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { useSocket } from '../context/SocketContext.jsx';
+import { EVENTS }   from '../utils/events.js';
 
-/**
- * ECHO FIX:
- * The Lobby opens a MediaStream for the camera preview.
- * When the user clicks "Rejoindre", we must STOP all audio tracks from the
- * Lobby stream before passing it to the Room — otherwise TWO audio inputs
- * are active simultaneously, causing echo/feedback.
- *
- * The correct approach: the Lobby stream is ONLY for preview (muted video).
- * On join, we stop the Lobby stream and let MediaContext.getMedia() open a
- * fresh stream with proper echo cancellation settings.
- *
- * We pass null to onJoin so MediaContext opens its own clean stream.
- */
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+
+// ─── Icônes SVG ───────────────────────────────────────────────
+const MicOnIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+      <line x1="12" y1="19" x2="12" y2="23"/>
+      <line x1="8"  y1="23" x2="16" y2="23"/>
+    </svg>
+);
+
+const MicOffIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="1" y1="1" x2="23" y2="23"/>
+      <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
+      <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/>
+      <line x1="12" y1="19" x2="12" y2="23"/>
+      <line x1="8"  y1="23" x2="16" y2="23"/>
+    </svg>
+);
+
+const CamOnIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="23 7 16 12 23 17 23 7"/>
+      <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+    </svg>
+);
+
+const CamOffIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34"/>
+      <path d="M23 7l-7 5 7 5V7z"/>
+      <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+);
+
+const ArrowLeftIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12"/>
+      <polyline points="12 19 5 12 12 5"/>
+    </svg>
+);
+
+const UsersIcon = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+);
+
+const CrownIcon = () => (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M2 20h20v2H2zM4 17l4-8 4 4 4-8 4 8H4z"/>
+    </svg>
+);
+
+const ClockIcon = () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <polyline points="12 6 12 12 16 14"/>
+    </svg>
+);
+
+// ─── Couleurs d'avatar déterministes ─────────────────────────
+const AVATAR_PALETTES = [
+  { bg: '#1a3a5c', text: '#60a5fa' },
+  { bg: '#1a2e1a', text: '#4ade80' },
+  { bg: '#3a1a2e', text: '#f472b6' },
+  { bg: '#2e2a1a', text: '#fbbf24' },
+  { bg: '#1a2a3a', text: '#818cf8' },
+  { bg: '#3a1a1a', text: '#f87171' },
+];
+
+function getAvatarPalette(name) {
+  const idx = name ? name.charCodeAt(0) % AVATAR_PALETTES.length : 0;
+  return AVATAR_PALETTES[idx];
+}
+
+// ─── Avatar ───────────────────────────────────────────────────
+function Avatar({ name, size = 36, showRing = false }) {
+  const { bg, text } = getAvatarPalette(name || '');
+  return (
+      <div style={{
+        width: size, height: size, borderRadius: '50%',
+        background: bg, color: text, flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: Math.round(size * 0.38), fontWeight: 700,
+        letterSpacing: '-0.02em',
+        outline: showRing ? `2px solid ${text}` : 'none',
+        outlineOffset: 2,
+        fontFamily: "'DM Mono', monospace",
+      }}>
+        {name?.[0]?.toUpperCase() ?? '?'}
+      </div>
+  );
+}
+
+// ─── Pill statut (micro ou cam) ───────────────────────────────
+function StatusPill({ on, IconOn, IconOff, labelOn, labelOff }) {
+  return (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 5,
+        padding: '3px 8px', borderRadius: 20,
+        fontSize: 11, fontWeight: 600, letterSpacing: '0.01em',
+        background: on ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)',
+        color:      on ? '#4ade80'               : '#f87171',
+        border: `1px solid ${on ? 'rgba(74,222,128,0.25)' : 'rgba(248,113,113,0.25)'}`,
+      }}>
+        {on ? <IconOn /> : <IconOff />}
+        {on ? labelOn : labelOff}
+      </div>
+  );
+}
+
+// ─── Ligne participant dans la liste ──────────────────────────
+function ParticipantRow({ p, isHost, isLast }) {
+  return (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '9px 0',
+        borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.05)',
+      }}>
+        {/* Avatar + badge hôte */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <Avatar name={p.name} size={34} />
+          {isHost && (
+              <div style={{
+                position: 'absolute', bottom: -2, right: -2,
+                width: 14, height: 14, borderRadius: '50%',
+                background: '#f59e0b',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '1.5px solid #0d1117',
+              }}>
+                <CrownIcon />
+              </div>
+          )}
+        </div>
+
+        {/* Nom */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontSize: 13, fontWeight: 600, color: '#e2e8f0',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {p.name}
+          </div>
+          {isHost && (
+              <div style={{ fontSize: 10, color: '#f59e0b', marginTop: 1, fontWeight: 500 }}>
+                Hôte de la réunion
+              </div>
+          )}
+        </div>
+
+        {/* Statuts */}
+        <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+          <div style={{
+            width: 26, height: 26, borderRadius: 8,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: p.audioEnabled ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)',
+            color:      p.audioEnabled ? '#4ade80'                : '#f87171',
+          }}>
+            {p.audioEnabled ? <MicOnIcon /> : <MicOffIcon />}
+          </div>
+          <div style={{
+            width: 26, height: 26, borderRadius: 8,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: p.videoEnabled ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)',
+            color:      p.videoEnabled ? '#4ade80'                : '#f87171',
+          }}>
+            {p.videoEnabled ? <CamOnIcon /> : <CamOffIcon />}
+          </div>
+        </div>
+      </div>
+  );
+}
+
+// ─── Bouton toggle micro/cam ──────────────────────────────────
+function MediaToggleBtn({ on, onToggle, IconOn, IconOff, label }) {
+  const [hover, setHover] = useState(false);
+  return (
+      <button
+          onClick={onToggle}
+          onMouseEnter={() => setHover(true)}
+          onMouseLeave={() => setHover(false)}
+          style={{
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 6,
+            flex: 1, padding: '14px 8px', borderRadius: 14, cursor: 'pointer',
+            border: `1px solid ${on
+                ? (hover ? 'rgba(74,222,128,0.4)'  : 'rgba(74,222,128,0.2)')
+                : (hover ? 'rgba(248,113,113,0.4)' : 'rgba(248,113,113,0.2)')}`,
+            background: on
+                ? (hover ? 'rgba(74,222,128,0.15)'  : 'rgba(74,222,128,0.08)')
+                : (hover ? 'rgba(248,113,113,0.15)' : 'rgba(248,113,113,0.08)'),
+            color:  on ? '#4ade80' : '#f87171',
+            transition: 'all 0.18s ease',
+            transform: hover ? 'translateY(-1px)' : 'none',
+            fontFamily: 'inherit',
+          }}
+      >
+        {on ? <IconOn /> : <IconOff />}
+        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.02em' }}>
+        {on ? label : label + ' OFF'}
+      </span>
+      </button>
+  );
+}
+
+// ─── Composant principal Lobby ────────────────────────────────
 export default function Lobby({ roomId, userName, onJoin, onBack }) {
-  const [stream,       setStream]      = useState(null);
-  const [audioEnabled, setAudioEnabled]= useState(true);
-  const [videoEnabled, setVideoEnabled]= useState(true);
-  const [error,        setError]       = useState('');
-  const [loading,      setLoading]     = useState(false);
+  const { socket } = useSocket();
+
+  // Flux média local (preview)
+  const [stream,        setStream]        = useState(null);
+  const [audioEnabled,  setAudioEnabled]  = useState(true);
+  const [videoEnabled,  setVideoEnabled]  = useState(true);
+  const [mediaError,    setMediaError]    = useState('');
+
+  // Participants déjà dans la salle
+  const [participants,  setParticipants]  = useState([]);
+  const [hostId,        setHostId]        = useState(null);
+  const [roomLocked,    setRoomLocked]    = useState(false);
+  const [loadingPeers,  setLoadingPeers]  = useState(true);
+
+  // UI
+  const [joining,       setJoining]       = useState(false);
+  const [waitSecs,      setWaitSecs]      = useState(0);
+  const [rejected,      setRejected]      = useState('');
+
   const videoRef  = useRef(null);
   const streamRef = useRef(null);
+  const timerRef  = useRef(null);
 
+  // ── 1. Ouvrir la caméra ───────────────────────────────────
   useEffect(() => {
-    let active = true;
+    let alive = true;
     (async () => {
       try {
         const s = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl:  true,
-          },
+          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         });
-        if (!active) { s.getTracks().forEach(t => t.stop()); return; }
+        if (!alive) { s.getTracks().forEach(t => t.stop()); return; }
         streamRef.current = s;
         setStream(s);
       } catch {
-        setError("Impossible d'accéder à la caméra/micro. Vérifiez les permissions.");
+        setMediaError("Impossible d'accéder à la caméra ou au micro.\nVérifiez les permissions du navigateur.");
       }
     })();
     return () => {
-      active = false;
-      // Stop all tracks when Lobby unmounts to release the mic/cam
+      alive = false;
       streamRef.current?.getTracks().forEach(t => t.stop());
     };
   }, []);
 
+  // ── 2. Attacher le stream à la balise <video> ─────────────
   useEffect(() => {
     const el = videoRef.current;
-    if (el && stream) {
-      el.srcObject = stream;
-      el.play().catch(() => {});
-    }
+    if (el && stream) { el.srcObject = stream; el.play().catch(() => {}); }
   }, [stream]);
 
-  const toggleAudio = () => {
+  // ── 3. Charger les participants via REST ──────────────────
+  useEffect(() => {
+    setLoadingPeers(true);
+    fetch(`${API_URL}/api/rooms/${roomId}/participants`)
+        .then(r => r.json())
+        .then(data => {
+          setParticipants(data.participants || []);
+          setHostId(data.hostId || null);
+          setRoomLocked(data.locked || false);
+        })
+        .catch(() => {})
+        .finally(() => setLoadingPeers(false));
+  }, [roomId]);
+
+  // ── 4. Écouter les mises à jour live via socket ───────────
+  useEffect(() => {
+    if (!socket) return;
+
+    // Annoncer la présence en salle d'attente
+    socket.emit(EVENTS.WAITING_JOIN, { roomId, userName });
+
+    // Mise à jour de la liste (gens dans la salle + file d'attente)
+    const onWaitingUpdate = ({ participants: list, hostId: hid }) => {
+      if (list)  setParticipants(list);
+      if (hid)   setHostId(hid);
+    };
+
+    // Quelqu'un entre dans la salle → ajouter à la liste
+    const onUserJoined = (user) => {
+      const name = user.name || user.userName || 'Participant';
+      setParticipants(prev => {
+        if (prev.find(p => p.socketId === user.socketId)) return prev;
+        return [...prev, {
+          socketId:     user.socketId,
+          name,
+          audioEnabled: true,
+          videoEnabled: true,
+          isHost:       user.socketId === user.hostId,
+        }];
+      });
+      if (user.hostId) setHostId(user.hostId);
+    };
+
+    // Quelqu'un quitte la salle
+    const onUserLeft = ({ socketId }) => {
+      setParticipants(prev => prev.filter(p => p.socketId !== socketId));
+    };
+
+    // Hôte change (ex : l'hôte quitte, nouveau hôte désigné)
+    const onHostChanged = ({ newHostId }) => setHostId(newHostId);
+
+    // L'hôte nous admet → entrer dans la salle
+    const onAdmitted = () => {
+      cleanup();
+      handleEnterRoom();
+    };
+
+    // L'hôte nous refuse
+    const onRejected = ({ message }) => {
+      setRejected(message || "L'hôte a refusé votre entrée.");
+      setJoining(false);
+    };
+
+    socket.on(EVENTS.WAITING_UPDATE,   onWaitingUpdate);
+    socket.on(EVENTS.USER_JOINED,      onUserJoined);
+    socket.on(EVENTS.USER_LEFT,        onUserLeft);
+    socket.on(EVENTS.HOST_CHANGED,     onHostChanged);
+    socket.on(EVENTS.WAITING_ADMITTED, onAdmitted);
+    socket.on(EVENTS.WAITING_REJECTED, onRejected);
+
+    return () => {
+      socket.off(EVENTS.WAITING_UPDATE,   onWaitingUpdate);
+      socket.off(EVENTS.USER_JOINED,      onUserJoined);
+      socket.off(EVENTS.USER_LEFT,        onUserLeft);
+      socket.off(EVENTS.HOST_CHANGED,     onHostChanged);
+      socket.off(EVENTS.WAITING_ADMITTED, onAdmitted);
+      socket.off(EVENTS.WAITING_REJECTED, onRejected);
+      socket.emit(EVENTS.WAITING_LEAVE, { roomId });
+    };
+  }, [socket, roomId, userName]);
+
+  // ── 5. Timer d'attente ────────────────────────────────────
+  useEffect(() => {
+    timerRef.current = setInterval(() => setWaitSecs(s => s + 1), 1000);
+    return () => clearInterval(timerRef.current);
+  }, []);
+
+  // ── Helpers ───────────────────────────────────────────────
+  const fmtTime = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return m > 0 ? `${m}m ${String(sec).padStart(2, '0')}s` : `${sec}s`;
+  };
+
+  const cleanup = useCallback(() => {
+    clearInterval(timerRef.current);
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+  }, []);
+
+  const toggleAudio = useCallback(() => {
     const track = streamRef.current?.getAudioTracks()[0];
-    if (track) { track.enabled = !track.enabled; setAudioEnabled(track.enabled); }
-  };
+    if (!track) return;
+    track.enabled = !track.enabled;
+    setAudioEnabled(track.enabled);
+  }, []);
 
-  const toggleVideo = () => {
+  const toggleVideo = useCallback(() => {
     const track = streamRef.current?.getVideoTracks()[0];
-    if (track) { track.enabled = !track.enabled; setVideoEnabled(track.enabled); }
-  };
+    if (!track) return;
+    track.enabled = !track.enabled;
+    setVideoEnabled(track.enabled);
+  }, []);
 
-  const handleJoin = () => {
-    setLoading(true);
-    // ✅ ECHO FIX: Stop the Lobby preview stream completely before entering room.
-    // MediaContext.getMedia() will open a fresh, clean stream for the room.
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop());
-      streamRef.current = null;
+  // ── Entrer dans la salle ──────────────────────────────────
+  const handleEnterRoom = useCallback(() => {
+    cleanup();
+    onJoin(null); // MediaContext ouvrira son propre stream propre
+  }, [cleanup, onJoin]);
+
+  // ── Clic sur Start / Rejoindre ────────────────────────────
+  const handleJoin = useCallback(() => {
+    if (joining || !!mediaError) return;
+    setJoining(true);
+
+    // Premier arrivant (salle vide) OU hôte → entre directement
+    const isFirst = participants.length === 0;
+    if (isFirst) {
+      handleEnterRoom();
+      return;
     }
-    // Pass null — MediaContext will request its own stream
-    onJoin(null);
-  };
+
+    // Invité → émet JOIN_ROOM immédiatement (pas de système d'admission activé ici)
+    // Si vous voulez activer l'admission manuelle par l'hôte, supprimez la ligne suivante
+    // et laissez le socket WAITING_ADMITTED déclencher handleEnterRoom.
+    handleEnterRoom();
+  }, [joining, mediaError, participants, handleEnterRoom]);
+
+  // ── Retour ────────────────────────────────────────────────
+  const handleBack = useCallback(() => {
+    cleanup();
+    onBack();
+  }, [cleanup, onBack]);
+
+  // ─────────────────────────────────────────────────────────
+  const isFirstUser = participants.length === 0 && !loadingPeers;
+  const btnLabel    = joining
+      ? '⏳ Connexion…'
+      : isFirstUser
+          ? '🚀 Démarrer la réunion'
+          : `✓ Rejoindre (${participants.length} présent${participants.length > 1 ? 's' : ''})`;
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-full max-w-md border border-gray-800">
-        <h2 className="text-white text-xl font-bold mb-1">Prêt à rejoindre ?</h2>
-        <p className="text-gray-400 text-sm mb-4">
-          Salle : <span className="font-mono text-blue-400">{roomId?.slice(0, 8)}…</span>
-        </p>
+      <div style={{
+        minHeight: '100vh',
+        background: '#0d1117',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+        fontFamily: "'DM Sans', 'Segoe UI', system-ui, sans-serif",
+      }}>
 
-        <div className="relative bg-gray-800 rounded-xl overflow-hidden aspect-video mb-4">
-          {stream && videoEnabled ? (
-            <video ref={videoRef} autoPlay playsInline muted
-              className="w-full h-full object-cover" />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600
-                flex items-center justify-center text-white text-3xl font-bold">
-                {userName?.[0]?.toUpperCase() ?? '?'}
+        {/* Fond subtil */}
+        <div style={{
+          position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
+          background: `
+          radial-gradient(ellipse 60% 40% at 20% 50%, rgba(30,58,138,0.15) 0%, transparent 70%),
+          radial-gradient(ellipse 50% 35% at 80% 50%, rgba(88,28,135,0.10) 0%, transparent 70%)
+        `,
+        }} />
+
+        <div style={{
+          position: 'relative', zIndex: 1,
+          width: '100%', maxWidth: 900,
+          display: 'grid',
+          gridTemplateColumns: '1fr 300px',
+          gap: 16,
+          alignItems: 'start',
+        }}>
+
+          {/* ══════════════════════════════════════════════════
+            COLONNE GAUCHE — Preview caméra + contrôles
+        ══════════════════════════════════════════════════ */}
+          <div style={{
+            background: 'rgba(255,255,255,0.025)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            borderRadius: 20, overflow: 'hidden',
+          }}>
+
+            {/* Barre du haut */}
+            <div style={{
+              display: 'flex', alignItems: 'center',
+              padding: '12px 16px',
+              borderBottom: '1px solid rgba(255,255,255,0.05)',
+            }}>
+              <button
+                  onClick={handleBack}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 8, padding: '5px 12px',
+                    color: 'rgba(255,255,255,0.55)', fontSize: 12,
+                    fontWeight: 500, cursor: 'pointer',
+                    transition: 'all 0.15s', fontFamily: 'inherit',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.color = '#e2e8f0'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+              >
+                <ArrowLeftIcon /> Retour
+              </button>
+
+              <div style={{ flex: 1, textAlign: 'center' }}>
+              <span style={{
+                fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
+                color: 'rgba(255,255,255,0.25)',
+                textTransform: 'uppercase',
+              }}>
+                Salle d'attente
+              </span>
+              </div>
+
+              {/* Timer */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 8, padding: '4px 10px',
+              }}>
+                <ClockIcon />
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
+                {fmtTime(waitSecs)}
+              </span>
               </div>
             </div>
-          )}
 
-          {/* Preview controls */}
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
-            <PreviewBtn onClick={toggleAudio} active={!audioEnabled}>
-              {audioEnabled ? '🎤' : '🔇'}
-            </PreviewBtn>
-            <PreviewBtn onClick={toggleVideo} active={!videoEnabled}>
-              {videoEnabled ? '📹' : '📷'}
-            </PreviewBtn>
+            {/* Preview cam */}
+            <div style={{
+              position: 'relative',
+              aspectRatio: '16/9',
+              background: '#080c14',
+              overflow: 'hidden',
+            }}>
+              <video
+                  ref={videoRef}
+                  autoPlay playsInline muted
+                  style={{
+                    width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+                    opacity: (stream && videoEnabled) ? 1 : 0,
+                    transition: 'opacity 0.3s',
+                  }}
+              />
+
+              {/* Avatar quand cam off */}
+              {(!stream || !videoEnabled) && (
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center',
+                    gap: 12,
+                  }}>
+                    <Avatar name={userName} size={80} showRing />
+                    <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>
+                  {userName}
+                </span>
+                  </div>
+              )}
+
+              {/* Badge salle verrouillée */}
+              {roomLocked && (
+                  <div style={{
+                    position: 'absolute', top: 12, left: 12,
+                    background: 'rgba(245,158,11,0.2)',
+                    border: '1px solid rgba(245,158,11,0.4)',
+                    borderRadius: 8, padding: '4px 10px',
+                    fontSize: 11, color: '#fbbf24', fontWeight: 600,
+                  }}>
+                    🔒 Salle verrouillée
+                  </div>
+              )}
+
+              {/* Pastilles statut haut-droite */}
+              <div style={{
+                position: 'absolute', top: 12, right: 12,
+                display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end',
+              }}>
+                {!audioEnabled && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      background: 'rgba(239,68,68,0.85)',
+                      borderRadius: 6, padding: '3px 8px',
+                      fontSize: 11, color: '#fff', fontWeight: 600,
+                    }}>
+                      <MicOffIcon /> Micro coupé
+                    </div>
+                )}
+                {!videoEnabled && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      background: 'rgba(239,68,68,0.85)',
+                      borderRadius: 6, padding: '3px 8px',
+                      fontSize: 11, color: '#fff', fontWeight: 600,
+                    }}>
+                      <CamOffIcon /> Cam arrêtée
+                    </div>
+                )}
+              </div>
+
+              {/* Nom en bas-gauche */}
+              <div style={{
+                position: 'absolute', bottom: 12, left: 12,
+                background: 'rgba(0,0,0,0.6)',
+                borderRadius: 8, padding: '4px 10px',
+                fontSize: 12, color: 'rgba(255,255,255,0.9)', fontWeight: 600,
+              }}>
+                {userName} {isFirstUser && '👑'}
+              </div>
+            </div>
+
+            {/* Erreur média */}
+            {mediaError && (
+                <div style={{
+                  margin: '12px 14px 0',
+                  background: 'rgba(239,68,68,0.1)',
+                  border: '1px solid rgba(248,113,113,0.25)',
+                  borderRadius: 10, padding: '10px 14px',
+                  fontSize: 12, color: '#f87171', whiteSpace: 'pre-line', lineHeight: 1.5,
+                }}>
+                  ⚠ {mediaError}
+                </div>
+            )}
+
+            {/* Contrôles micro / cam */}
+            <div style={{ display: 'flex', gap: 10, padding: '14px' }}>
+              <MediaToggleBtn
+                  on={audioEnabled}
+                  onToggle={toggleAudio}
+                  IconOn={MicOnIcon}
+                  IconOff={MicOffIcon}
+                  label="Micro"
+              />
+              <MediaToggleBtn
+                  on={videoEnabled}
+                  onToggle={toggleVideo}
+                  IconOn={CamOnIcon}
+                  IconOff={CamOffIcon}
+                  label="Caméra"
+              />
+            </div>
+
+            {/* Indication qualité */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: 6, padding: '0 14px 14px',
+            }}>
+              <div style={{
+                width: 6, height: 6, borderRadius: '50%',
+                background: stream ? '#4ade80' : '#f87171',
+                boxShadow: stream ? '0 0 6px rgba(74,222,128,0.6)' : 'none',
+                animation: stream ? 'breathe 2s ease-in-out infinite' : 'none',
+              }} />
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontWeight: 500 }}>
+              {stream
+                  ? `Caméra ${videoEnabled ? 'active' : 'en pause'} · Micro ${audioEnabled ? 'actif' : 'coupé'}`
+                  : 'Caméra non disponible'}
+            </span>
+            </div>
+          </div>
+
+          {/* ══════════════════════════════════════════════════
+            COLONNE DROITE — Infos + participants + bouton
+        ══════════════════════════════════════════════════ */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+            {/* Carte info réunion */}
+            <div style={{
+              background: 'rgba(255,255,255,0.025)',
+              border: '1px solid rgba(255,255,255,0.07)',
+              borderRadius: 16, padding: '16px',
+            }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontWeight: 600,
+                letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Réunion en cours
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0', marginBottom: 4,
+                fontFamily: "'DM Mono', monospace", letterSpacing: '-0.02em' }}>
+                {roomId?.slice(0, 8).toUpperCase()}…
+              </div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
+                Vous rejoignez en tant que{' '}
+                <span style={{ color: '#93c5fd', fontWeight: 600 }}>{userName}</span>
+              </div>
+            </div>
+
+            {/* Liste participants */}
+            <div style={{
+              background: 'rgba(255,255,255,0.025)',
+              border: '1px solid rgba(255,255,255,0.07)',
+              borderRadius: 16, padding: '14px 14px 4px',
+              flex: 1,
+            }}>
+              {/* En-tête */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 7,
+                marginBottom: 10,
+              }}>
+                <UsersIcon />
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.7)',
+                  letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+                Dans la salle
+              </span>
+                <div style={{
+                  marginLeft: 'auto',
+                  background: participants.length > 0
+                      ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.06)',
+                  border: `1px solid ${participants.length > 0
+                      ? 'rgba(96,165,250,0.35)' : 'rgba(255,255,255,0.1)'}`,
+                  borderRadius: 20, padding: '1px 8px',
+                  fontSize: 11, fontWeight: 700,
+                  color: participants.length > 0 ? '#93c5fd' : 'rgba(255,255,255,0.3)',
+                }}>
+                  {loadingPeers ? '…' : participants.length}
+                </div>
+              </div>
+
+              {/* Contenu liste */}
+              {loadingPeers ? (
+                  <div style={{
+                    textAlign: 'center', padding: '20px 0',
+                    color: 'rgba(255,255,255,0.2)', fontSize: 12,
+                  }}>
+                    <div style={{ marginBottom: 6, fontSize: 20 }}>⏳</div>
+                    Chargement…
+                  </div>
+              ) : participants.length === 0 ? (
+                  <div style={{
+                    textAlign: 'center', padding: '24px 0',
+                    color: 'rgba(255,255,255,0.2)', fontSize: 13, lineHeight: 1.6,
+                  }}>
+                    <div style={{ fontSize: 28, marginBottom: 8 }}>🏁</div>
+                    Vous serez le premier.<br/>
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.15)' }}>
+                  Démarrez pour inviter vos collègues.
+                </span>
+                  </div>
+              ) : (
+                  <div>
+                    {participants.map((p, i) => (
+                        <ParticipantRow
+                            key={p.socketId}
+                            p={p}
+                            isHost={p.socketId === hostId}
+                            isLast={i === participants.length - 1}
+                        />
+                    ))}
+                  </div>
+              )}
+
+              <div style={{ height: 10 }} />
+            </div>
+
+            {/* Message de rejet */}
+            {rejected && (
+                <div style={{
+                  background: 'rgba(239,68,68,0.1)',
+                  border: '1px solid rgba(248,113,113,0.3)',
+                  borderRadius: 12, padding: '10px 14px',
+                  fontSize: 12, color: '#f87171', lineHeight: 1.5,
+                }}>
+                  ⛔ {rejected}
+                </div>
+            )}
+
+            {/* Bouton principal */}
+            <button
+                onClick={handleJoin}
+                disabled={joining || !!mediaError}
+                style={{
+                  width: '100%', padding: '15px',
+                  borderRadius: 14, border: 'none',
+                  cursor: (joining || mediaError) ? 'not-allowed' : 'pointer',
+                  fontSize: 14, fontWeight: 700,
+                  letterSpacing: '0.02em',
+                  background: (joining || mediaError)
+                      ? 'rgba(255,255,255,0.06)'
+                      : isFirstUser
+                          ? 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)'
+                          : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                  color: (joining || mediaError) ? 'rgba(255,255,255,0.3)' : '#fff',
+                  boxShadow: (joining || mediaError) ? 'none'
+                      : isFirstUser
+                          ? '0 6px 24px rgba(245,158,11,0.35)'
+                          : '0 6px 24px rgba(59,130,246,0.35)',
+                  transition: 'all 0.2s ease',
+                  fontFamily: 'inherit',
+                }}
+                onMouseEnter={e => {
+                  if (!joining && !mediaError)
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'none';
+                }}
+                onMouseDown={e => {
+                  e.currentTarget.style.transform = 'translateY(1px)';
+                }}
+                onMouseUp={e => {
+                  e.currentTarget.style.transform = 'none';
+                }}
+            >
+              {btnLabel}
+            </button>
+
+            {/* Note contextuelle */}
+            <p style={{
+              textAlign: 'center', fontSize: 11, margin: 0,
+              color: 'rgba(255,255,255,0.18)', lineHeight: 1.6,
+            }}>
+              {isFirstUser
+                  ? 'Vous démarrez en tant qu\'hôte. Partagez le lien pour inviter.'
+                  : 'Votre micro et caméra restent dans l\'état choisi ici.'}
+            </p>
           </div>
         </div>
 
-        <p className="text-gray-300 text-sm mb-4 text-center">
-          Vous rejoignez en tant que <strong className="text-white">{userName}</strong>
-        </p>
-
-        {error && (
-          <div className="bg-red-900/40 border border-red-700 text-red-300 text-sm rounded-lg px-4 py-2 mb-4">
-            ⚠️ {error}
-          </div>
-        )}
-
-        <button
-          onClick={handleJoin}
-          disabled={loading || !!error}
-          className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-60
-            text-white font-semibold rounded-xl transition-colors mb-2"
-        >
-          {loading ? '⏳ Connexion...' : '🚀 Rejoindre la réunion'}
-        </button>
-
-        <button
-          onClick={onBack}
-          className="w-full py-2.5 text-gray-400 hover:text-white text-sm rounded-xl
-            hover:bg-gray-800 transition-colors"
-        >
-          ← Retour
-        </button>
+        <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500;700&display=swap');
+        @keyframes breathe {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%       { opacity: 0.5; transform: scale(0.85); }
+        }
+        * { box-sizing: border-box; }
+        @media (max-width: 620px) {
+          div[style*="grid-template-columns"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
       </div>
-    </div>
-  );
-}
-
-function PreviewBtn({ onClick, active, children }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`w-9 h-9 rounded-full flex items-center justify-center text-sm shadow transition-colors
-        ${active ? 'bg-red-600 text-white' : 'bg-black/60 text-white hover:bg-black/80'}`}
-    >
-      {children}
-    </button>
   );
 }

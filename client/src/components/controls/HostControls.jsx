@@ -1,58 +1,307 @@
-import { useState }   from 'react';
-import { useSocket }   from '../../context/SocketContext.jsx';
-import { useRoom }     from '../../context/RoomContext.jsx';
-import { useUI }       from '../../context/UIContext.jsx';
-import { EVENTS }      from '../../utils/events.js';
+import { useState, useEffect } from 'react';
+import { useSocket }  from '../../context/SocketContext.jsx';
+import { useRoom }    from '../../context/RoomContext.jsx';
+import { useUI }      from '../../context/UIContext.jsx';
+import { EVENTS }     from '../../utils/events.js';
 
+// ─── Icônes ───────────────────────────────────────────────────
+const CheckIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+);
+const XIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18"/>
+    <line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+);
+
+// ─── Avatar minuscule ─────────────────────────────────────────
+const PALETTES = [
+  ['#1a3a5c','#60a5fa'],['#1a2e1a','#4ade80'],
+  ['#3a1a2e','#f472b6'],['#2e2a1a','#fbbf24'],
+];
+function MiniAv({ name }) {
+  const [bg, color] = PALETTES[(name?.charCodeAt(0) ?? 0) % PALETTES.length];
+  return (
+    <div style={{
+      width: 26, height: 26, borderRadius: '50%',
+      background: bg, color, flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: 11, fontWeight: 700,
+    }}>
+      {name?.[0]?.toUpperCase() ?? '?'}
+    </div>
+  );
+}
+
+// ─── Ligne file d'attente ─────────────────────────────────────
+function WaitingEntry({ person, onAdmit, onReject }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 7,
+      padding: '6px 8px', borderRadius: 8,
+      background: 'rgba(59,130,246,0.08)',
+      border: '1px solid rgba(59,130,246,0.18)',
+      marginBottom: 5,
+      animation: 'slideDown 0.2s ease-out',
+    }}>
+      <MiniAv name={person.userName} />
+      <span style={{
+        flex: 1, fontSize: 12, fontWeight: 600,
+        color: 'rgba(255,255,255,0.85)',
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}>
+        {person.userName}
+      </span>
+      {/* Refuser */}
+      <button onClick={() => onReject(person.socketId)} style={{
+        width: 24, height: 24, borderRadius: 6, border: 'none', cursor: 'pointer',
+        background: 'rgba(239,68,68,0.15)', color: '#f87171',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'background 0.15s',
+      }}
+        onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.3)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.15)'}
+        title="Refuser"
+      >
+        <XIcon />
+      </button>
+      {/* Admettre */}
+      <button onClick={() => onAdmit(person.socketId)} style={{
+        width: 24, height: 24, borderRadius: 6, border: 'none', cursor: 'pointer',
+        background: 'rgba(74,222,128,0.15)', color: '#4ade80',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'background 0.15s',
+      }}
+        onMouseEnter={e => e.currentTarget.style.background = 'rgba(74,222,128,0.3)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'rgba(74,222,128,0.15)'}
+        title="Admettre"
+      >
+        <CheckIcon />
+      </button>
+    </div>
+  );
+}
+
+// ─── HostControls principal ───────────────────────────────────
 export default function HostControls({ roomId }) {
   const { socket }              = useSocket();
-  const { hostId, locked, participants } = useRoom();
+  const { hostId, locked }      = useRoom();
   const { breakoutOpen, setBreakoutOpen } = useUI();
-  const [showPanel, setShowPanel] = useState(false);
 
+  const [showPanel,    setShowPanel]    = useState(false);
+  const [waitingList,  setWaitingList]  = useState([]);  // ← file d'attente en temps réel
+
+  // ── Écouter les mises à jour de la file d'attente ─────────
+  useEffect(() => {
+    if (!socket) return;
+    const handler = ({ waitingList: wl }) => {
+      if (wl !== undefined) setWaitingList(wl);
+    };
+    socket.on(EVENTS.WAITING_UPDATE, handler);
+    return () => socket.off(EVENTS.WAITING_UPDATE, handler);
+  }, [socket]);
+
+  // Pas hôte → rien à afficher
   if (socket?.id !== hostId) return null;
 
-  const muteAll = () => socket.emit(EVENTS.MUTE_ALL, { roomId });
-  const toggleLock = () => socket.emit(EVENTS.LOCK_ROOM, { roomId, locked: !locked });
+  // ── Actions hôte ──────────────────────────────────────────
+  const muteAll    = () => socket.emit(EVENTS.MUTE_ALL,    { roomId });
+  const toggleLock = () => socket.emit(EVENTS.LOCK_ROOM,   { roomId, locked: !locked });
+  const admit      = (targetSocketId) =>
+    socket.emit(EVENTS.WAITING_ADMIT, { roomId, targetSocketId });
+  const reject     = (targetSocketId) =>
+    socket.emit(EVENTS.WAITING_REJECT, { roomId, targetSocketId });
+  const admitAll   = () =>
+    socket.emit(EVENTS.WAITING_ADMIT_ALL, { roomId });
+
+  const hasPending = waitingList.length > 0;
 
   return (
-    <div className="relative">
+    <div style={{ position: 'relative' }}>
+
+      {/* Bouton hôte + badge file d'attente */}
       <button
         onClick={() => setShowPanel(p => !p)}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-semibold rounded-lg"
+        style={{
+          position: 'relative',
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '6px 12px', borderRadius: 10,
+          background: showPanel ? '#d97706' : '#f59e0b',
+          color: '#000', fontSize: 12, fontWeight: 700,
+          border: 'none', cursor: 'pointer',
+          transition: 'background 0.15s',
+          fontFamily: 'inherit',
+        }}
       >
         👑 Hôte
+        {/* Badge nombre en attente */}
+        {hasPending && (
+          <span style={{
+            position: 'absolute', top: -6, right: -6,
+            background: '#ef4444', color: '#fff',
+            borderRadius: '50%', width: 18, height: 18,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 10, fontWeight: 800,
+            border: '2px solid #111827',
+            animation: 'bounce 1s ease-in-out infinite',
+          }}>
+            {waitingList.length}
+          </span>
+        )}
       </button>
 
+      {/* Panel déroulant */}
       {showPanel && (
-        <div className="absolute bottom-full mb-2 right-0 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl p-3 w-52 space-y-2 z-50">
-          <p className="text-yellow-400 text-xs font-semibold mb-2">Contrôles hôte</p>
+        <>
+          {/* Overlay clic extérieur */}
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+            onClick={() => setShowPanel(false)}
+          />
 
-          <button onClick={muteAll}
-            className="w-full flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded-lg">
-            🔇 Couper tous les micros
-          </button>
+          <div style={{
+            position: 'absolute', bottom: '100%', right: 0, marginBottom: 8,
+            background: '#111827',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 14, padding: '14px',
+            width: 240, zIndex: 50,
+            boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+            animation: 'slideDown 0.18s ease-out',
+          }}>
 
-          <button onClick={toggleLock}
-            className={`w-full flex items-center gap-2 px-3 py-2 text-xs rounded-lg ${
-              locked
-                ? 'bg-green-700 hover:bg-green-600 text-white'
-                : 'bg-orange-700 hover:bg-orange-600 text-white'
-            }`}>
-            {locked ? '🔓 Déverrouiller' : '🔒 Verrouiller'} la salle
-          </button>
+            {/* Titre */}
+            <p style={{
+              fontSize: 10, fontWeight: 800, letterSpacing: '0.1em',
+              color: '#f59e0b', textTransform: 'uppercase',
+              margin: '0 0 12px',
+            }}>
+              Contrôles hôte
+            </p>
 
-          <button onClick={() => { setBreakoutOpen(true); setShowPanel(false); }}
-            className="w-full flex items-center gap-2 px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white text-xs rounded-lg">
-            🧩 Salles de groupes
-          </button>
+            {/* ── File d'attente ── */}
+            {hasPending && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8,
+                }}>
+                  <div style={{
+                    width: 7, height: 7, borderRadius: '50%', background: '#f59e0b',
+                    boxShadow: '0 0 6px rgba(245,158,11,0.8)',
+                    animation: 'breathe 1.4s ease-in-out infinite',
+                  }} />
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
+                    color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase',
+                  }}>
+                    En attente ({waitingList.length})
+                  </span>
+                </div>
 
-          <button onClick={() => setShowPanel(false)}
-            className="w-full text-gray-400 text-xs text-center hover:text-white">
-            Fermer
-          </button>
-        </div>
+                {waitingList.map(p => (
+                  <WaitingEntry
+                    key={p.socketId}
+                    person={p}
+                    onAdmit={admit}
+                    onReject={reject}
+                  />
+                ))}
+
+                {waitingList.length > 1 && (
+                  <button onClick={admitAll} style={{
+                    width: '100%', padding: '7px',
+                    borderRadius: 8, border: '1px solid rgba(74,222,128,0.3)',
+                    background: 'rgba(74,222,128,0.1)', color: '#4ade80',
+                    fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                    fontFamily: 'inherit', marginBottom: 10,
+                    transition: 'background 0.15s',
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(74,222,128,0.2)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(74,222,128,0.1)'}
+                  >
+                    ✓ Admettre tout le monde
+                  </button>
+                )}
+
+                <div style={{
+                  height: 1, background: 'rgba(255,255,255,0.07)', margin: '8px 0 12px',
+                }} />
+              </div>
+            )}
+
+            {/* ── Actions standards ── */}
+            {[
+              {
+                label: '🔇 Couper tous les micros',
+                onClick: muteAll,
+                style: { background: 'rgba(255,255,255,0.06)', color: '#e2e8f0' },
+              },
+              {
+                label: locked ? '🔓 Déverrouiller la salle' : '🔒 Verrouiller la salle',
+                onClick: toggleLock,
+                style: locked
+                  ? { background: 'rgba(34,197,94,0.15)', color: '#4ade80' }
+                  : { background: 'rgba(245,158,11,0.15)', color: '#fbbf24' },
+              },
+              {
+                label: '🧩 Salles de groupes',
+                onClick: () => { setBreakoutOpen(true); setShowPanel(false); },
+                style: { background: 'rgba(139,92,246,0.15)', color: '#a78bfa' },
+              },
+            ].map(({ label, onClick, style }) => (
+              <button
+                key={label}
+                onClick={onClick}
+                style={{
+                  width: '100%', textAlign: 'left',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px 10px', borderRadius: 9,
+                  border: 'none', cursor: 'pointer',
+                  fontSize: 12, fontWeight: 600, marginBottom: 5,
+                  fontFamily: 'inherit', transition: 'filter 0.15s',
+                  ...style,
+                }}
+                onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.15)'}
+                onMouseLeave={e => e.currentTarget.style.filter = 'none'}
+              >
+                {label}
+              </button>
+            ))}
+
+            {/* Fermer */}
+            <button onClick={() => setShowPanel(false)} style={{
+              width: '100%', marginTop: 6, padding: '6px',
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 11, color: 'rgba(255,255,255,0.25)',
+              fontFamily: 'inherit', textAlign: 'center',
+              transition: 'color 0.15s',
+            }}
+              onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.6)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.25)'}
+            >
+              Fermer
+            </button>
+          </div>
+        </>
       )}
+
+      <style>{`
+        @keyframes slideDown {
+          from { opacity:0; transform:translateY(-6px); }
+          to   { opacity:1; transform:translateY(0); }
+        }
+        @keyframes breathe {
+          0%,100%{ opacity:1; } 50%{ opacity:0.4; }
+        }
+        @keyframes bounce {
+          0%,100%{ transform:scale(1); }
+          50%    { transform:scale(1.2); }
+        }
+      `}</style>
     </div>
   );
 }

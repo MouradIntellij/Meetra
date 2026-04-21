@@ -18,11 +18,11 @@ export const EVENTS = {
   SCREEN_STOP:  "screen-share-stop",
 
   // Host controls
-  MUTE_ALL:   "mute-all",
-  MUTE_USER:  "mute-user",
-  KICK_USER:  "kick-user",
-  LOCK_ROOM:  "lock-room",
-  ASSIGN_HOST:"assign-host",
+  MUTE_ALL:    "mute-all",
+  MUTE_USER:   "mute-user",
+  KICK_USER:   "kick-user",
+  LOCK_ROOM:   "lock-room",
+  ASSIGN_HOST: "assign-host",
   HOST_CHANGED:"host-changed",
 
   // Participant status
@@ -63,4 +63,14 @@ export const EVENTS = {
   // Whiteboard
   WHITEBOARD_DRAW:  "whiteboard-draw",
   WHITEBOARD_CLEAR: "whiteboard-clear",
+
+  // ── SALLE D'ATTENTE (nouveaux) ─────────────────────────────
+  WAITING_JOIN:     "waiting-join",      // émettre pour entrer en salle d'attente
+  WAITING_LEAVE:    "waiting-leave",     // émettre pour quitter la salle d'attente
+  WAITING_UPDATE:   "waiting-update",    // écouter : liste des gens en attente
+  WAITING_ADMITTED: "waiting-admitted",  // écouter : l'hôte nous a admis → entrer en salle
+  WAITING_REJECTED: "waiting-rejected",  // écouter : l'hôte nous a refusé
+  WAITING_ADMIT:    "waiting-admit",     // hôte émet : admettre un user
+  WAITING_REJECT:   "waiting-reject",    // hôte émet : refuser un user
+  WAITING_ADMIT_ALL:"waiting-admit-all", // hôte émet : admettre tout le monde
 };

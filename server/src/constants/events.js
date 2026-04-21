@@ -67,4 +67,14 @@ export const EVENTS = {
 
   // Analytics
   STATS_UPDATE:     "stats-update",
+
+  // ── SALLE D'ATTENTE (nouveaux) ─────────────────────────────
+  WAITING_JOIN:     "waiting-join",      // client → serveur : entre en salle d'attente
+  WAITING_LEAVE:    "waiting-leave",     // client → serveur : quitte la salle d'attente
+  WAITING_UPDATE:   "waiting-update",    // serveur → clients en attente : liste mise à jour
+  WAITING_ADMITTED: "waiting-admitted",  // serveur → un client : l'hôte l'a admis
+  WAITING_REJECTED: "waiting-rejected",  // serveur → un client : l'hôte l'a refusé
+  WAITING_ADMIT:    "waiting-admit",     // hôte → serveur : admettre un utilisateur
+  WAITING_REJECT:   "waiting-reject",    // hôte → serveur : refuser un utilisateur
+  WAITING_ADMIT_ALL:"waiting-admit-all", // hôte → serveur : admettre tout le monde
 };
