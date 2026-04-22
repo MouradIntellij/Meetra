@@ -65,16 +65,15 @@ export default function ReactionBar({
     useEffect(() => {
         if (!socket) return;
 
-        const handler = (reaction) => {
-            addReaction(reaction);
-        };
+        const handler = (reaction) => addReaction(reaction);
 
+        socket.off(EVENTS.REACTION_BROADCAST, handler); // 🔥 important
         socket.on(EVENTS.REACTION_BROADCAST, handler);
 
         return () => {
             socket.off(EVENTS.REACTION_BROADCAST, handler);
         };
-    }, [socket]);
+    }, [socket, addReaction]);
 
     // ── envoyer réaction ───────────────────────────────────
     const send = (emoji, isEffect = false) => {

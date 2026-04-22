@@ -3,55 +3,78 @@ import { createContext, useContext, useState, useCallback } from 'react';
 const RoomContext = createContext(null);
 
 export const useRoom = () => {
-  const ctx = useContext(RoomContext);
-  if (!ctx) throw new Error('useRoom must be inside RoomProvider');
-  return ctx;
+    const ctx = useContext(RoomContext);
+    if (!ctx) throw new Error('useRoom must be inside RoomProvider');
+    return ctx;
 };
 
 export function RoomProvider({ children }) {
-  const [roomId,       setRoomId]       = useState('');
-  const [hostId,       setHostId]       = useState('');
-  const [locked,       setLocked]       = useState(false);
-  const [participants, setParticipants] = useState([]);
-  const [breakoutRooms,setBreakoutRooms]= useState([]);
-  const [currentBreakout, setCurrentBreakout] = useState(null);
+    const [roomId, setRoomId] = useState('');
+    const [hostId, setHostId] = useState('');
+    const [locked, setLocked] = useState(false);
+    const [participants, setParticipants] = useState([]);
+    const [breakoutRooms, setBreakoutRooms] = useState([]);
+    const [currentBreakout, setCurrentBreakout] = useState(null);
 
-  const isHost = useCallback(
-    (socketId) => socketId === hostId,
-    [hostId]
-  );
+    // ✅ SCREEN SHARING STATE (AJOUT PROPRE)
+    const [screenSharingId, setScreenSharingId] = useState(null);
 
-  const updateParticipant = useCallback((socketId, updates) => {
-    setParticipants(prev =>
-      prev.map(p => p.socketId === socketId ? { ...p, ...updates } : p)
+    const isHost = useCallback(
+        (socketId) => socketId === hostId,
+        [hostId]
     );
-  }, []);
 
-  const addParticipant = useCallback((participant) => {
-    setParticipants(prev => {
-      if (prev.find(p => p.socketId === participant.socketId)) return prev;
-      return [...prev, participant];
-    });
-  }, []);
+    const updateParticipant = useCallback((socketId, updates) => {
+        setParticipants(prev =>
+            prev.map(p =>
+                p.socketId === socketId ? { ...p, ...updates } : p
+            )
+        );
+    }, []);
 
-  const removeParticipant = useCallback((socketId) => {
-    setParticipants(prev => prev.filter(p => p.socketId !== socketId));
-  }, []);
+    const addParticipant = useCallback((participant) => {
+        setParticipants(prev => {
+            if (prev.find(p => p.socketId === participant.socketId)) return prev;
+            return [...prev, participant];
+        });
+    }, []);
 
-  return (
-    <RoomContext.Provider value={{
-      roomId, setRoomId,
-      hostId, setHostId,
-      locked, setLocked,
-      participants, setParticipants,
-      breakoutRooms, setBreakoutRooms,
-      currentBreakout, setCurrentBreakout,
-      isHost,
-      updateParticipant,
-      addParticipant,
-      removeParticipant,
-    }}>
-      {children}
-    </RoomContext.Provider>
-  );
+    const removeParticipant = useCallback((socketId) => {
+        setParticipants(prev => prev.filter(p => p.socketId !== socketId));
+    }, []);
+
+    return (
+        <RoomContext.Provider
+            value={{
+                roomId,
+                setRoomId,
+
+                hostId,
+                setHostId,
+
+                locked,
+                setLocked,
+
+                participants,
+                setParticipants,
+
+                breakoutRooms,
+                setBreakoutRooms,
+
+                currentBreakout,
+                setCurrentBreakout,
+
+                isHost,
+                updateParticipant,
+                addParticipant,
+                removeParticipant,
+
+                // ✅ EXPORT SCREEN SHARING
+                screenSharingId,
+                setScreenSharingId,
+            }}
+        >
+            {children}
+        </RoomContext.Provider>
+    );
 }
