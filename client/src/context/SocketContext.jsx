@@ -6,6 +6,7 @@ const SocketContext = createContext(null);
 export const useSocket = () => useContext(SocketContext);
 
 export function SocketProvider({ children }) {
+
   const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
 
@@ -16,7 +17,7 @@ export function SocketProvider({ children }) {
     console.log('🧠 SocketProvider init');
 
     const s = io(API_URL, {
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'], // 🔥 plus stable
       withCredentials: true,
       reconnection: true,
       reconnectionAttempts: 10,
@@ -39,13 +40,15 @@ export function SocketProvider({ children }) {
     s.on('disconnect', onDisconnect);
 
     return () => {
-      console.log('🧹 SocketContext cleanup');
+      console.log('🧹 Socket cleanup');
 
       s.off('connect', onConnect);
       s.off('disconnect', onDisconnect);
-      s.disconnect();
+      s.disconnect(); // 🔥 essentiel
     };
-  }, [API_URL]);
+
+    // ❌ PAS DE DEPENDANCE
+  }, []);
 
   return (
       <SocketContext.Provider value={{ socket, connected }}>
