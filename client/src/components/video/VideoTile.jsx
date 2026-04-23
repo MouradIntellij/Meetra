@@ -15,63 +15,62 @@ export default function VideoTile({
                                   }) {
     const videoRef = useRef(null);
     const containerRef = useRef(null);
-
     const { screenSharingId } = useRoom();
-    const [isFocused, setIsFocused] = useState(false);
 
-    // 🎥 attach stream
+    // 🎥 Attach stream + fix mirror
     useEffect(() => {
         const el = videoRef.current;
         if (!el || !stream) return;
 
-        // 🔥 IMPORTANT: reset transform (ANTI MIRROR ROOT FIX)
-        el.style.transform = 'none';
-
         el.srcObject = stream;
+
+        // ✅ MIRROR FIX:
+        // - Local camera tile → mirror (natural selfie view)
+        // - Remote streams → NEVER mirror
+        // - Screen share stream → NEVER mirror (would flip text/UI)
+        const isScreenShare = screenSharingId === socketId && !isLocal;
+        if (isLocal && !isScreenShare) {
+            el.style.transform = 'scaleX(-1)';
+        } else {
+            el.style.transform = 'none';
+        }
+
         el.play().catch(() => {});
 
         return () => {
             el.srcObject = null;
         };
-    }, [stream]);
+    }, [stream, isLocal, screenSharingId, socketId]);
 
-    // 🟢 screen share detection
     const isScreenSharer = screenSharingId === socketId;
 
-    // 🎯 auto focus
-    useEffect(() => {
-        if (!containerRef.current) return;
-
-        if (isScreenSharer) {
-            containerRef.current.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-                inline: 'center',
-            });
-            setIsFocused(true);
-        } else {
-            setIsFocused(false);
-        }
-    }, [isScreenSharer]);
+    // Avatar gradient based on name
+    const avatarColors = [
+        ['#1d4ed8', '#7c3aed'],
+        ['#065f46', '#0891b2'],
+        ['#92400e', '#b45309'],
+        ['#7c3aed', '#db2777'],
+        ['#1e40af', '#0369a1'],
+        ['#166534', '#15803d'],
+    ];
+    const colorPair = avatarColors[(name?.charCodeAt(0) ?? 0) % avatarColors.length];
 
     return (
         <div
             ref={containerRef}
-            className={`
-        relative bg-gray-800 rounded-xl overflow-hidden
-        flex items-center justify-center
-        transition-all duration-300
-
-        ${isActive ? 'ring-2 ring-green-400' : ''}
-
-        ${isScreenSharer
-                ? 'ring-4 ring-green-500 shadow-[0_0_25px_rgba(34,197,94,0.7)] scale-[1.02]'
-                : ''}
-
-        ${isFocused ? 'z-50' : ''}
-
-        ${className}
-      `}
+            className={`relative bg-gray-900 rounded-xl overflow-hidden flex items-center justify-center transition-all duration-200 ${className}`}
+            style={{
+                outline: isActive
+                    ? '2px solid #22c55e'
+                    : isScreenSharer
+                        ? '3px solid #22c55e'
+                        : 'none',
+                outlineOffset: isScreenSharer ? '-3px' : '-2px',
+                boxShadow: isActive || isScreenSharer
+                    ? '0 0 20px rgba(34,197,94,0.3)'
+                    : 'none',
+                minHeight: 80,
+            }}
         >
             {/* 🎥 VIDEO */}
             <video
@@ -79,52 +78,106 @@ export default function VideoTile({
                 autoPlay
                 playsInline
                 muted={isLocal}
-                className={`
-          w-full h-full object-cover
-          ${stream && !videoOff ? 'block' : 'hidden'}
-
-          /* 🔥 HARD FIX ANTI MIRROR */
-          !transform-none
-        `}
-                style={{
-                    transform: 'none', // 🔥 force override CSS global
-                }}
+                className={`w-full h-full object-cover ${stream && !videoOff ? 'block' : 'hidden'}`}
+                style={{ display: stream && !videoOff ? 'block' : 'none' }}
             />
 
-            {/* 👤 AVATAR */}
+            {/* 👤 AVATAR when no video */}
             {(!stream || videoOff) && (
-                <div className="flex flex-col items-center gap-2">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                    <div style={{
+                        width: 52, height: 52, borderRadius: '50%',
+                        background: `linear-gradient(135deg, ${colorPair[0]}, ${colorPair[1]})`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 20, fontWeight: 700, color: '#fff',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+                    }}>
                         {name?.[0]?.toUpperCase() ?? '?'}
                     </div>
-                    <span className="text-gray-400 text-sm">{name}</span>
+                    <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 500 }}>
+            {name}
+          </span>
                 </div>
             )}
 
             {/* 🏷️ NAME BAR */}
-            <div className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-gradient-to-t from-black/70 to-transparent flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                    {muted && <span className="text-red-400 text-xs">🔇</span>}
-                    {videoOff && <span className="text-red-400 text-xs">📷</span>}
-
-                    <span className="text-white text-xs font-medium truncate max-w-[120px]">
+            <div style={{
+                position: 'absolute', bottom: 0, left: 0, right: 0,
+                padding: '14px 8px 6px',
+                background: 'linear-gradient(transparent, rgba(0,0,0,0.75))',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+                    {muted && (
+                        <div style={{
+                            background: 'rgba(239,68,68,0.85)', borderRadius: 4,
+                            padding: '1px 5px', fontSize: 9,
+                        }}>🔇</div>
+                    )}
+                    {videoOff && (
+                        <div style={{
+                            background: 'rgba(239,68,68,0.85)', borderRadius: 4,
+                            padding: '1px 5px', fontSize: 9,
+                        }}>📷</div>
+                    )}
+                    <span style={{
+                        color: '#f1f5f9', fontSize: 11, fontWeight: 600,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        maxWidth: 110,
+                    }}>
             {name}
-                        {isLocal && <span className="text-gray-400"> (Vous)</span>}
-                        {isHost && <span className="text-yellow-400"> 👑</span>}
+                        {isLocal && <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 400 }}> (Vous)</span>}
+                        {isHost && <span style={{ color: '#fbbf24' }}> 👑</span>}
           </span>
                 </div>
 
                 {handRaised && (
-                    <span className="text-yellow-400 text-sm animate-bounce">✋</span>
+                    <span style={{
+                        fontSize: 14,
+                        animation: 'handWave 0.8s ease-in-out infinite alternate',
+                        display: 'inline-block',
+                    }}>
+            ✋
+          </span>
                 )}
             </div>
 
             {/* 📺 SCREEN SHARE BADGE */}
             {isScreenSharer && (
-                <div className="absolute top-2 left-2 bg-green-500 text-black text-xs px-2 py-1 rounded-md font-bold animate-pulse">
-                    📺 Screen sharing
+                <div style={{
+                    position: 'absolute', top: 8, left: 8,
+                    background: 'rgba(34,197,94,0.9)',
+                    color: '#fff', fontSize: 10, fontWeight: 700,
+                    padding: '3px 8px', borderRadius: 6,
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    backdropFilter: 'blur(4px)',
+                }}>
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#fff', animation: 'pulse 1.5s infinite' }} />
+                    Partage écran
                 </div>
             )}
+
+            {/* Speaking indicator */}
+            {isActive && !isScreenSharer && (
+                <div style={{
+                    position: 'absolute', top: 8, right: 8,
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: '#22c55e',
+                    boxShadow: '0 0 8px rgba(34,197,94,0.8)',
+                    animation: 'pulse 1s ease-in-out infinite',
+                }} />
+            )}
+
+            <style>{`
+        @keyframes handWave {
+          from { transform: rotate(-10deg); }
+          to { transform: rotate(10deg); }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(0.85); }
+        }
+      `}</style>
         </div>
     );
 }
