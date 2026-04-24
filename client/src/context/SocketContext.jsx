@@ -9,6 +9,7 @@ export function SocketProvider({ children }) {
 
   const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState('');
 
   const API_URL =
       import.meta.env.VITE_API_URL || 'http://localhost:4000';
@@ -28,6 +29,7 @@ export function SocketProvider({ children }) {
 
     const onConnect = () => {
       setConnected(true);
+      setConnectionError('');
       console.log('✅ Socket connected');
     };
 
@@ -36,14 +38,22 @@ export function SocketProvider({ children }) {
       console.log('❌ Socket disconnected');
     };
 
+    const onConnectError = (error) => {
+      setConnected(false);
+      setConnectionError(error?.message || 'Serveur indisponible');
+      console.warn('⚠️ Socket connect_error', error?.message);
+    };
+
     s.on('connect', onConnect);
     s.on('disconnect', onDisconnect);
+    s.on('connect_error', onConnectError);
 
     return () => {
       console.log('🧹 Socket cleanup');
 
       s.off('connect', onConnect);
       s.off('disconnect', onDisconnect);
+      s.off('connect_error', onConnectError);
       s.disconnect(); // 🔥 essentiel
     };
 
@@ -51,7 +61,7 @@ export function SocketProvider({ children }) {
   }, []);
 
   return (
-      <SocketContext.Provider value={{ socket, connected }}>
+      <SocketContext.Provider value={{ socket, connected, connectionError, apiUrl: API_URL }}>
         {children}
       </SocketContext.Provider>
   );

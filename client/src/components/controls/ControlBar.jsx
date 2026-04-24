@@ -2,8 +2,10 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useMedia } from '../../context/MediaContext.jsx';
 import { useRoom } from '../../context/RoomContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
+import { useTranscription } from '../../context/TranscriptionContext.jsx';
 import { useRecording } from '../../hooks/useRecording.js';
 import { useVirtualBackground } from '../../hooks/useVirtualBackground.js';
+import { platform } from '../../services/platform/index.js';
 import ReactionBar from './ReactionBar.jsx';
 import ScreenShareSelector from './ScreenShareSelector.jsx';
 import VirtualBackground from '../layout/VirtualBackground.jsx';
@@ -25,6 +27,7 @@ const I = {
     Chat:  ()=>(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>),
     People:()=>(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>),
     Board: ()=>(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>),
+    CC:    ()=>(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M9 10.5c-.5-.8-1.2-1.2-2.1-1.2-1.7 0-2.9 1.4-2.9 3.2s1.2 3.2 2.9 3.2c.9 0 1.6-.4 2.1-1.2"/><path d="M18.5 10.5c-.5-.8-1.2-1.2-2.1-1.2-1.7 0-2.9 1.4-2.9 3.2s1.2 3.2 2.9 3.2c.9 0 1.6-.4 2.1-1.2"/></svg>),
     Bg:    ()=>(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7"><rect x="2" y="3" width="20" height="14" rx="2"/><circle cx="8" cy="8" r="2"/><path d="M21 14l-5-5L8 17"/><line x1="2" y1="20" x2="22" y2="20"/></svg>),
     X:     ()=>(<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>),
     Check: ()=>(<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>),
@@ -123,8 +126,9 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
         setVirtualBackgroundStream,
     } = useMedia();
     const { locked } = useRoom();
-    const { chatOpen, setChatOpen, participantsOpen, setParticipantsOpen, whiteboardOpen, setWhiteboardOpen, layout, toggleLayout } = useUI();
+    const { chatOpen, setChatOpen, participantsOpen, setParticipantsOpen, whiteboardOpen, setWhiteboardOpen, transcriptOpen, setTranscriptOpen, layout, toggleLayout } = useUI();
     const { isRecording, toggle: toggleRecording } = useRecording();
+    const { captionsEnabled, setCaptionsEnabled, transcriptionActive } = useTranscription();
 
     const [bgOpen, setBgOpen] = useState(false);
     const [bgActive, setBgActive] = useState(false);
@@ -139,7 +143,32 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
         setBgActive(virtualBackground.active);
     }, [virtualBackground.active]);
 
+    useEffect(() => {
+        const unsubscribe = platform.onPresenterCommand?.((payload) => {
+            if (!payload?.type) return;
+
+            if (payload.type === 'stop-share') {
+                stopScreenShare();
+                return;
+            }
+
+            if (payload.type === 'change-source') {
+                if (isSharing) {
+                    stopScreenShare();
+                }
+                setShowScreenShareSelector(true);
+            }
+        });
+
+        return () => unsubscribe?.();
+    }, [isSharing, stopScreenShare]);
+
     const handleQuickScreenShare = async () => {
+        if (platform.isElectron) {
+            setShowScreenShareSelector(true);
+            return;
+        }
+
         await startScreenShare(null, {
             sound: false,
             presenterMode: true,
@@ -190,6 +219,18 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
                     />
 
                     <ZoomBtn onClick={toggleRecording} active={isRecording} icon={isRecording?<I.Stop/>:<I.Rec/>} label={isRecording?'Stop Rec':'Enregistrer'} title={isRecording?"Arrêter l'enregistrement":"Démarrer l'enregistrement"}/>
+                    <ZoomBtn
+                        onClick={() => {
+                            setCaptionsEnabled((current) => !current);
+                            setTranscriptOpen(true);
+                        }}
+                        active={!captionsEnabled}
+                        highlight={transcriptionActive}
+                        pulse={transcriptionActive}
+                        icon={<I.CC/>}
+                        label={transcriptionActive ? 'CC ●' : 'Sous-titres'}
+                        title="Sous-titres et transcription"
+                    />
                     <ReactionBar roomId={roomId} userName={userName} toggleHand={toggleHand} handRaised={handRaised}/>
                     <ZoomBtn onClick={toggleLayout} icon={layout==='grid'?<I.Grid/>:<I.Focus/>} label={layout==='grid'?'Grille':'Focus'} title="Changer la disposition"/>
                     <div className="mx-1 h-12 w-px self-center bg-white/10"/>
@@ -210,6 +251,7 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
                     )}
                     <PanelBtn onClick={()=>setParticipantsOpen(o=>!o)} active={participantsOpen} icon={<I.People/>} label="Participants"/>
                     <PanelBtn onClick={()=>setChatOpen(o=>!o)} active={chatOpen} icon={<I.Chat/>} label="Chat"/>
+                    <PanelBtn onClick={()=>setTranscriptOpen(o=>!o)} active={transcriptOpen} icon={<I.CC/>} label="Transcript"/>
                     <PanelBtn onClick={()=>setWhiteboardOpen(o=>!o)} active={whiteboardOpen} icon={<I.Board/>} label="Tableau"/>
                 </div>
             </div>

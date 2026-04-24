@@ -9,6 +9,7 @@ import { registerHostHandlers }     from './handlers/hostHandler.js';
 import { registerReactionHandlers } from './handlers/reactionHandler.js';
 import { registerRecordingHandlers} from './handlers/recordingHandler.js';
 import { registerBreakoutHandlers } from './handlers/breakoutHandler.js';
+import { registerTranscriptionHandlers } from './handlers/transcriptionHandler.js';
 
 // Whiteboard (inline — small enough)
 import { EVENTS } from '../constants/events.js';
@@ -32,6 +33,7 @@ export function initSocket(httpServer) {
     registerReactionHandlers(io, socket);
     registerRecordingHandlers(io, socket);
     registerBreakoutHandlers(io, socket);
+    registerTranscriptionHandlers(io, socket);
 
     // Whiteboard (broadcast draw data, clear)
     socket.on(EVENTS.WHITEBOARD_DRAW, ({ roomId, data }) => {

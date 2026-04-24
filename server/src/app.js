@@ -3,12 +3,17 @@ import cors from 'cors';
 import { corsOptions } from './config/cors.js';
 import * as roomService from './rooms/roomService.js';
 import { logger } from './utils/logger.js';
+import { createTranscriptionRouter } from './routes/transcriptionRoutes.js';
+import { purgeExpiredTranscriptFiles } from './services/transcription/transcriptPersistenceService.js';
 
 export function createApp() {
   const app = express();
 
+  purgeExpiredTranscriptFiles();
+
   app.use(cors(corsOptions));
   app.use(express.json());
+  app.use('/api', createTranscriptionRouter());
 
   // ── Health check ──────────────────────────────────────────
   app.get('/health', (_, res) => res.json({ status: 'ok', ts: Date.now() }));

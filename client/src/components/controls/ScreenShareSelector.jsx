@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { platform } from '../../services/platform/index.js';
 
 const SOURCES = [
     {
@@ -181,6 +182,10 @@ function OptionToggle({ checked, onChange, label, description }) {
 }
 
 function MiniNativeHint({ sourceId }) {
+    if (platform.isElectron && sourceId !== 'browser') {
+        return <p className="text-xs leading-5 text-slate-400">Mode desktop: vraies miniatures disponibles. Choisissez directement une source ci-dessous.</p>;
+    }
+
     const label =
         sourceId === 'window'
             ? 'Le navigateur va ouvrir la boite native pour choisir une application.'
@@ -191,12 +196,60 @@ function MiniNativeHint({ sourceId }) {
     return <p className="text-xs leading-5 text-slate-400">{label}</p>;
 }
 
+function ElectronSourceCard({ source, active, onClick }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={`overflow-hidden rounded-[22px] border text-left transition ${
+                active
+                    ? 'border-emerald-400/35 bg-emerald-400/10 shadow-[0_18px_50px_rgba(16,185,129,0.14)]'
+                    : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.05]'
+            }`}
+        >
+            <div className="relative aspect-video overflow-hidden bg-slate-950">
+                {source.thumbnailDataUrl ? (
+                    <img src={source.thumbnailDataUrl} alt={source.name} className="h-full w-full object-cover" />
+                ) : (
+                    <div className="flex h-full items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">
+                        No Preview
+                    </div>
+                )}
+                {active && (
+                    <div className="absolute inset-0 border-[3px] border-green-500 pointer-events-none" />
+                )}
+                <div className="absolute left-3 top-3 rounded-full bg-slate-950/70 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300 backdrop-blur-md">
+                    Selection
+                </div>
+            </div>
+            <div className="flex items-center gap-3 p-3">
+                {source.appIconDataUrl ? (
+                    <img src={source.appIconDataUrl} alt="" className="h-9 w-9 rounded-xl border border-white/10 bg-white/5 object-contain p-1" />
+                ) : (
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+                            <rect x="3" y="4" width="18" height="14" rx="2" />
+                            <path d="M8 20h8M12 18v2" />
+                        </svg>
+                    </div>
+                )}
+                <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-slate-100">{source.name}</div>
+                    <div className="mt-1 text-xs text-slate-400">{source.displayId ? `Display ${source.displayId}` : 'Source desktop'}</div>
+                </div>
+            </div>
+        </button>
+    );
+}
+
 export default function ScreenShareSelector({ onSelect, onCancel, activeShare }) {
     const [selectedSource, setSelectedSource] = useState('window');
     const [loading, setLoading] = useState(false);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [previewName, setPreviewName] = useState('');
     const [recentPreviews, setRecentPreviews] = useState([]);
+    const [electronSources, setElectronSources] = useState([]);
+    const [selectedElectronSourceId, setSelectedElectronSourceId] = useState('');
     const [error, setError] = useState('');
     const [options, setOptions] = useState({
         sound: false,
@@ -205,10 +258,18 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
     });
     const previewStreamRef = useRef(null);
     const previewSourceRef = useRef(null);
+    const visibleSources = useMemo(
+        () => (platform.isElectron ? SOURCES.filter((item) => item.id !== 'browser') : SOURCES),
+        []
+    );
+    const selectedElectronSource = useMemo(
+        () => electronSources.find((item) => item.id === selectedElectronSourceId) || null,
+        [electronSources, selectedElectronSourceId]
+    );
 
     const activeSource = useMemo(
-        () => SOURCES.find((item) => item.id === selectedSource) || SOURCES[0],
-        [selectedSource]
+        () => visibleSources.find((item) => item.id === selectedSource) || visibleSources[0],
+        [selectedSource, visibleSources]
     );
 
     useEffect(() => {
@@ -226,6 +287,56 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
         setPreviewName('');
         setError('');
     }, [selectedSource]);
+
+    useEffect(() => {
+        if (!platform.isElectron || selectedSource === 'browser') {
+            setElectronSources([]);
+            setSelectedElectronSourceId('');
+            return;
+        }
+
+        let ignore = false;
+
+        const loadElectronSources = async () => {
+            setLoading(true);
+            setError('');
+
+            try {
+                const types = selectedSource === 'monitor' ? ['screen'] : ['window'];
+                const sources = await platform.getScreenSources({
+                    types,
+                    thumbnailSize: { width: 640, height: 360 },
+                });
+
+                if (ignore) return;
+
+                setElectronSources(sources);
+
+                if (sources[0]) {
+                    setSelectedElectronSourceId((current) => {
+                        const exists = sources.some((item) => item.id === current);
+                        return exists ? current : sources[0].id;
+                    });
+                    setPreviewUrl(sources[0].thumbnailDataUrl || null);
+                    setPreviewName(sources[0].name || activeSource.title);
+                }
+            } catch {
+                if (!ignore) {
+                    setError("Impossible de charger les sources Electron.");
+                }
+            } finally {
+                if (!ignore) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        loadElectronSources();
+
+        return () => {
+            ignore = true;
+        };
+    }, [selectedSource, activeSource.title]);
 
     const updateOption = (key, value) => {
         setOptions((current) => ({ ...current, [key]: value }));
@@ -281,6 +392,10 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
     };
 
     const handleGeneratePreview = async () => {
+        if (platform.isElectron && selectedSource !== 'browser') {
+            return;
+        }
+
         setLoading(true);
         setError('');
 
@@ -311,9 +426,32 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
         setError('');
 
         try {
-            const stream = previewStreamRef.current || await navigator.mediaDevices.getDisplayMedia(buildDisplayMediaOptions());
-            const track = stream.getVideoTracks()[0];
-            const settings = track?.getSettings?.() ?? {};
+            let stream;
+            let track;
+            let settings;
+
+            if (platform.isElectron && selectedSource !== 'browser') {
+                const selectedElectronSource = electronSources.find((item) => item.id === selectedElectronSourceId);
+                if (!selectedElectronSource) {
+                    setError('Choisissez une source desktop.');
+                    setLoading(false);
+                    return;
+                }
+
+                stream = await platform.getShareStream({
+                    sourceId: selectedElectronSource.id,
+                    withAudio: options.sound,
+                    optimize: options.optimize,
+                });
+                track = stream.getVideoTracks()[0];
+                settings = {
+                    displaySurface: selectedSource === 'monitor' ? 'monitor' : 'window',
+                };
+            } else {
+                stream = previewStreamRef.current || await navigator.mediaDevices.getDisplayMedia(buildDisplayMediaOptions());
+                track = stream.getVideoTracks()[0];
+                settings = track?.getSettings?.() ?? {};
+            }
 
             previewStreamRef.current = null;
             previewSourceRef.current = null;
@@ -321,7 +459,10 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
             onSelect(stream, {
                 ...options,
                 displaySurface: settings.displaySurface || selectedSource,
-                sourceLabel: track?.label || activeSource.title,
+                sourceLabel:
+                    (platform.isElectron && selectedSource !== 'browser'
+                        ? electronSources.find((item) => item.id === selectedElectronSourceId)?.name
+                        : track?.label) || activeSource.title,
                 presenterMode: options.presenter,
             });
         } catch (err) {
@@ -342,10 +483,14 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
                             <div className="text-[11px] font-bold uppercase tracking-[0.35em] text-emerald-400">Screen Share</div>
                             <h2 className="mt-3 text-2xl font-semibold text-slate-50">Choisir une source a partager</h2>
                             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-                                Pour une experience proche de Zoom ou Teams, choisissez le type de source ici, puis le navigateur ouvrira la fenetre native de selection de votre systeme.
+                                {platform.isElectron
+                                    ? 'Choisissez un type de source puis sélectionnez directement une fenêtre ou un écran dans la galerie desktop.'
+                                    : 'Pour une experience proche de Zoom ou Teams, choisissez le type de source ici, puis le navigateur ouvrira la fenetre native de selection de votre systeme.'}
                             </p>
                             <p className="mt-2 max-w-2xl text-xs leading-6 text-slate-500">
-                                Limite du web: le navigateur ne fournit pas la vraie galerie de miniatures de toutes vos applications avant selection. En revanche, vous pouvez maintenant capturer un aperçu réel de la source choisie puis partager cette même source sans rouvrir la boite.
+                                {platform.isElectron
+                                    ? 'Mode Electron actif: les miniatures desktop réelles sont disponibles pour les fenêtres et écrans.'
+                                    : 'Limite du web: le navigateur ne fournit pas la vraie galerie de miniatures de toutes vos applications avant selection. En revanche, vous pouvez maintenant capturer un aperçu réel de la source choisie puis partager cette même source sans rouvrir la boite.'}
                             </p>
                         </div>
                         <button
@@ -361,8 +506,8 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
 
                     <div className="grid min-h-0 flex-1 grid-cols-[1.25fr_0.75fr]">
                         <div className="min-w-0 border-r border-white/10 px-8 py-7">
-                            <div className="grid gap-4 md:grid-cols-3">
-                                {SOURCES.map((source) => {
+                            <div className={`grid gap-4 ${visibleSources.length >= 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+                                {visibleSources.map((source) => {
                                     const selected = source.id === selectedSource;
                                     return (
                                         <button
@@ -405,20 +550,58 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
 
                             <div className="mt-5 flex items-start justify-between gap-6 rounded-[22px] border border-emerald-500/20 bg-emerald-500/10 px-5 py-4">
                                 <div>
-                                    <div className="text-sm font-semibold text-emerald-300">Aperçu et selection systeme</div>
-                                    <div className="mt-1 text-sm leading-6 text-emerald-50/80">{activeSource.tip}</div>
+                                    <div className="text-sm font-semibold text-emerald-300">
+                                        {platform.isElectron ? 'Selection desktop directe' : platform.isElectron && selectedSource !== 'browser' ? 'Galerie desktop' : 'Aperçu et selection systeme'}
+                                    </div>
+                                    <div className="mt-1 text-sm leading-6 text-emerald-50/80">
+                                        {platform.isElectron
+                                            ? selectedElectronSource
+                                                ? `Source choisie: ${selectedElectronSource.name}`
+                                                : activeSource.tip
+                                            : activeSource.tip}
+                                    </div>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={handleGeneratePreview}
-                                    disabled={loading}
-                                    className="shrink-0 rounded-2xl border border-emerald-400/30 bg-emerald-400/15 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/20 disabled:cursor-wait disabled:opacity-60"
-                                >
-                                    {loading ? 'Ouverture...' : previewUrl ? "Changer l’aperçu" : "Choisir et prévisualiser"}
-                                </button>
+                                {!platform.isElectron && (
+                                    <button
+                                        type="button"
+                                        onClick={handleGeneratePreview}
+                                        disabled={loading}
+                                        className="shrink-0 rounded-2xl border border-emerald-400/30 bg-emerald-400/15 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/20 disabled:cursor-wait disabled:opacity-60"
+                                    >
+                                        {loading ? 'Ouverture...' : previewUrl ? "Changer l’aperçu" : "Choisir et prévisualiser"}
+                                    </button>
+                                )}
                             </div>
 
-                            {recentPreviews.length > 0 && (
+                            {platform.isElectron && (
+                                <div className="mt-5">
+                                    <div className="mb-3 flex items-center justify-between gap-3">
+                                        <div className="text-[11px] font-bold uppercase tracking-[0.35em] text-slate-500">
+                                            Sources disponibles
+                                        </div>
+                                        <div className="text-xs text-slate-500">
+                                            {loading ? 'Chargement des miniatures…' : `${electronSources.length} source${electronSources.length > 1 ? 's' : ''}`}
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-4 xl:grid-cols-2">
+                                        {electronSources.map((source) => (
+                                            <ElectronSourceCard
+                                                key={source.id}
+                                                source={source}
+                                                active={source.id === selectedElectronSourceId}
+                                                onClick={() => {
+                                                    setSelectedElectronSourceId(source.id);
+                                                    setPreviewUrl(source.thumbnailDataUrl || null);
+                                                    setPreviewName(source.name || activeSource.title);
+                                                    setError('');
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {!platform.isElectron && recentPreviews.length > 0 && (
                                 <div className="mt-5 rounded-[22px] border border-white/10 bg-white/[0.03] p-5">
                                     <div className="flex items-center justify-between gap-3">
                                         <div>
@@ -497,19 +680,30 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
                             </div>
 
                             <div className="mt-6 rounded-[24px] border border-white/10 bg-slate-950/50 p-4">
-                                <div className="text-[11px] font-bold uppercase tracking-[0.35em] text-slate-500">Apercu</div>
-                                <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black">
+                                <div className="text-[11px] font-bold uppercase tracking-[0.35em] text-slate-500">
+                                    {platform.isElectron ? 'Selection active' : 'Apercu'}
+                                </div>
+                                    <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black">
                                     {previewStreamRef.current ? (
                                         <LivePreview stream={previewStreamRef.current} className="aspect-video w-full object-cover" />
                                     ) : previewUrl ? (
                                         <img src={previewUrl} alt="Preview" className="aspect-video w-full object-cover" />
                                     ) : (
                                         <div className="flex aspect-video items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 px-6 text-center text-sm leading-6 text-slate-500">
-                                            L’aperçu réel apparait ici après choix dans la fenêtre native.
+                                            {platform.isElectron
+                                                ? 'Choisissez une source dans la galerie pour afficher sa miniature ici.'
+                                                : 'L’aperçu réel apparait ici après choix dans la fenêtre native.'}
                                         </div>
                                     )}
                                 </div>
-                                <div className="mt-3 text-sm font-medium text-slate-200">{previewName || activeSource.title}</div>
+                                <div className="mt-3 text-sm font-medium text-slate-200">
+                                    {previewName || activeSource.title}
+                                </div>
+                                {platform.isElectron && selectedElectronSource && (
+                                    <div className="mt-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
+                                        Prêt à partager: {selectedElectronSource.name}
+                                    </div>
+                                )}
                                 <div className="mt-1">
                                     <MiniNativeHint sourceId={selectedSource} />
                                 </div>
@@ -542,7 +736,15 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
                                     disabled={loading}
                                     className="flex-1 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-wait disabled:opacity-60"
                                     >
-                                        {loading ? 'Ouverture...' : previewStreamRef.current ? 'Partager cette source' : previewUrl ? 'Rechoisir et partager' : 'Choisir et partager'}
+                                        {loading
+                                            ? 'Ouverture...'
+                                            : platform.isElectron
+                                                ? 'Partager cette source'
+                                                : previewStreamRef.current
+                                                    ? 'Partager cette source'
+                                                    : previewUrl
+                                                        ? 'Rechoisir et partager'
+                                                        : 'Choisir et partager'}
                                     </button>
                                 </div>
                             </div>

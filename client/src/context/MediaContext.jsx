@@ -4,6 +4,7 @@ import { useRoom }   from './RoomContext.jsx';
 import { EVENTS }    from '../utils/events.js';
 import { createPeerConnection } from '../utils/peer.js';
 import { createAudioAnalyser }  from '../utils/audioLevel.js';
+import { platform } from '../services/platform/index.js';
 
 const MediaContext = createContext(null);
 
@@ -216,17 +217,22 @@ export function MediaProvider({ children, initialStream = null }) {
       }
 
       setScreenStream(screen);
-      setScreenShareMeta({
+      const nextMeta = {
         label: track?.label || 'Votre écran',
         displaySurface: settings.displaySurface || options.displaySurface || 'monitor',
         options,
         startedAt: Date.now(),
-      });
+      };
+      setScreenShareMeta(nextMeta);
       setScreenSharingId(socket.id);
 
       socket?.emit(EVENTS.SCREEN_START, { roomId });
 
       replaceVideoTrackForAllPeers(track);
+      platform.showPresenterToolbar?.({
+        label: nextMeta.label,
+        displaySurface: nextMeta.displaySurface,
+      });
 
       track.onended = () => {
         isSharingRef.current = false;
@@ -249,6 +255,7 @@ export function MediaProvider({ children, initialStream = null }) {
     setScreenShareMeta(null);
 
     setScreenSharingId(null);
+    platform.hidePresenterToolbar?.();
 
     socket?.emit(EVENTS.SCREEN_STOP, { roomId });
 
@@ -317,7 +324,16 @@ export function MediaProvider({ children, initialStream = null }) {
     setScreenShareMeta(null);
     setVirtualBackgroundStream(null);
     setRemoteStreams(new Map());
+    platform.hidePresenterToolbar?.();
   }, [screenStream]);
+
+  useEffect(() => {
+    if (!screenStream || !screenShareMeta) return;
+    platform.updatePresenterToolbar?.({
+      label: screenShareMeta.label,
+      displaySurface: screenShareMeta.displaySurface,
+    });
+  }, [screenStream, screenShareMeta]);
 
   // ─────────────────────────────────────────────
   // WEBRTC EVENTS

@@ -14,6 +14,8 @@ import ParticipantsPanel from '../components/participants/ParticipantsPanel.jsx'
 import Whiteboard        from '../components/layout/Whiteboard.jsx';
 import BreakoutPanel     from '../components/layout/BreakoutPanel.jsx';
 import ReactionsOverlay  from '../components/layout/ReactionsOverlay.jsx';
+import CaptionsOverlay   from '../components/transcription/CaptionsOverlay.jsx';
+import TranscriptPanel   from '../components/transcription/TranscriptPanel.jsx';
 
 
 
@@ -513,11 +515,13 @@ export default function Room({ roomId, userName, onLeave }) {
               <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
                   <VideoGrid isScreenShareActive={isScreenShareActive} />
                   <ReactionsOverlay />
+                  <CaptionsOverlay />
               </div>
 
           {/* Sidebars */}
           <ParticipantsPanel roomId={roomId} />
           <ChatSidebar roomId={roomId} userName={userName} userId={socket?.id} />
+          <TranscriptPanel />
         </div>
 
         {/* ── CONTROL BAR ── */}

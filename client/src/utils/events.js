@@ -89,4 +89,13 @@ export const EVENTS = {
 
 // Réactions sur messages
   CHAT_REACTION:          "chat-reaction",
+
+  // Transcription / captions
+  TRANSCRIPTION_START:    "transcription-start",
+  TRANSCRIPTION_STOP:     "transcription-stop",
+  TRANSCRIPTION_SEGMENT:  "transcription-segment",
+  TRANSCRIPTION_STATE:    "transcription-state",
+  TRANSCRIPTION_ERROR:    "transcription-error",
+  TRANSCRIPTION_SUMMARY_READY: "transcription-summary-ready",
+  TRANSCRIPTION_AUDIO_CHUNK: "transcription-audio-chunk",
 };
