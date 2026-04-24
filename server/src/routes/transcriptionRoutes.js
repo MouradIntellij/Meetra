@@ -16,7 +16,7 @@ export function createTranscriptionRouter() {
         res.json(getTranscriptionCapabilities());
     });
 
-    router.get('/rooms/:roomId/transcript', (req, res) => {
+    router.get('/rooms/:roomId/transcript', async (req, res) => {
         const { roomId } = req.params;
         const requesterId = getRequesterId(req);
         if (!canAccessTranscript(roomId, requesterId)) {
@@ -24,7 +24,7 @@ export function createTranscriptionRouter() {
             return res.status(403).json({ error: 'TRANSCRIPT_ACCESS_DENIED' });
         }
 
-        const state = getTranscriptState(roomId);
+        const state = await getTranscriptState(roomId);
         appendTranscriptAudit({ action: 'transcript.read', roomId, requesterId, segmentCount: state.segments.length });
 
         res.json({
@@ -32,11 +32,11 @@ export function createTranscriptionRouter() {
             active: state.active,
             language: state.language,
             startedAt: state.startedAt,
-            segments: getTranscriptSegments(roomId),
+            segments: await getTranscriptSegments(roomId),
         });
     });
 
-    router.get('/rooms/:roomId/transcript.txt', (req, res) => {
+    router.get('/rooms/:roomId/transcript.txt', async (req, res) => {
         const { roomId } = req.params;
         const requesterId = getRequesterId(req);
         if (!canExportTranscript(roomId, requesterId)) {
@@ -44,7 +44,7 @@ export function createTranscriptionRouter() {
             return res.status(403).json({ error: 'TRANSCRIPT_EXPORT_DENIED' });
         }
 
-        const segments = getTranscriptSegments(roomId);
+        const segments = await getTranscriptSegments(roomId);
         appendTranscriptAudit({ action: 'transcript.export', roomId, requesterId, segmentCount: segments.length });
 
         const text = segments

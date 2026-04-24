@@ -11,8 +11,8 @@ import { buildMeetingSummary } from '../../services/transcription/transcriptSumm
 import { transcribeAudioChunk } from '../../services/transcription/transcriptionProvider.js';
 
 export function registerTranscriptionHandlers(io, socket) {
-    socket.on(EVENTS.TRANSCRIPTION_START, ({ roomId, language }) => {
-        const state = startTranscript(roomId, { language });
+    socket.on(EVENTS.TRANSCRIPTION_START, async ({ roomId, language }) => {
+        const state = await startTranscript(roomId, { language });
         logger.socket(EVENTS.TRANSCRIPTION_START, { roomId, language: state.language, by: socket.id });
         io.to(roomId).emit(EVENTS.TRANSCRIPTION_STATE, {
             active: true,
@@ -21,8 +21,8 @@ export function registerTranscriptionHandlers(io, socket) {
         });
     });
 
-    socket.on(EVENTS.TRANSCRIPTION_STOP, ({ roomId }) => {
-        const state = stopTranscript(roomId);
+    socket.on(EVENTS.TRANSCRIPTION_STOP, async ({ roomId }) => {
+        const state = await stopTranscript(roomId);
         logger.socket(EVENTS.TRANSCRIPTION_STOP, { roomId, by: socket.id });
         io.to(roomId).emit(EVENTS.TRANSCRIPTION_STATE, {
             active: false,
@@ -31,10 +31,10 @@ export function registerTranscriptionHandlers(io, socket) {
         });
     });
 
-    socket.on(EVENTS.TRANSCRIPTION_SEGMENT, ({ roomId, segment }) => {
+    socket.on(EVENTS.TRANSCRIPTION_SEGMENT, async ({ roomId, segment }) => {
         if (!roomId || !segment?.text?.trim()) return;
 
-        const normalized = appendTranscriptSegment(roomId, {
+        const normalized = await appendTranscriptSegment(roomId, {
             ...segment,
             speakerId: segment.speakerId || socket.id,
         });
@@ -54,7 +54,7 @@ export function registerTranscriptionHandlers(io, socket) {
 
             if (!result?.text?.trim()) return;
 
-            const normalized = appendTranscriptSegment(roomId, {
+            const normalized = await appendTranscriptSegment(roomId, {
                 speakerId: chunk.speakerId || socket.id,
                 speakerName: chunk.speakerName || 'Participant',
                 text: result.text.trim(),
@@ -72,9 +72,9 @@ export function registerTranscriptionHandlers(io, socket) {
         }
     });
 
-    socket.on('transcription-clear', ({ roomId }) => {
-        clearTranscript(roomId);
-        const state = getTranscriptState(roomId);
+    socket.on('transcription-clear', async ({ roomId }) => {
+        await clearTranscript(roomId);
+        const state = await getTranscriptState(roomId);
         io.to(roomId).emit(EVENTS.TRANSCRIPTION_STATE, {
             active: state.active,
             language: state.language,

@@ -2,11 +2,11 @@ import { getTranscriptSegments, getTranscriptSummary, setTranscriptSummary } fro
 import { generateMeetingSummary } from './summaryProvider.js';
 
 export async function buildMeetingSummary(roomId, { forceRefresh = false } = {}) {
-    const existing = getTranscriptSummary(roomId);
+    const existing = await getTranscriptSummary(roomId);
     if (existing && !forceRefresh) return existing;
 
-    const segments = getTranscriptSegments(roomId);
+    const segments = await getTranscriptSegments(roomId);
     const summary = await generateMeetingSummary({ roomId, segments });
-    setTranscriptSummary(roomId, summary);
+    await setTranscriptSummary(roomId, summary);
     return summary;
 }

@@ -2,9 +2,9 @@ import { loadTranscriptRoom, saveTranscriptRoom } from './transcriptPersistenceS
 
 const roomTranscripts = new Map();
 
-function ensureRoom(roomId) {
+async function ensureRoom(roomId) {
     if (!roomTranscripts.has(roomId)) {
-        const persisted = loadTranscriptRoom(roomId);
+        const persisted = await loadTranscriptRoom(roomId);
         roomTranscripts.set(roomId, {
             active: persisted?.active ?? false,
             language: persisted?.language ?? 'fr-CA',
@@ -20,9 +20,9 @@ function ensureRoom(roomId) {
     return roomTranscripts.get(roomId);
 }
 
-function persistRoom(roomId) {
-    const room = ensureRoom(roomId);
-    saveTranscriptRoom(roomId, {
+async function persistRoom(roomId) {
+    const room = await ensureRoom(roomId);
+    await saveTranscriptRoom(roomId, {
         active: room.active,
         language: room.language,
         startedAt: room.startedAt,
@@ -33,24 +33,24 @@ function persistRoom(roomId) {
     });
 }
 
-export function startTranscript(roomId, options = {}) {
-    const room = ensureRoom(roomId);
+export async function startTranscript(roomId, options = {}) {
+    const room = await ensureRoom(roomId);
     room.active = true;
     room.language = options.language || room.language || 'fr-CA';
     room.startedAt = room.startedAt || Date.now();
-    persistRoom(roomId);
+    await persistRoom(roomId);
     return room;
 }
 
-export function stopTranscript(roomId) {
-    const room = ensureRoom(roomId);
+export async function stopTranscript(roomId) {
+    const room = await ensureRoom(roomId);
     room.active = false;
-    persistRoom(roomId);
+    await persistRoom(roomId);
     return room;
 }
 
-export function appendTranscriptSegment(roomId, segment) {
-    const room = ensureRoom(roomId);
+export async function appendTranscriptSegment(roomId, segment) {
+    const room = await ensureRoom(roomId);
 
     const normalized = {
         id: segment.id || `seg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -67,14 +67,14 @@ export function appendTranscriptSegment(roomId, segment) {
 
     if (normalized.isFinal) {
         room.segments.push(normalized);
-        persistRoom(roomId);
+        await persistRoom(roomId);
     }
 
     return normalized;
 }
 
-export function getTranscriptState(roomId) {
-    const room = ensureRoom(roomId);
+export async function getTranscriptState(roomId) {
+    const room = await ensureRoom(roomId);
     return {
         active: room.active,
         language: room.language,
@@ -84,26 +84,26 @@ export function getTranscriptState(roomId) {
     };
 }
 
-export function getTranscriptSegments(roomId) {
-    return ensureRoom(roomId).segments;
+export async function getTranscriptSegments(roomId) {
+    return (await ensureRoom(roomId)).segments;
 }
 
-export function clearTranscript(roomId) {
-    const room = ensureRoom(roomId);
+export async function clearTranscript(roomId) {
+    const room = await ensureRoom(roomId);
     room.segments = [];
     room.summary = null;
     room.startedAt = room.active ? Date.now() : null;
-    persistRoom(roomId);
+    await persistRoom(roomId);
     return room;
 }
 
-export function getTranscriptSummary(roomId) {
-    return ensureRoom(roomId).summary ?? null;
+export async function getTranscriptSummary(roomId) {
+    return (await ensureRoom(roomId)).summary ?? null;
 }
 
-export function setTranscriptSummary(roomId, summary) {
-    const room = ensureRoom(roomId);
+export async function setTranscriptSummary(roomId, summary) {
+    const room = await ensureRoom(roomId);
     room.summary = summary;
-    persistRoom(roomId);
+    await persistRoom(roomId);
     return room.summary;
 }

@@ -2,6 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ENV } from '../../config/env.js';
 import { logger } from '../../utils/logger.js';
+import {
+    loadTranscriptRoomFromDb,
+    purgeExpiredTranscriptRows,
+    saveTranscriptRoomToDb,
+} from './postgresTranscriptStore.js';
 
 const baseDir = path.resolve(process.cwd(), ENV.TRANSCRIPT_STORE_DIR);
 
@@ -30,7 +35,11 @@ function deleteRoomFile(roomId) {
     }
 }
 
-export function loadTranscriptRoom(roomId) {
+export async function loadTranscriptRoom(roomId) {
+    if (ENV.TRANSCRIPT_STORE_BACKEND === 'postgres') {
+        return loadTranscriptRoomFromDb(roomId);
+    }
+
     try {
         const file = roomFile(roomId);
         if (!fs.existsSync(file)) return null;
@@ -49,7 +58,11 @@ export function loadTranscriptRoom(roomId) {
     }
 }
 
-export function saveTranscriptRoom(roomId, payload) {
+export async function saveTranscriptRoom(roomId, payload) {
+    if (ENV.TRANSCRIPT_STORE_BACKEND === 'postgres') {
+        return saveTranscriptRoomToDb(roomId, payload);
+    }
+
     try {
         const file = roomFile(roomId);
         const nextPayload = {
@@ -65,7 +78,11 @@ export function saveTranscriptRoom(roomId, payload) {
     }
 }
 
-export function purgeExpiredTranscriptFiles() {
+export async function purgeExpiredTranscriptFiles() {
+    if (ENV.TRANSCRIPT_STORE_BACKEND === 'postgres') {
+        return purgeExpiredTranscriptRows(ENV.TRANSCRIPT_RETENTION_DAYS);
+    }
+
     try {
         ensureBaseDir();
         const entries = fs.readdirSync(baseDir).filter((entry) => entry.endsWith('.json'));

@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: meetra-server
+    env: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm run start
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_URL
+        sync: false
+      - key: TRANSCRIPT_STORE_BACKEND
+        value: postgres
+      - key: SUMMARY_PROVIDER
+        value: heuristic
+      - key: TRANSCRIPTION_PROVIDER
+        value: browser
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4.1-mini
+      - key: OPENAI_TRANSCRIPTION_MODEL
+        value: gpt-4o-mini-transcribe
+      - key: DATABASE_URL
+        fromDatabase:
+          name: meetra-transcripts
+          property: connectionString
+
+databases:
+  - name: meetra-transcripts
+    plan: free
+    databaseName: meetra
+    user: meetra

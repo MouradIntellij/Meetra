@@ -9,7 +9,9 @@ import { purgeExpiredTranscriptFiles } from './services/transcription/transcript
 export function createApp() {
   const app = express();
 
-  purgeExpiredTranscriptFiles();
+  Promise.resolve(purgeExpiredTranscriptFiles()).catch((error) => {
+    logger.warn('Transcript retention startup purge failed:', error?.message);
+  });
 
   app.use(cors(corsOptions));
   app.use(express.json());

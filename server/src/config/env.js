@@ -4,6 +4,7 @@ export const ENV = {
   isDev: (process.env.NODE_ENV || 'development') === 'development',
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
   TRANSCRIPT_STORE_DIR: process.env.TRANSCRIPT_STORE_DIR || 'server/data/transcripts',
+  TRANSCRIPT_STORE_BACKEND: process.env.TRANSCRIPT_STORE_BACKEND || 'local',
   SUMMARY_PROVIDER: process.env.SUMMARY_PROVIDER || 'heuristic',
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
   OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
