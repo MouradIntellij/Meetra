@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { corsOptions } from './config/cors.js';
+import { ENV } from './config/env.js';
 import * as roomService from './rooms/roomService.js';
 import { logger } from './utils/logger.js';
 import { createTranscriptionRouter } from './routes/transcriptionRoutes.js';
@@ -8,6 +9,20 @@ import { purgeExpiredTranscriptFiles } from './services/transcription/transcript
 
 export function createApp() {
   const app = express();
+
+  function resolveClientOrigin(req) {
+    const origin = req.get('origin');
+    if (origin) return origin;
+
+    const referer = req.get('referer');
+    if (!referer) return ENV.CLIENT_URL;
+
+    try {
+      return new URL(referer).origin;
+    } catch {
+      return ENV.CLIENT_URL;
+    }
+  }
 
   Promise.resolve(purgeExpiredTranscriptFiles()).catch((error) => {
     logger.warn('Transcript retention startup purge failed:', error?.message);
@@ -21,11 +36,14 @@ export function createApp() {
   app.get('/health', (_, res) => res.json({ status: 'ok', ts: Date.now() }));
 
   // ── POST /api/rooms — créer une salle ─────────────────────
-  app.post('/api/rooms', (req, res) => {
+  app.post('/api/rooms', async (req, res) => {
     try {
-      const room = roomService.createRoom();
-      logger.info('Room created:', room.id);
-      res.json({ roomId: room.id });
+      const room = await roomService.createRoom();
+      const origin = resolveClientOrigin(req);
+      const joinUrl = origin ? `${String(origin).replace(/\/+$/, '')}/room/${room.roomId}` : null;
+
+      logger.info('Room created:', room.roomId);
+      res.json({ roomId: room.roomId, joinUrl });
     } catch (err) {
       logger.error('createRoom error:', err);
       res.status(500).json({ error: err.message });
@@ -33,9 +51,9 @@ export function createApp() {
   });
 
   // ── GET /api/rooms/:roomId — vérifier si une salle existe ─
-  app.get('/api/rooms/:roomId', (req, res) => {
+  app.get('/api/rooms/:roomId', async (req, res) => {
     try {
-      const info = roomService.getRoomInfo(req.params.roomId);
+      const info = await roomService.getMeetingRoomInfo(req.params.roomId);
       if (info) {
         res.json({ exists: true, ...info });
       } else {
@@ -51,10 +69,10 @@ export function createApp() {
   // Retourne la liste détaillée des participants avec leur statut
   // micro, caméra, main levée, et rôle hôte.
   // Utilisé par WaitingRoom.jsx pour afficher qui est déjà connecté.
-  app.get('/api/rooms/:roomId/participants', (req, res) => {
+  app.get('/api/rooms/:roomId/participants', async (req, res) => {
     try {
       const { roomId } = req.params;
-      const info = roomService.getRoomInfo(roomId);
+      const info = await roomService.getMeetingRoomInfo(roomId);
 
       // Salle introuvable → tableau vide (pas d'erreur 404,
       // car la salle peut ne pas encore exister au moment où

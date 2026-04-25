@@ -4,6 +4,8 @@ export const ENV = {
   isDev: (process.env.NODE_ENV || 'development') === 'development',
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
   CORS_ALLOWED_ORIGINS: process.env.CORS_ALLOWED_ORIGINS || '',
+  MEETING_STORE_BACKEND: process.env.MEETING_STORE_BACKEND || 'auto',
+  MEETING_STORE_DIR: process.env.MEETING_STORE_DIR || 'server/data/meetings',
   TRANSCRIPT_STORE_DIR: process.env.TRANSCRIPT_STORE_DIR || 'server/data/transcripts',
   TRANSCRIPT_STORE_BACKEND: process.env.TRANSCRIPT_STORE_BACKEND || 'local',
   SUMMARY_PROVIDER: process.env.SUMMARY_PROVIDER || 'heuristic',

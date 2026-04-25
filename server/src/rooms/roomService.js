@@ -1,8 +1,10 @@
 import * as store from './roomStore.js';
-import { generateId } from '../utils/uuid.js';
+import * as meetingService from '../services/meetings/meetingService.js';
 
-export function createRoom() {
-  return store.createRoom();
+export async function createRoom() {
+  return meetingService.createMeeting({
+    source: 'api',
+  });
 }
 
 export function getRoomInfo(roomId) {
@@ -17,20 +19,42 @@ export function getRoomInfo(roomId) {
   };
 }
 
-export function joinRoom(roomId, { socketId, userId, userName }) {
+export async function getMeetingRoomInfo(roomId) {
+  const room = store.getRoom(roomId);
+  const meeting = await meetingService.getMeeting(roomId);
+
+  if (!room && !meeting) return null;
+
+  return {
+    id: roomId,
+    hostId: room?.hostId || null,
+    locked: room?.locked ?? meeting?.locked ?? false,
+    participantCount: room?.participants.size ?? 0,
+    participants: room ? store.getParticipantsList(roomId) : [],
+    createdAt: meeting?.createdAt ?? room?.createdAt ?? null,
+    status: meeting?.status || (room ? 'active' : 'scheduled'),
+    startedAt: meeting?.startedAt ?? null,
+    endedAt: meeting?.endedAt ?? null,
+    source: meeting?.source || 'runtime',
+  };
+}
+
+export async function joinRoom(roomId, { socketId, userId, userName }) {
+  const meeting = await meetingService.ensureMeeting(roomId, {
+    autoCreate: true,
+    source: 'socket-join',
+    metadata: {
+      autoCreated: true,
+    },
+  });
+
   const room = store.getRoom(roomId);
   if (!room) {
-    // Auto-create if not found
-    store.createRoom(); // won't use this; re-create with specific id
-    // Actually: create with given id
-    const rooms = store.rooms;
-    rooms.set(roomId, {
-      id: roomId,
-      hostId: null,
-      locked: false,
-      createdAt: new Date().toISOString(),
-      participants: new Map(),
-      breakoutRooms: new Map(),
+    store.createRoomWithId(roomId, {
+      locked: meeting?.locked ?? false,
+      createdAt: meeting?.createdAt
+        ? new Date(meeting.createdAt).toISOString()
+        : new Date().toISOString(),
     });
   }
 
@@ -44,11 +68,17 @@ export function joinRoom(roomId, { socketId, userId, userName }) {
     finalRoom.hostId = socketId;
   }
 
+  await meetingService.markMeetingActive(roomId);
+
   return { participant, room: finalRoom };
 }
 
-export function leaveRoom(socketId) {
-  return store.removeParticipant(socketId);
+export async function leaveRoom(socketId) {
+  const result = store.removeParticipant(socketId);
+  if (result?.room && result.room.participants.size === 0) {
+    await meetingService.markMeetingIdle(result.roomId);
+  }
+  return result;
 }
 
 export function isHost(roomId, socketId) {
@@ -63,10 +93,12 @@ export function setHost(roomId, newHostSocketId) {
   return true;
 }
 
-export function lockRoom(roomId, locked) {
+export async function lockRoom(roomId, locked) {
   const room = store.getRoom(roomId);
-  if (!room) return false;
-  room.locked = locked;
+  if (room) {
+    room.locked = locked;
+  }
+  await meetingService.setMeetingLocked(roomId, locked);
   return true;
 }
 
