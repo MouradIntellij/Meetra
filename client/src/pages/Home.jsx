@@ -2,6 +2,14 @@ import { useState } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
+function generateFallbackRoomId() {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `room-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+}
+
 export default function Home({ onJoin, prefillRoomId = '' }) {
   const [userName, setUserName] = useState('');
   const [roomId,   setRoomId]   = useState(prefillRoomId);
@@ -15,10 +23,16 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       const res  = await fetch(`${API_URL}/api/rooms`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.roomId) {
+        throw new Error(data?.error || `ROOM_CREATE_FAILED_${res.status}`);
+      }
+
       onJoin(data.roomId, userName.trim());
     } catch {
-      setError('Impossible de créer la salle. Vérifiez votre connexion.');
+      const fallbackRoomId = generateFallbackRoomId();
+      onJoin(fallbackRoomId, userName.trim());
     } finally { setLoading(false); }
   };
 
@@ -29,14 +43,19 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
     setLoading(true); setError('');
     try {
       const res  = await fetch(`${API_URL}/api/rooms/${roomId.trim()}`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data?.error || `ROOM_LOOKUP_FAILED_${res.status}`);
+      }
+
       if (data.exists) {
         onJoin(roomId.trim(), userName.trim());
       } else {
         setError("Cette salle n'existe pas ou a expiré.");
       }
     } catch {
-      setError('Erreur de connexion.');
+      onJoin(roomId.trim(), userName.trim());
     } finally { setLoading(false); }
   };
 

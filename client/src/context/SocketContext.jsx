@@ -18,11 +18,12 @@ export function SocketProvider({ children }) {
     console.log('🧠 SocketProvider init');
 
     const s = io(API_URL, {
-      transports: ['websocket'], // 🔥 plus stable
+      transports: ['polling', 'websocket'],
       withCredentials: true,
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      timeout: 20000,
     });
 
     setSocket(s);

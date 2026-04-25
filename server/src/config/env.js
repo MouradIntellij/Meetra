@@ -3,6 +3,7 @@ export const ENV = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   isDev: (process.env.NODE_ENV || 'development') === 'development',
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
+  CORS_ALLOWED_ORIGINS: process.env.CORS_ALLOWED_ORIGINS || '',
   TRANSCRIPT_STORE_DIR: process.env.TRANSCRIPT_STORE_DIR || 'server/data/transcripts',
   TRANSCRIPT_STORE_BACKEND: process.env.TRANSCRIPT_STORE_BACKEND || 'local',
   SUMMARY_PROVIDER: process.env.SUMMARY_PROVIDER || 'heuristic',
