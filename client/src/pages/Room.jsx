@@ -5,6 +5,7 @@ import { useUI }         from '../context/UIContext.jsx';
 import { useMedia }      from '../context/MediaContext.jsx';
 import { useWebRTC }     from '../hooks/useWebRTC.js';
 import { EVENTS }        from '../utils/events.js';
+import { platform }      from '../services/platform/index.js';
 
 import VideoGrid         from '../components/video/VideoGrid.jsx';
 import ControlBar        from '../components/controls/ControlBar.jsx';
@@ -16,6 +17,26 @@ import BreakoutPanel     from '../components/layout/BreakoutPanel.jsx';
 import ReactionsOverlay  from '../components/layout/ReactionsOverlay.jsx';
 import CaptionsOverlay   from '../components/transcription/CaptionsOverlay.jsx';
 import TranscriptPanel   from '../components/transcription/TranscriptPanel.jsx';
+
+const PUBLIC_JOIN_BASE_URL = import.meta.env.VITE_PUBLIC_JOIN_BASE_URL || '';
+
+function resolveInviteBaseUrl() {
+  if (PUBLIC_JOIN_BASE_URL) {
+    return PUBLIC_JOIN_BASE_URL.replace(/\/+$/, '');
+  }
+
+  if (typeof window !== 'undefined' && /^https?:$/i.test(window.location.protocol)) {
+    return window.location.origin.replace(/\/+$/, '');
+  }
+
+  return '';
+}
+
+function buildInviteLink(roomId) {
+  const baseUrl = resolveInviteBaseUrl();
+  if (!baseUrl) return roomId;
+  return `${baseUrl}/room/${roomId}`;
+}
 
 
 
@@ -145,7 +166,22 @@ function NetworkQuality() {
 // ── Invite Banner ─────────────────────────────────────────────
 function InviteBanner({ roomId, onDismiss }) {
   const [copied, setCopied] = useState(false);
-  const link = `${window.location.origin}/room/${roomId}`;
+  const [opened, setOpened] = useState(false);
+  const link = buildInviteLink(roomId);
+  const hasPublicLink = /^https?:\/\//i.test(link);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleOpen = async () => {
+    if (!hasPublicLink) return;
+    await platform.openExternal(link);
+    setOpened(true);
+    setTimeout(() => setOpened(false), 2500);
+  };
 
   return (
       <div style={{
@@ -166,7 +202,7 @@ function InviteBanner({ roomId, onDismiss }) {
         {link}
       </span>
         <button
-            onClick={() => { navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2500); }}
+            onClick={handleCopy}
             style={{
               flexShrink: 0,
               padding: '3px 10px', borderRadius: 6, border: 'none',
@@ -178,6 +214,21 @@ function InviteBanner({ roomId, onDismiss }) {
         >
           {copied ? '✓ Copié' : 'Copier'}
         </button>
+        {platform.isElectron && hasPublicLink && (
+            <button
+                onClick={handleOpen}
+                style={{
+                  flexShrink: 0,
+                  padding: '3px 10px', borderRadius: 6, border: 'none',
+                  background: opened ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)',
+                  color: opened ? '#4ade80' : 'rgba(255,255,255,0.8)',
+                  fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  transition: 'all 0.2s',
+                }}
+            >
+              {opened ? '✓ Ouvert' : 'Ouvrir'}
+            </button>
+        )}
         <button
             onClick={onDismiss}
             style={{
@@ -187,6 +238,11 @@ function InviteBanner({ roomId, onDismiss }) {
         >
           ×
         </button>
+        {!hasPublicLink && (
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', marginLeft: 4 }}>
+              Configurez `VITE_PUBLIC_JOIN_BASE_URL` pour partager ce lien sur Internet.
+            </div>
+        )}
       </div>
   );
 }
