@@ -220,7 +220,7 @@ export default function Room({ roomId, userName, onLeave }) {
 
   useEffect(() => {
     if (!connected || joined) return;
-    joinRoom().then(() => setJoined(true)).catch(console.error);
+    joinRoom().then(() => setJoined(true)).catch(() => {});
   }, [connected, joined, joinRoom]);
 
   useEffect(() => {

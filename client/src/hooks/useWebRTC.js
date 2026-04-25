@@ -21,25 +21,19 @@ export function useWebRTC(roomId, userName) {
   // ── Join ─────────────────────────────────────────────────
   const joinRoom = useCallback(async () => {
     const stream = await getMedia();
-    console.log(`[useWebRTC] Joining ${roomId} as ${userName}`);
     socket.emit(EVENTS.JOIN_ROOM, { roomId, userId: socket.id, userName });
     return stream;
   }, [socket, roomId, userName, getMedia]);
 
   // ── toggleHand: alternates RAISE / LOWER each call ───────
   const toggleHand = useCallback(() => {
-    if (!socket) {
-      console.warn('[useWebRTC] toggleHand: no socket!');
-      return;
-    }
+    if (!socket) return;
     const willRaise = !handRaisedRef.current;
     handRaisedRef.current = willRaise;
 
     if (willRaise) {
-      console.log('[useWebRTC] Emitting RAISE_HAND', roomId);
       socket.emit(EVENTS.RAISE_HAND, { roomId });
     } else {
-      console.log('[useWebRTC] Emitting LOWER_HAND', roomId);
       socket.emit(EVENTS.LOWER_HAND, { roomId });
     }
   }, [socket, roomId]);
@@ -58,7 +52,6 @@ export function useWebRTC(roomId, userName) {
     socket.on(EVENTS.USER_JOINED, (user) => {
       if (user.socketId === socket.id) return;
       const displayName = user.name || user.userName || 'Inconnu';
-      console.log(`[useWebRTC] USER_JOINED: ${displayName}`);
       addParticipant({
         ...user,
         name:     displayName,
@@ -91,11 +84,9 @@ export function useWebRTC(roomId, userName) {
     });
 
     socket.on(EVENTS.HAND_RAISED,  ({ userId }) => {
-      console.log('[useWebRTC] HAND_RAISED received for', userId);
       updateParticipant(userId, { handRaised: true });
     });
     socket.on(EVENTS.HAND_LOWERED, ({ userId }) => {
-      console.log('[useWebRTC] HAND_LOWERED received for', userId);
       updateParticipant(userId, { handRaised: false });
     });
 

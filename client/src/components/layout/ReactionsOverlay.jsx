@@ -3,8 +3,6 @@ import { useUI } from '../../context/UIContext.jsx';
 export default function ReactionsOverlay() {
   const { reactions } = useUI();
 
-  console.log('[ReactionsOverlay] rendering, reactions count:', reactions.length);
-
   // Always render the container so it's in the DOM
   return (
     <div

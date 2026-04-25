@@ -15,8 +15,6 @@ export function SocketProvider({ children }) {
       import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
   useEffect(() => {
-    console.log('🧠 SocketProvider init');
-
     const s = io(API_URL, {
       transports: ['polling', 'websocket'],
       withCredentials: true,
@@ -31,18 +29,15 @@ export function SocketProvider({ children }) {
     const onConnect = () => {
       setConnected(true);
       setConnectionError('');
-      console.log('✅ Socket connected');
     };
 
     const onDisconnect = () => {
       setConnected(false);
-      console.log('❌ Socket disconnected');
     };
 
     const onConnectError = (error) => {
       setConnected(false);
       setConnectionError(error?.message || 'Serveur indisponible');
-      console.warn('⚠️ Socket connect_error', error?.message);
     };
 
     s.on('connect', onConnect);
@@ -50,15 +45,12 @@ export function SocketProvider({ children }) {
     s.on('connect_error', onConnectError);
 
     return () => {
-      console.log('🧹 Socket cleanup');
-
       s.off('connect', onConnect);
       s.off('disconnect', onDisconnect);
       s.off('connect_error', onConnectError);
-      s.disconnect(); // 🔥 essentiel
+      s.disconnect();
     };
 
-    // ❌ PAS DE DEPENDANCE
   }, []);
 
   return (

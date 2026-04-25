@@ -93,7 +93,6 @@ export function MediaProvider({ children, initialStream = null }) {
   // REMOTE STREAM
   // ─────────────────────────────────────────────
   const addRemoteStream = useCallback((socketId, stream) => {
-    console.log(`[WebRTC] Remote stream received from ${socketId}`);
     setRemoteStreams(prev => new Map(prev).set(socketId, stream));
   }, []);
 
@@ -241,7 +240,13 @@ export function MediaProvider({ children, initialStream = null }) {
 
     } catch (e) {
       isSharingRef.current = false;
-      console.warn('Screen cancelled:', e.message);
+      if (e?.name === 'NotAllowedError') {
+        setScreenShareError("Le partage d'écran a été refusé. Autorisez l'accès puis réessayez.");
+      } else if (e?.name === 'NotFoundError') {
+        setScreenShareError("Aucune source de partage n'a été trouvée sur cet appareil.");
+      } else {
+        setScreenShareError("Impossible de démarrer le partage d'écran pour le moment.");
+      }
     }
   }, [socket, roomId, replaceVideoTrackForAllPeers, setScreenSharingId]);
 

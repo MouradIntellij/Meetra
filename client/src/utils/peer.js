@@ -41,15 +41,6 @@ export function createPeerConnection({ targetId, socket, roomId, stream, onTrack
     }
   };
 
-  // Connection state logging (helps debug)
-  pc.onconnectionstatechange = () => {
-    console.log(`[WebRTC] PC(${targetId}) state: ${pc.connectionState}`);
-  };
-
-  pc.oniceconnectionstatechange = () => {
-    console.log(`[WebRTC] ICE(${targetId}) state: ${pc.iceConnectionState}`);
-  };
-
   // Add local tracks
   if (stream) {
     stream.getTracks().forEach(track => pc.addTrack(track, stream));

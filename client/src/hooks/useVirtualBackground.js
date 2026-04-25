@@ -82,6 +82,7 @@ export function useVirtualBackground(localStream, peerConnections, onOutputStrea
     const [bgImage,     setBgImage]     = useState(null);     // HTMLImageElement | null
     const [bgColor,     setBgColor]     = useState('#1a1f36');
     const [loading,     setLoading]     = useState(false);
+    const [loadingMessage, setLoadingMessage] = useState('');
     const [error,       setError]       = useState('');
     const [active,      setActive]      = useState(false);    // pipeline en cours
 
@@ -201,11 +202,13 @@ export function useVirtualBackground(localStream, peerConnections, onOutputStrea
     // ── Démarrer le pipeline ──────────────────────────────────
     const startPipeline = useCallback(async (newMode) => {
         setLoading(true);
+        setLoadingMessage('Préparation du fond virtuel…');
         setError('');
 
         try {
             // Charger BodyPix si pas encore fait
             if (!netRef.current && newMode !== 'none') {
+                setLoadingMessage('Chargement du moteur de segmentation…');
                 netRef.current = await loadBodyPix();
             }
 
@@ -216,6 +219,7 @@ export function useVirtualBackground(localStream, peerConnections, onOutputStrea
 
             // Créer le stream de sortie depuis le canvas
             if (!outputStreamRef.current) {
+                setLoadingMessage('Initialisation du rendu vidéo…');
                 outputStreamRef.current = canvasRef.current.captureStream(FPS);
             }
 
@@ -236,10 +240,10 @@ export function useVirtualBackground(localStream, peerConnections, onOutputStrea
             rafRef.current = requestAnimationFrame(renderLoop);
 
         } catch (err) {
-            setError('Impossible de charger le modèle BodyPix. Vérifiez votre connexion.');
-            console.error('[VirtualBg]', err);
+            setError("Impossible d'activer l'arrière-plan virtuel. Vérifiez votre connexion ou réessayez sur un appareil plus puissant.");
         } finally {
             setLoading(false);
+            setLoadingMessage('');
         }
     }, [localStream, peerConnections, renderLoop]);
 
@@ -300,7 +304,7 @@ export function useVirtualBackground(localStream, peerConnections, onOutputStrea
     }, [active, localStream]);
 
     return {
-        mode, active, loading, error,
+        mode, active, loading, loadingMessage, error,
         blurAmount, bgColor,
         applyBlur, applyImage, applyColor, removeBackground,
         getOutputStream,

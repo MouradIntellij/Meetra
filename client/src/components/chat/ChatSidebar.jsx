@@ -186,6 +186,7 @@ export default function ChatSidebar({roomId,userName,userId}){
   const[replyTo,setReplyTo]=useState(null);
   const[showEmoji,setShowEmoji]=useState(false);
   const[sending,setSending]=useState(false);
+  const[composerError,setComposerError]=useState('');
 
   const endRef  =useRef(null);
   const inputRef=useRef(null);
@@ -236,7 +237,10 @@ export default function ChatSidebar({roomId,userName,userId}){
 
   const pickFile=useCallback(file=>{
     if(!file)return;
-    if(file.size>MAX_BYTES){alert(`Max ${MAX_MB} Mo`);return;}
+    if(file.size>MAX_BYTES){
+      setComposerError(`Fichier trop volumineux. Taille maximale: ${MAX_MB} Mo.`);
+      return;
+    }
     if(file.type.startsWith('image/')){
       const r=new FileReader();
       r.onload=e=>setPending({file,preview:e.target.result});
@@ -244,6 +248,7 @@ export default function ChatSidebar({roomId,userName,userId}){
     } else {
       setPending({file,preview:null});
     }
+    setComposerError('');
     setShowEmoji(false);
     setTimeout(()=>inputRef.current?.focus(),80);
   },[]);
@@ -266,6 +271,7 @@ export default function ChatSidebar({roomId,userName,userId}){
   /* Envoyer fichier — base64 complet en 1 emit, pas de chunks */
   const sendFile=useCallback(async file=>{
     setSending(true);setProgress(0);
+    setComposerError('');
     try{
       const b64=await new Promise((res,rej)=>{
         const r=new FileReader();
@@ -291,8 +297,7 @@ export default function ChatSidebar({roomId,userName,userId}){
       setProgress(100);
       setTimeout(()=>{setProgress(null);setPending(null);setInput('');setReplyTo(null);setSending(false);},400);
     }catch(err){
-      console.error('[Chat] sendFile:',err);
-      alert('Erreur lors de l\'envoi');
+      setComposerError("L'envoi du fichier a échoué. Réessayez dans quelques instants.");
       setProgress(null);setSending(false);
     }
   },[socket,roomId,userId,userName,input,replyTo]);
@@ -302,6 +307,7 @@ export default function ChatSidebar({roomId,userName,userId}){
     if(sending)return;
     if(pending?.file){sendFile(pending.file);return;}
     const t=input.trim();if(!t)return;
+    setComposerError('');
     socket?.emit(EV_CHAT,{
       roomId,id:genId(),type:'text',message:t,userId,userName,
       replyTo:replyTo?{id:replyTo.id,userName:replyTo.userName,message:replyTo.message}:null,
@@ -378,6 +384,12 @@ export default function ChatSidebar({roomId,userName,userId}){
                 <div style={{fontSize:11,color:'rgba(255,255,255,0.45)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{replyTo.message||replyTo.fileName}</div>
               </div>
               <button onClick={()=>setReplyTo(null)} style={{background:'none',border:'none',cursor:'pointer',color:'rgba(255,255,255,0.4)',flexShrink:0}}><IX/></button>
+            </div>
+        )}
+
+        {composerError && (
+            <div style={{margin:'0 10px 6px',background:'rgba(239,68,68,0.1)',border:'1px solid rgba(248,113,113,0.25)',borderRadius:10,padding:'8px 10px',fontSize:11,color:'#f87171',lineHeight:1.5}}>
+              ⚠ {composerError}
             </div>
         )}
 

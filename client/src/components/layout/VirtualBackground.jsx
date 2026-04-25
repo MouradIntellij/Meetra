@@ -201,7 +201,7 @@ function BgThumb({ bg, selected, onClick, loading }) {
 // ─── Composant principal ──────────────────────────────────────
 export default function VirtualBackground({ controller, onClose }) {
     const {
-        mode, active, loading, error,
+        mode, active, loading, loadingMessage, error,
         blurAmount,
         applyBlur, applyImage, applyColor, removeBackground,
         getOutputStream,
@@ -379,7 +379,7 @@ export default function VirtualBackground({ controller, onClose }) {
                                         <SpinnerIcon />
                                     </div>
                                     <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
-                    Chargement BodyPix…
+                    {loadingMessage || 'Chargement du fond virtuel…'}
                   </span>
                                 </div>
                             )}

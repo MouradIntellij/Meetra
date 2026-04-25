@@ -43,7 +43,7 @@ function ConnectionBanner() {
         </div>
         <div style={{ marginTop: 4, fontSize: 14, lineHeight: 1.5 }}>
           Connexion impossible vers <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{apiUrl}</span>.
-          Vérifiez que le backend est lancé avec <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>npm run dev</span> ou <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>npm run dev:server</span>.
+          Le service est temporairement inaccessible. Réessayez dans quelques instants.
         </div>
         {connectionError && (
             <div style={{ marginTop: 6, fontSize: 12, color: 'rgba(255,255,255,0.82)' }}>
@@ -55,7 +55,6 @@ function ConnectionBanner() {
 }
 
 export default function App() {
-  const { connected } = useSocket();
   const urlRoomId = getRouteRoomId();
 
   const [screen,   setScreen]   = useState(urlRoomId ? 'home-join' : 'home');
