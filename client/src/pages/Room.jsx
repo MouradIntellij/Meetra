@@ -163,12 +163,22 @@ function NetworkQuality() {
   );
 }
 
-// ── Invite Banner ─────────────────────────────────────────────
-function InviteBanner({ roomId, onDismiss }) {
+// ── Invite Dialog ─────────────────────────────────────────────
+function InviteDialog({ roomId, onDismiss }) {
   const [copied, setCopied] = useState(false);
   const [opened, setOpened] = useState(false);
+  const [emailed, setEmailed] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
   const link = buildInviteLink(roomId);
   const hasPublicLink = /^https?:\/\//i.test(link);
+
+  const recipients = emailInput
+    .split(/[,\n;]/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const inviteSubject = encodeURIComponent('Invitation a rejoindre la reunion');
+  const inviteBody = encodeURIComponent(`Bonjour,\n\nRejoignez ma reunion avec ce lien :\n${link}\n\nA bientot.`);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(link);
@@ -183,66 +193,213 @@ function InviteBanner({ roomId, onDismiss }) {
     setTimeout(() => setOpened(false), 2500);
   };
 
+  const handleEmail = async () => {
+    if (!hasPublicLink) return;
+    const to = recipients.join(',');
+    const mailtoUrl = `mailto:${encodeURIComponent(to)}?subject=${inviteSubject}&body=${inviteBody}`;
+
+    if (platform.isElectron) {
+      await platform.openExternal(mailtoUrl);
+    } else {
+      window.location.href = mailtoUrl;
+    }
+
+    setEmailed(true);
+    setTimeout(() => setEmailed(false), 2500);
+  };
+
   return (
-      <div style={{
-        background: 'rgba(37,99,235,0.12)',
-        borderBottom: '1px solid rgba(59,130,246,0.2)',
-        padding: '6px 16px',
-        display: 'flex', alignItems: 'center', gap: 10,
-        flexShrink: 0,
-      }}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, flexShrink: 0 }}>
-          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-        </svg>
-        <span style={{
-          color: '#93c5fd', fontSize: 11, fontFamily: 'monospace',
-          flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      <div
+          onClick={e => e.target === e.currentTarget && onDismiss()}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 80,
+            background: 'rgba(2,6,23,0.72)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+      >
+        <div style={{
+          width: 'min(680px, 100%)',
+          background: 'linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(2,6,23,0.98) 100%)',
+          border: '1px solid rgba(148,163,184,0.18)',
+          borderRadius: 24,
+          boxShadow: '0 30px 80px rgba(2,6,23,0.5)',
+          overflow: 'hidden',
         }}>
-        {link}
-      </span>
-        <button
-            onClick={handleCopy}
-            style={{
-              flexShrink: 0,
-              padding: '3px 10px', borderRadius: 6, border: 'none',
-              background: copied ? 'rgba(34,197,94,0.2)' : 'rgba(59,130,246,0.2)',
-              color: copied ? '#4ade80' : '#93c5fd',
-              fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-              transition: 'all 0.2s',
-            }}
-        >
-          {copied ? '✓ Copié' : 'Copier'}
-        </button>
-        {platform.isElectron && hasPublicLink && (
+          <div style={{
+            padding: '20px 22px 16px',
+            borderBottom: '1px solid rgba(148,163,184,0.12)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}>
+            <div>
+              <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(148,163,184,0.7)', fontWeight: 700 }}>
+                Invitation
+              </div>
+              <div style={{ marginTop: 6, fontSize: 22, fontWeight: 800, color: '#f8fafc' }}>
+                Inviter des participants
+              </div>
+              <div style={{ marginTop: 6, fontSize: 13, color: 'rgba(226,232,240,0.72)', lineHeight: 1.5 }}>
+                Partagez ce lien public pour permettre a un invite Internet de rejoindre la reunion.
+              </div>
+            </div>
             <button
-                onClick={handleOpen}
+                onClick={onDismiss}
                 style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  border: '1px solid rgba(148,163,184,0.12)',
+                  background: 'rgba(255,255,255,0.05)',
+                  color: 'rgba(255,255,255,0.65)',
+                  cursor: 'pointer',
+                  fontSize: 16,
                   flexShrink: 0,
-                  padding: '3px 10px', borderRadius: 6, border: 'none',
-                  background: opened ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)',
-                  color: opened ? '#4ade80' : 'rgba(255,255,255,0.8)',
-                  fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                  transition: 'all 0.2s',
                 }}
             >
-              {opened ? '✓ Ouvert' : 'Ouvrir'}
+              ×
             </button>
-        )}
-        <button
-            onClick={onDismiss}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: 'rgba(255,255,255,0.3)', padding: 2, fontSize: 14, lineHeight: 1,
-            }}
-        >
-          ×
-        </button>
-        {!hasPublicLink && (
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', marginLeft: 4 }}>
-              Configurez `VITE_PUBLIC_JOIN_BASE_URL` pour partager ce lien sur Internet.
+          </div>
+
+          <div style={{ padding: 22, display: 'grid', gap: 18 }}>
+            <div style={{
+              border: '1px solid rgba(96,165,250,0.16)',
+              background: 'rgba(37,99,235,0.08)',
+              borderRadius: 18,
+              padding: 16,
+            }}>
+              <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#93c5fd', fontWeight: 700, marginBottom: 10 }}>
+                Lien de reunion
+              </div>
+              <div style={{
+                fontFamily: 'monospace',
+                fontSize: 13,
+                color: '#dbeafe',
+                lineHeight: 1.6,
+                wordBreak: 'break-all',
+                background: 'rgba(15,23,42,0.55)',
+                border: '1px solid rgba(148,163,184,0.14)',
+                borderRadius: 14,
+                padding: '12px 14px',
+              }}>
+                {link}
+              </div>
+              {!hasPublicLink && (
+                  <div style={{ marginTop: 10, fontSize: 11, color: 'rgba(248,250,252,0.58)', lineHeight: 1.5 }}>
+                    Configurez `VITE_PUBLIC_JOIN_BASE_URL` pour partager un vrai lien web public depuis Electron.
+                  </div>
+              )}
             </div>
-        )}
+
+            <div style={{ display: 'grid', gap: 8 }}>
+              <div style={{ fontSize: 12, color: 'rgba(226,232,240,0.82)', fontWeight: 700 }}>
+                Envoyer par email
+              </div>
+              <textarea
+                  value={emailInput}
+                  onChange={e => setEmailInput(e.target.value)}
+                  placeholder="alice@entreprise.com, bob@entreprise.com"
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    resize: 'vertical',
+                    borderRadius: 14,
+                    border: '1px solid rgba(148,163,184,0.14)',
+                    background: 'rgba(15,23,42,0.62)',
+                    color: '#f8fafc',
+                    padding: '12px 14px',
+                    fontSize: 13,
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                  }}
+              />
+              <div style={{ fontSize: 11, color: 'rgba(148,163,184,0.75)' }}>
+                Vous pouvez separer plusieurs adresses par des virgules, points-virgules ou retours a la ligne.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              <button
+                  onClick={handleCopy}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: 12,
+                    border: 'none',
+                    background: copied ? 'rgba(34,197,94,0.22)' : '#2563eb',
+                    color: copied ? '#4ade80' : '#fff',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+              >
+                {copied ? '✓ Lien copie' : 'Copier le lien'}
+              </button>
+
+              <button
+                  onClick={handleEmail}
+                  disabled={!hasPublicLink}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: 12,
+                    border: '1px solid rgba(148,163,184,0.14)',
+                    background: emailed ? 'rgba(34,197,94,0.22)' : 'rgba(255,255,255,0.06)',
+                    color: emailed ? '#4ade80' : hasPublicLink ? '#e2e8f0' : 'rgba(148,163,184,0.55)',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: hasPublicLink ? 'pointer' : 'not-allowed',
+                    fontFamily: 'inherit',
+                  }}
+              >
+                {emailed ? '✓ Email prepare' : 'Ouvrir email'}
+              </button>
+
+              {platform.isElectron && hasPublicLink && (
+                  <button
+                      onClick={handleOpen}
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: 12,
+                        border: '1px solid rgba(148,163,184,0.14)',
+                        background: opened ? 'rgba(34,197,94,0.22)' : 'rgba(255,255,255,0.06)',
+                        color: opened ? '#4ade80' : '#e2e8f0',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                  >
+                    {opened ? '✓ Lien ouvert' : 'Ouvrir le lien web'}
+                  </button>
+              )}
+
+              <button
+                  onClick={onDismiss}
+                  style={{
+                    marginLeft: 'auto',
+                    padding: '10px 14px',
+                    borderRadius: 12,
+                    border: '1px solid rgba(148,163,184,0.14)',
+                    background: 'transparent',
+                    color: 'rgba(226,232,240,0.8)',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
   );
 }
@@ -520,9 +677,9 @@ export default function Room({ roomId, userName, onLeave }) {
           </div>
         </div>
 
-        {/* ── INVITE BANNER ── */}
+        {/* ── INVITE DIALOG ── */}
         {showInvite && (
-            <InviteBanner roomId={roomId} onDismiss={() => setShowInvite(false)} />
+            <InviteDialog roomId={roomId} onDismiss={() => setShowInvite(false)} />
         )}
 
         {screenShareError && (
@@ -561,7 +718,7 @@ export default function Room({ roomId, userName, onLeave }) {
 
         {/* ── RAISED HANDS FLOATING PANEL ── */}
         {showHands && raisedCount > 0 && (
-            <div style={{ position: 'absolute', top: showInvite ? 82 : 54, right: 12, zIndex: 40 }}>
+            <div style={{ position: 'absolute', top: 54, right: 12, zIndex: 40 }}>
               <RaisedHandsAlert participants={participants} />
             </div>
         )}
