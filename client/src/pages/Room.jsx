@@ -38,6 +38,45 @@ function buildInviteLink(roomId) {
   return `${baseUrl}/room/${roomId}`;
 }
 
+function formatIcsDate(date) {
+  return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+}
+
+function downloadInviteIcs({ roomId, link }) {
+  const now = new Date();
+  const end = new Date(now.getTime() + (60 * 60 * 1000));
+  const stamp = formatIcsDate(new Date());
+  const start = formatIcsDate(now);
+  const finish = formatIcsDate(end);
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Meetra//Meeting Invite//FR',
+    'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    `UID:${roomId}@meetra`,
+    `DTSTAMP:${stamp}`,
+    `DTSTART:${start}`,
+    `DTEND:${finish}`,
+    `SUMMARY:Reunion Meetra`,
+    `DESCRIPTION:Rejoignez la reunion Meetra via ce lien: ${link}`,
+    `LOCATION:${link}`,
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `invitation-${roomId}.ics`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
+
 
 
 // ── Meeting Timer ─────────────────────────────────────────────
@@ -168,6 +207,7 @@ function InviteDialog({ roomId, onDismiss }) {
   const [copied, setCopied] = useState(false);
   const [opened, setOpened] = useState(false);
   const [emailed, setEmailed] = useState(false);
+  const [calendarSaved, setCalendarSaved] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const link = buildInviteLink(roomId);
   const hasPublicLink = /^https?:\/\//i.test(link);
@@ -206,6 +246,13 @@ function InviteDialog({ roomId, onDismiss }) {
 
     setEmailed(true);
     setTimeout(() => setEmailed(false), 2500);
+  };
+
+  const handleCalendar = () => {
+    if (!hasPublicLink) return;
+    downloadInviteIcs({ roomId, link });
+    setCalendarSaved(true);
+    setTimeout(() => setCalendarSaved(false), 2500);
   };
 
   return (
@@ -359,6 +406,24 @@ function InviteDialog({ roomId, onDismiss }) {
                   }}
               >
                 {emailed ? '✓ Email prepare' : 'Ouvrir email'}
+              </button>
+
+              <button
+                  onClick={handleCalendar}
+                  disabled={!hasPublicLink}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: 12,
+                    border: '1px solid rgba(148,163,184,0.14)',
+                    background: calendarSaved ? 'rgba(34,197,94,0.22)' : 'rgba(255,255,255,0.06)',
+                    color: calendarSaved ? '#4ade80' : hasPublicLink ? '#e2e8f0' : 'rgba(148,163,184,0.55)',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: hasPublicLink ? 'pointer' : 'not-allowed',
+                    fontFamily: 'inherit',
+                  }}
+              >
+                {calendarSaved ? '✓ Calendrier telecharge' : 'Telecharger .ics'}
               </button>
 
               {platform.isElectron && hasPublicLink && (
