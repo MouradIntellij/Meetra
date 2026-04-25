@@ -34,10 +34,10 @@ function broadcastWaitingUpdate(io, roomId) {
 export function registerRoomHandlers(io, socket) {
 
   // ── Rejoindre la salle principale ─────────────────────────
-  socket.on(EVENTS.JOIN_ROOM, ({ roomId, userId, userName }) => {
+  socket.on(EVENTS.JOIN_ROOM, async ({ roomId, userId, userName }) => {
     logger.socket(EVENTS.JOIN_ROOM, { roomId, userName });
 
-    const result = roomService.joinRoom(roomId, { socketId: socket.id, userId, userName });
+    const result = await roomService.joinRoom(roomId, { socketId: socket.id, userId, userName });
 
     if (result.error === 'ROOM_LOCKED') {
       socket.emit(EVENTS.ROOM_LOCKED, { message: 'Room is locked by the host.' });
@@ -180,7 +180,7 @@ export function registerRoomHandlers(io, socket) {
   });
 
   // ── Déconnexion ───────────────────────────────────────────
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     const { roomId, userName, waiting } = socket.data;
 
     // Si le socket était en salle d'attente → nettoyer
@@ -198,7 +198,7 @@ export function registerRoomHandlers(io, socket) {
     }
 
     // Sinon : le socket était dans la salle principale
-    const result = roomService.leaveRoom(socket.id);
+    const result = await roomService.leaveRoom(socket.id);
     if (!result) return;
 
     const { participant, room } = result;

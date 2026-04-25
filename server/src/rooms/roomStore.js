@@ -16,11 +16,15 @@ const userRoomIndex = new Map();
 // ─── ROOM CRUD ────────────────────────────────────────────────
 export function createRoom() {
   const id = generateId();
+  return createRoomWithId(id);
+}
+
+export function createRoomWithId(id, overrides = {}) {
   rooms.set(id, {
     id,
     hostId: null,
-    locked: false,
-    createdAt: new Date().toISOString(),
+    locked: overrides.locked ?? false,
+    createdAt: overrides.createdAt || new Date().toISOString(),
     participants: new Map(),
     breakoutRooms: new Map(),
   });

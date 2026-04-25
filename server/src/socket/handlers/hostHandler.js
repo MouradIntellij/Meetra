@@ -31,9 +31,9 @@ export function registerHostHandlers(io, socket) {
   });
 
   // Lock / unlock room
-  socket.on(EVENTS.LOCK_ROOM, ({ roomId, locked }) => {
+  socket.on(EVENTS.LOCK_ROOM, async ({ roomId, locked }) => {
     if (!roomService.isHost(roomId, socket.id)) return;
-    roomService.lockRoom(roomId, locked);
+    await roomService.lockRoom(roomId, locked);
     logger.socket(EVENTS.LOCK_ROOM, { roomId, locked });
     io.to(roomId).emit(EVENTS.ROOM_LOCKED, { locked, by: socket.id });
   });
