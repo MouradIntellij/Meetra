@@ -29,6 +29,7 @@ export function MediaProvider({ children, initialStream = null }) {
   const [isRecording, setIsRecording] = useState(false);
 
   const peerConnections = useRef(new Map());
+  const pendingIceCandidates = useRef(new Map());
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
   const cleanupAudio = useRef(null);
@@ -104,6 +105,27 @@ export function MediaProvider({ children, initialStream = null }) {
     });
   }, []);
 
+  const queueIceCandidate = useCallback((socketId, candidate) => {
+    if (!candidate) return;
+
+    const queued = pendingIceCandidates.current.get(socketId) || [];
+    queued.push(candidate);
+    pendingIceCandidates.current.set(socketId, queued);
+  }, []);
+
+  const flushIceCandidates = useCallback(async (socketId, pc) => {
+    const queued = pendingIceCandidates.current.get(socketId);
+    if (!queued?.length || !pc?.remoteDescription) return;
+
+    pendingIceCandidates.current.delete(socketId);
+
+    for (const candidate of queued) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch {}
+    }
+  }, []);
+
   // ─────────────────────────────────────────────
   // PEER CONNECTION
   // ─────────────────────────────────────────────
@@ -123,6 +145,20 @@ export function MediaProvider({ children, initialStream = null }) {
     peerConnections.current.set(targetId, pc);
     return pc;
   }, [socket, roomId, addRemoteStream]);
+
+  const createAndSendOffer = useCallback(async (targetId) => {
+    if (!socket || !targetId || targetId === socket.id) return;
+
+    const pc = buildPC(targetId);
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    socket.emit(EVENTS.OFFER, {
+      offer: pc.localDescription,
+      targetUserId: targetId,
+      roomId
+    });
+  }, [socket, buildPC, roomId]);
 
   // ─────────────────────────────────────────────
   // GET MEDIA
@@ -321,6 +357,7 @@ export function MediaProvider({ children, initialStream = null }) {
 
     peerConnections.current.forEach(pc => pc.close());
     peerConnections.current.clear();
+    pendingIceCandidates.current.clear();
 
     cleanupAudio.current?.();
 
@@ -348,22 +385,22 @@ export function MediaProvider({ children, initialStream = null }) {
 
     const onUserJoined = async ({ socketId }) => {
       if (socketId === socket.id) return;
+      await createAndSendOffer(socketId);
+    };
 
-      const pc = buildPC(socketId);
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      socket.emit(EVENTS.OFFER, {
-        offer: pc.localDescription,
-        targetUserId: socketId,
-        roomId
-      });
+    const onRoomParticipants = async ({ participants = [] }) => {
+      for (const participant of participants) {
+        if (!participant?.socketId || participant.socketId === socket.id) continue;
+        if (peerConnections.current.has(participant.socketId)) continue;
+        await createAndSendOffer(participant.socketId);
+      }
     };
 
     const onOffer = async ({ offer, fromUserId }) => {
       const pc = buildPC(fromUserId);
 
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      await flushIceCandidates(fromUserId, pc);
 
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
@@ -379,16 +416,20 @@ export function MediaProvider({ children, initialStream = null }) {
       const pc = peerConnections.current.get(fromUserId);
       if (pc) {
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        await flushIceCandidates(fromUserId, pc);
       }
     };
 
     const onIce = async ({ candidate, fromUserId }) => {
       const pc = peerConnections.current.get(fromUserId);
-      if (pc && candidate) {
+      if (pc?.remoteDescription && candidate) {
         try {
           await pc.addIceCandidate(new RTCIceCandidate(candidate));
         } catch {}
+        return;
       }
+
+      queueIceCandidate(fromUserId, candidate);
     };
 
     const onUserLeft = ({ socketId }) => {
@@ -400,8 +441,10 @@ export function MediaProvider({ children, initialStream = null }) {
 
       removeRemoteStream(socketId);
       removeParticipant(socketId);
+      pendingIceCandidates.current.delete(socketId);
     };
 
+    socket.on(EVENTS.ROOM_PARTICIPANTS, onRoomParticipants);
     socket.on(EVENTS.USER_JOINED, onUserJoined);
     socket.on(EVENTS.OFFER, onOffer);
     socket.on(EVENTS.ANSWER, onAnswer);
@@ -409,13 +452,14 @@ export function MediaProvider({ children, initialStream = null }) {
     socket.on(EVENTS.USER_LEFT, onUserLeft);
 
     return () => {
+      socket.off(EVENTS.ROOM_PARTICIPANTS, onRoomParticipants);
       socket.off(EVENTS.USER_JOINED, onUserJoined);
       socket.off(EVENTS.OFFER, onOffer);
       socket.off(EVENTS.ANSWER, onAnswer);
       socket.off(EVENTS.ICE, onIce);
       socket.off(EVENTS.USER_LEFT, onUserLeft);
     };
-  }, [socket, roomId, buildPC, removeRemoteStream, removeParticipant]);
+  }, [socket, createAndSendOffer, buildPC, flushIceCandidates, queueIceCandidate, removeRemoteStream, removeParticipant]);
 
   return (
       <MediaContext.Provider value={{
