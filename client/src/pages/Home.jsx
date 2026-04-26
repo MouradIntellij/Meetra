@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { getApiUrl } from '../utils/appConfig.js';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const API_URL = getApiUrl();
 
 function generateFallbackRoomId() {
   if (globalThis.crypto?.randomUUID) {
@@ -10,15 +11,29 @@ function generateFallbackRoomId() {
   return `room-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
 }
 
+function normalizeRoomInput(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  try {
+    const url = new URL(raw);
+    const match = url.pathname.match(/\/room\/([^/?#]+)/);
+    return match ? decodeURIComponent(match[1]) : raw;
+  } catch {
+    const match = raw.match(/\/room\/([^/?#]+)/);
+    return match ? decodeURIComponent(match[1]) : raw;
+  }
+}
+
 export default function Home({ onJoin, prefillRoomId = '' }) {
   const [userName, setUserName] = useState('');
   const [roomId,   setRoomId]   = useState(prefillRoomId);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
+  const [createdMeeting, setCreatedMeeting] = useState(null);
+  const [copied, setCopied] = useState(false);
 
-  const createRoom = async () => {
-    if (!userName.trim()) { setError('Entrez votre nom.'); return; }
-    setLoading(true); setError('');
+  const createRoomRequest = async () => {
     try {
       const res  = await fetch(`${API_URL}/api/rooms`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -29,20 +44,45 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
         throw new Error(data?.error || `ROOM_CREATE_FAILED_${res.status}`);
       }
 
-      onJoin(data.roomId, userName.trim());
+      return {
+        roomId: data.roomId,
+        joinUrl: data.joinUrl || `${window.location.origin}/room/${data.roomId}`,
+      };
     } catch {
       const fallbackRoomId = generateFallbackRoomId();
-      onJoin(fallbackRoomId, userName.trim());
+      return {
+        roomId: fallbackRoomId,
+        joinUrl: `${window.location.origin}/room/${fallbackRoomId}`,
+      };
+    }
+  };
+
+  const createRoom = async () => {
+    if (!userName.trim()) { setError('Entrez votre nom.'); return; }
+    setLoading(true); setError('');
+    try {
+      const meeting = await createRoomRequest();
+      setCreatedMeeting(meeting);
+      onJoin(meeting.roomId, userName.trim());
+    } finally { setLoading(false); }
+  };
+
+  const scheduleRoom = async () => {
+    setLoading(true); setError('');
+    try {
+      const meeting = await createRoomRequest();
+      setCreatedMeeting(meeting);
     } finally { setLoading(false); }
   };
 
   const joinRoom = async (e) => {
     e.preventDefault();
     if (!userName.trim()) { setError('Entrez votre nom.'); return; }
-    if (!roomId.trim())   { setError("Entrez l'ID de la salle."); return; }
+    const normalizedRoomId = normalizeRoomInput(roomId);
+    if (!normalizedRoomId) { setError("Entrez l'ID ou le lien de la salle."); return; }
     setLoading(true); setError('');
     try {
-      const res  = await fetch(`${API_URL}/api/rooms/${roomId.trim()}`);
+      const res  = await fetch(`${API_URL}/api/rooms/${normalizedRoomId}`);
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
@@ -50,13 +90,29 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       }
 
       if (data.exists) {
-        onJoin(roomId.trim(), userName.trim());
+        onJoin(normalizedRoomId, userName.trim());
       } else {
         setError("Cette salle n'existe pas ou a expiré.");
       }
     } catch {
-      onJoin(roomId.trim(), userName.trim());
+      onJoin(normalizedRoomId, userName.trim());
     } finally { setLoading(false); }
+  };
+
+  const copyCreatedLink = async () => {
+    if (!createdMeeting?.joinUrl) return;
+    await navigator.clipboard.writeText(createdMeeting.joinUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const enterCreatedRoom = () => {
+    if (!userName.trim()) {
+      setError('Entrez votre nom pour entrer comme hôte.');
+      return;
+    }
+
+    onJoin(createdMeeting.roomId, userName.trim());
   };
 
   return (
@@ -95,6 +151,40 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
             />
           </div>
 
+          {!prefillRoomId && createdMeeting && (
+            <div className="bg-emerald-950/40 border border-emerald-700/50 rounded-xl px-4 py-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">📅</span>
+                <div>
+                  <p className="text-emerald-300 text-sm font-semibold">Réunion créée à l’avance</p>
+                  <p className="text-gray-400 text-xs mt-0.5">Partage ce lien, puis entre plus tard comme hôte si tu veux.</p>
+                </div>
+              </div>
+              <div>
+                <label className="block text-gray-300 text-xs font-medium mb-1.5">Lien d’accès</label>
+                <input
+                  value={createdMeeting.joinUrl}
+                  readOnly
+                  className="w-full bg-gray-800/60 border border-gray-700 text-gray-300 rounded-xl px-4 py-2.5 text-sm font-mono"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={copyCreatedLink}
+                  className="flex-1 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors text-sm"
+                >
+                  {copied ? '✓ Lien copié' : 'Copier le lien'}
+                </button>
+                <button
+                  onClick={enterCreatedRoom}
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors text-sm"
+                >
+                  Entrer comme hôte
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* If invited via link: show room id (read-only) + join button */}
           {prefillRoomId ? (
             <>
@@ -122,7 +212,15 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                 disabled={loading}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors text-sm"
               >
-                {loading ? '⏳...' : '➕ Créer une nouvelle salle'}
+                {loading ? '⏳...' : '🚀 Créer et démarrer maintenant'}
+              </button>
+
+              <button
+                onClick={scheduleRoom}
+                disabled={loading}
+                className="w-full py-3 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors text-sm"
+              >
+                {loading ? '⏳...' : '🔗 Créer un lien de réunion'}
               </button>
 
               <div className="flex items-center gap-3">
@@ -137,7 +235,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                   <input
                     value={roomId}
                     onChange={e => setRoomId(e.target.value)}
-                    placeholder="Coller l'ID ici"
+                  placeholder="Coller l'ID ou le lien ici"
                     className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-500 outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                   />
                 </div>

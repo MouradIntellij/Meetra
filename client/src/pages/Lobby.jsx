@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSocket } from '../context/SocketContext.jsx';
 import { EVENTS }   from '../utils/events.js';
+import { getApiUrl } from '../utils/appConfig.js';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const API_URL = getApiUrl();
 
 // ─── Icônes SVG ───────────────────────────────────────────────
 const MicOnIcon = () => (
@@ -258,7 +259,9 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
         streamRef.current = s;
         setStream(s);
       } catch {
-        setMediaError("Impossible d'accéder à la caméra ou au micro.\nVérifiez les permissions du navigateur.");
+        setAudioEnabled(false);
+        setVideoEnabled(false);
+        setMediaError("Impossible d'accéder à la caméra ou au micro.\nVous pouvez continuer et rejoindre la salle sans vidéo.");
       }
     })();
     return () => {
@@ -395,7 +398,7 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
 
   // ── Clic sur Start / Rejoindre ────────────────────────────
   const handleJoin = useCallback(() => {
-    if (joining || !!mediaError) return;
+    if (joining) return;
     setJoining(true);
 
     // Premier arrivant (salle vide) OU hôte → entre directement
@@ -750,20 +753,20 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
             {/* Bouton principal */}
             <button
                 onClick={handleJoin}
-                disabled={joining || !!mediaError}
+            disabled={joining}
                 style={{
                   width: '100%', padding: '15px',
                   borderRadius: 14, border: 'none',
-                  cursor: (joining || mediaError) ? 'not-allowed' : 'pointer',
+                  cursor: joining ? 'not-allowed' : 'pointer',
                   fontSize: 14, fontWeight: 700,
                   letterSpacing: '0.02em',
-                  background: (joining || mediaError)
+                  background: joining
                       ? 'rgba(255,255,255,0.06)'
                       : isFirstUser
                           ? 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)'
                           : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                  color: (joining || mediaError) ? 'rgba(255,255,255,0.3)' : '#fff',
-                  boxShadow: (joining || mediaError) ? 'none'
+                  color: joining ? 'rgba(255,255,255,0.3)' : '#fff',
+                  boxShadow: joining ? 'none'
                       : isFirstUser
                           ? '0 6px 24px rgba(245,158,11,0.35)'
                           : '0 6px 24px rgba(59,130,246,0.35)',
@@ -771,7 +774,7 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
                   fontFamily: 'inherit',
                 }}
                 onMouseEnter={e => {
-                  if (!joining && !mediaError)
+                  if (!joining)
                     e.currentTarget.style.transform = 'translateY(-2px)';
                 }}
                 onMouseLeave={e => {

@@ -20,7 +20,12 @@ export function useWebRTC(roomId, userName) {
 
   // ── Join ─────────────────────────────────────────────────
   const joinRoom = useCallback(async () => {
-    const stream = await getMedia();
+    let stream = null;
+    try {
+      stream = await getMedia();
+    } catch {
+      stream = null;
+    }
     socket.emit(EVENTS.JOIN_ROOM, { roomId, userId: socket.id, userName });
     return stream;
   }, [socket, roomId, userName, getMedia]);

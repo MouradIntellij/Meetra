@@ -25,6 +25,7 @@ export function MediaProvider({ children, initialStream = null }) {
   const [screenStream, setScreenStream] = useState(null);
   const [screenShareMeta, setScreenShareMeta] = useState(null);
   const [screenShareError, setScreenShareError] = useState('');
+  const [mediaAccessError, setMediaAccessError] = useState('');
   const [virtualBackgroundStream, setVirtualBackgroundStream] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
 
@@ -166,23 +167,33 @@ export function MediaProvider({ children, initialStream = null }) {
   const getMedia = useCallback(async () => {
     if (localStreamRef.current) return localStreamRef.current;
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-    });
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      });
 
-    localStreamRef.current = stream;
-    setLocalStream(stream);
+      localStreamRef.current = stream;
+      setLocalStream(stream);
+      setAudioEnabled(Boolean(stream.getAudioTracks()[0]?.enabled ?? true));
+      setVideoEnabled(Boolean(stream.getVideoTracks()[0]?.enabled ?? true));
+      setMediaAccessError('');
 
-    cleanupAudio.current?.();
+      cleanupAudio.current?.();
 
-    cleanupAudio.current = createAudioAnalyser(stream, (level) => {
-      if (socket && roomId) {
-        socket.emit(EVENTS.AUDIO_LEVEL, { roomId, level });
-      }
-    });
+      cleanupAudio.current = createAudioAnalyser(stream, (level) => {
+        if (socket && roomId) {
+          socket.emit(EVENTS.AUDIO_LEVEL, { roomId, level });
+        }
+      });
 
-    return stream;
+      return stream;
+    } catch {
+      setMediaAccessError("Caméra ou micro indisponibles. Vous pouvez quand même rejoindre la réunion.");
+      setAudioEnabled(false);
+      setVideoEnabled(false);
+      return null;
+    }
   }, [socket, roomId]);
 
   // ─────────────────────────────────────────────
@@ -461,6 +472,7 @@ export function MediaProvider({ children, initialStream = null }) {
         screenStream,
         screenShareMeta,
         screenShareError,
+        mediaAccessError,
         clearScreenShareError: () => setScreenShareError(''),
         setVirtualBackgroundStream,
         isSharing: Boolean(screenStream),

@@ -5,6 +5,7 @@ import { UIProvider }     from './context/UIContext.jsx';
 import { MediaProvider }  from './context/MediaContext.jsx';
 import { TranscriptionProvider } from './context/TranscriptionContext.jsx';
 import { platform }       from './services/platform/index.js';
+import { getApiUrl }      from './utils/appConfig.js';
 
 import Home        from './pages/Home.jsx';
 import Lobby       from './pages/Lobby.jsx';
@@ -78,7 +79,7 @@ export default function App() {
     existingStream.current = stream || null;
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+      const API_URL = getApiUrl();
       const res  = await fetch(`${API_URL}/api/rooms/${roomId}`);
       const data = await res.json();
 

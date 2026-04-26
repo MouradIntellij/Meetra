@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSocket }  from '../../context/SocketContext.jsx';
 import { useRoom }    from '../../context/RoomContext.jsx';
 import { useUI }      from '../../context/UIContext.jsx';
 import { EVENTS }     from '../../utils/events.js';
+import { platform }   from '../../services/platform/index.js';
 
 // ─── Icônes ───────────────────────────────────────────────────
 const CheckIcon = () => (
@@ -95,6 +96,7 @@ export default function HostControls({ roomId }) {
 
   const [showPanel,    setShowPanel]    = useState(false);
   const [waitingList,  setWaitingList]  = useState([]);  // ← file d'attente en temps réel
+  const previousWaitingCount = useRef(0);
 
   // ── Écouter les mises à jour de la file d'attente ─────────
   useEffect(() => {
@@ -105,6 +107,26 @@ export default function HostControls({ roomId }) {
     socket.on(EVENTS.WAITING_UPDATE, handler);
     return () => socket.off(EVENTS.WAITING_UPDATE, handler);
   }, [socket]);
+
+  useEffect(() => {
+    if (socket?.id !== hostId) return;
+
+    const previous = previousWaitingCount.current;
+    const current = waitingList.length;
+
+    if (current > previous) {
+      const latestPerson = waitingList[current - 1];
+      setShowPanel(true);
+      platform.notify({
+        title: 'Participant en attente',
+        body: latestPerson?.userName
+          ? `${latestPerson.userName} demande l'accès à la réunion`
+          : 'Un participant demande l\'accès à la réunion',
+      }).catch(() => {});
+    }
+
+    previousWaitingCount.current = current;
+  }, [waitingList, socket, hostId]);
 
   // Pas hôte → rien à afficher
   if (socket?.id !== hostId) return null;

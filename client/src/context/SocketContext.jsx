@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { io } from "socket.io-client";
+import { getApiUrl } from '../utils/appConfig.js';
 
 const SocketContext = createContext(null);
 
@@ -11,8 +12,7 @@ export function SocketProvider({ children }) {
   const [connected, setConnected] = useState(false);
   const [connectionError, setConnectionError] = useState('');
 
-  const API_URL =
-      import.meta.env.VITE_API_URL || 'http://localhost:4000';
+  const API_URL = getApiUrl();
 
   useEffect(() => {
     const s = io(API_URL, {

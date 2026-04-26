@@ -6,6 +6,7 @@ import { useMedia }      from '../context/MediaContext.jsx';
 import { useWebRTC }     from '../hooks/useWebRTC.js';
 import { EVENTS }        from '../utils/events.js';
 import { platform }      from '../services/platform/index.js';
+import { getApiUrl, getPublicJoinBaseUrl, isLocalHostName } from '../utils/appConfig.js';
 
 import VideoGrid         from '../components/video/VideoGrid.jsx';
 import ControlBar        from '../components/controls/ControlBar.jsx';
@@ -18,7 +19,21 @@ import ReactionsOverlay  from '../components/layout/ReactionsOverlay.jsx';
 import CaptionsOverlay   from '../components/transcription/CaptionsOverlay.jsx';
 import TranscriptPanel   from '../components/transcription/TranscriptPanel.jsx';
 
-const PUBLIC_JOIN_BASE_URL = import.meta.env.VITE_PUBLIC_JOIN_BASE_URL || '';
+const PUBLIC_JOIN_BASE_URL = getPublicJoinBaseUrl();
+const API_URL = getApiUrl();
+
+function deriveInviteBaseFromApiUrl() {
+  if (!API_URL) return '';
+
+  try {
+    const apiUrl = new URL(API_URL);
+    if (isLocalHostName(apiUrl.hostname)) return '';
+
+    return `${apiUrl.protocol}//${apiUrl.hostname}:5173`;
+  } catch {
+    return '';
+  }
+}
 
 function resolveInviteBaseUrl() {
   if (PUBLIC_JOIN_BASE_URL) {
@@ -26,10 +41,13 @@ function resolveInviteBaseUrl() {
   }
 
   if (typeof window !== 'undefined' && /^https?:$/i.test(window.location.protocol)) {
-    return window.location.origin.replace(/\/+$/, '');
+    const origin = window.location.origin.replace(/\/+$/, '');
+    if (!isLocalHostName(window.location.hostname)) {
+      return origin;
+    }
   }
 
-  return '';
+  return deriveInviteBaseFromApiUrl();
 }
 
 function buildInviteLink(roomId) {
@@ -473,7 +491,7 @@ function InviteDialog({ roomId, onDismiss }) {
 export default function Room({ roomId, userName, onLeave }) {
   const { socket, connected }       = useSocket();
   const { participants, hostId }    = useRoom();
-  const { screenStream, leaveRoom, screenShareError, clearScreenShareError } = useMedia();
+  const { screenStream, leaveRoom, screenShareError, clearScreenShareError, mediaAccessError } = useMedia();
   const { layout, toggleLayout }    = useUI();
 
   const { joinRoom, toggleHand } = useWebRTC(roomId, userName);
@@ -778,6 +796,21 @@ export default function Room({ roomId, userName, onLeave }) {
               >
                 ×
               </button>
+            </div>
+        )}
+
+        {mediaAccessError && (
+            <div style={{
+              margin: '10px 16px 0',
+              borderRadius: 14,
+              border: '1px solid rgba(250,204,21,0.22)',
+              background: 'rgba(113,63,18,0.22)',
+              color: '#fef3c7',
+              padding: '10px 14px',
+              fontSize: 13,
+              boxShadow: '0 12px 30px rgba(2,6,23,0.18)',
+            }}>
+              {mediaAccessError}
             </div>
         )}
 

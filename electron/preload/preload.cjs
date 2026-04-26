@@ -2,6 +2,10 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
     isElectron: true,
+    config: {
+        apiUrl: process.env.APP_API_URL || process.env.VITE_API_URL || '',
+        publicJoinBaseUrl: process.env.APP_PUBLIC_JOIN_BASE_URL || process.env.VITE_PUBLIC_JOIN_BASE_URL || '',
+    },
     getRuntimeInfo: () => ipcRenderer.invoke('platform:get-runtime-info'),
     getScreenSources: (options) => ipcRenderer.invoke('screen:get-sources', options),
     showPresenterToolbar: (meta) => ipcRenderer.invoke('presenter:show', meta),

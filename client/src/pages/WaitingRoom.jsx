@@ -226,6 +226,7 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
   const [rejected,     setRejected]     = useState('');
   const [admitted,     setAdmitted]     = useState(false);
   const [waitSecs,     setWaitSecs]     = useState(0);
+  const [requestSent,  setRequestSent]  = useState(false);
 
   const videoRef  = useRef(null);
   const streamRef = useRef(null);
@@ -244,7 +245,9 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
         streamRef.current = s;
         setStream(s);
       } catch {
-        setMediaError("Caméra/micro inaccessibles. Vérifiez les permissions.");
+        setAudioOn(false);
+        setVideoOn(false);
+        setMediaError("Caméra/micro inaccessibles. Vous pouvez quand même continuer sans vidéo.");
       }
     })();
     return () => {
@@ -271,6 +274,7 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
 
     // S'annoncer en salle d'attente
     socket.emit(EVENTS.WAITING_JOIN, { roomId, userName });
+    setRequestSent(true);
 
     // Mise à jour liste (participants dans salle + file d'attente)
     const onWaitingUpdate = ({ participants: peers, waitingList: wl, hostId: hid }) => {
@@ -363,12 +367,18 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
   // ── Entrer dans la salle (hôte ou premier arrivant) ───────
   const handleJoin = useCallback(() => {
     if (joining) return;
+    const hostPresent = participants.length > 0;
+    if (!isHost && hostPresent) {
+      setJoining(true);
+      return;
+    }
+
     setJoining(true);
     clearInterval(timerRef.current);
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
     onJoin(null);
-  }, [joining, onJoin]);
+  }, [joining, participants.length, isHost, onJoin]);
 
   // ── Retour ────────────────────────────────────────────────
   const handleBack = useCallback(() => {
@@ -384,6 +394,8 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
   };
 
   const isFirst = participants.length === 0;
+  const hostPresent = participants.length > 0;
+  const needsAdmission = !isHost && hostPresent;
 
   // ─────────────────────────────────────────────────────────
   return (
@@ -676,27 +688,27 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
           {/* Bouton principal */}
           <button
             onClick={handleJoin}
-            disabled={joining || !!mediaError || admitted}
+            disabled={joining || admitted || needsAdmission}
             style={{
               width: '100%', padding: '14px',
               borderRadius: 14, border: 'none',
-              cursor: (joining || mediaError || admitted) ? 'not-allowed' : 'pointer',
+              cursor: (joining || admitted || needsAdmission) ? 'not-allowed' : 'pointer',
               fontSize: 14, fontWeight: 700, letterSpacing: '0.02em',
-              background: (joining || mediaError || admitted)
+              background: (joining || admitted || needsAdmission)
                 ? 'rgba(255,255,255,0.06)'
                 : isHost || isFirst
                   ? 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)'
                   : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-              color: (joining || mediaError || admitted)
+              color: (joining || admitted || needsAdmission)
                 ? 'rgba(255,255,255,0.3)' : '#fff',
-              boxShadow: (joining || mediaError || admitted) ? 'none'
+              boxShadow: (joining || admitted || needsAdmission) ? 'none'
                 : (isHost || isFirst)
                   ? '0 6px 22px rgba(245,158,11,0.35)'
                   : '0 6px 22px rgba(59,130,246,0.35)',
               transition: 'all 0.2s', fontFamily: 'inherit',
             }}
             onMouseEnter={e => {
-              if (!joining && !mediaError && !admitted)
+              if (!joining && !admitted && !needsAdmission)
                 e.currentTarget.style.transform = 'translateY(-2px)';
             }}
             onMouseLeave={e => { e.currentTarget.style.transform = 'none'; }}
@@ -704,6 +716,7 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
             onMouseUp={e => { e.currentTarget.style.transform = 'none'; }}
           >
             {admitted  ? '✓ Admis — redirection…'
+             : needsAdmission ? '🛎 En attente d’admission par l’hôte'
              : joining ? '⏳ Connexion…'
              : (isHost || isFirst)
                ? '🚀 Démarrer la réunion'
@@ -714,7 +727,11 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
             textAlign: 'center', fontSize: 11, margin: 0,
             color: 'rgba(255,255,255,0.16)', lineHeight: 1.6,
           }}>
-            {(isHost || isFirst)
+            {needsAdmission
+              ? (requestSent
+                ? "Votre demande a été envoyée. L'hôte recevra une alerte dès maintenant."
+                : "Préparation de votre demande d'accès.")
+              : (isHost || isFirst)
               ? "Vous démarrez en tant qu'hôte. Partagez le lien pour inviter."
               : 'Votre statut micro/cam est préservé à l\'entrée dans la salle.'}
           </p>
