@@ -157,7 +157,7 @@ export default function App() {
   return (
       <>
         <ConnectionBanner />
-        <RoomProvider>
+        <RoomProvider initialRoomId={roomId}>
           <UIProvider>
             <MediaProvider initialStream={existingStream.current}>
               <TranscriptionProvider roomId={roomId} userName={userName}>

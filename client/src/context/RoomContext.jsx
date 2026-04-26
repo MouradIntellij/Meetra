@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 const RoomContext = createContext(null);
 
@@ -8,8 +8,8 @@ export const useRoom = () => {
     return ctx;
 };
 
-export function RoomProvider({ children }) {
-    const [roomId, setRoomId] = useState('');
+export function RoomProvider({ children, initialRoomId = '' }) {
+    const [roomId, setRoomId] = useState(initialRoomId);
     const [hostId, setHostId] = useState('');
     const [locked, setLocked] = useState(false);
     const [participants, setParticipants] = useState([]);
@@ -42,6 +42,10 @@ export function RoomProvider({ children }) {
     const removeParticipant = useCallback((socketId) => {
         setParticipants(prev => prev.filter(p => p.socketId !== socketId));
     }, []);
+
+    useEffect(() => {
+        setRoomId(initialRoomId || '');
+    }, [initialRoomId]);
 
     return (
         <RoomContext.Provider
