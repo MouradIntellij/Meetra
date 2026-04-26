@@ -48,11 +48,18 @@ const mergedEnv = {
   ...desktopEnv,
 };
 
-const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const child = spawn(npmCommand, ['run', 'dev:desktop:raw'], {
+const shouldUseRemoteClient = Boolean(
+  mergedEnv.APP_CLIENT_URL ||
+  mergedEnv.APP_PUBLIC_JOIN_BASE_URL
+);
+
+const npmScript = shouldUseRemoteClient ? 'dev:desktop:remote' : 'dev:desktop:raw';
+
+const child = spawn(`npm run ${npmScript}`, {
   cwd: projectRoot,
   stdio: 'inherit',
   env: mergedEnv,
+  shell: true,
 });
 
 child.on('exit', (code, signal) => {

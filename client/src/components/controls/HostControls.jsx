@@ -142,9 +142,91 @@ export default function HostControls({ roomId }) {
     socket.emit(EVENTS.WAITING_ADMIT_ALL, { roomId });
 
   const hasPending = waitingList.length > 0;
+  const spotlightPending = waitingList[0] || null;
 
   return (
     <div style={{ position: 'relative' }}>
+      {spotlightPending && (
+        <div style={{
+          position: 'fixed',
+          top: 74,
+          right: 16,
+          zIndex: 70,
+          width: 320,
+          borderRadius: 16,
+          border: '1px solid rgba(245,158,11,0.3)',
+          background: 'linear-gradient(180deg, rgba(17,24,39,0.98) 0%, rgba(15,23,42,0.98) 100%)',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.45)',
+          padding: 14,
+          backdropFilter: 'blur(14px)',
+          animation: 'slideDown 0.2s ease-out',
+        }}>
+          <div style={{
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            color: '#fbbf24',
+            marginBottom: 8,
+          }}>
+            Demande d’accès
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <MiniAv name={spotlightPending.userName} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: '#f8fafc',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}>
+                {spotlightPending.userName}
+              </div>
+              <div style={{ marginTop: 2, fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
+                attend votre admission dans la réunion
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button
+              onClick={() => reject(spotlightPending.socketId)}
+              style={{
+                flex: 1,
+                border: '1px solid rgba(239,68,68,0.28)',
+                background: 'rgba(127,29,29,0.55)',
+                color: '#fee2e2',
+                borderRadius: 12,
+                padding: '10px 12px',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              Refuser
+            </button>
+            <button
+              onClick={() => admit(spotlightPending.socketId)}
+              style={{
+                flex: 1,
+                border: '1px solid rgba(74,222,128,0.28)',
+                background: 'rgba(21,128,61,0.58)',
+                color: '#dcfce7',
+                borderRadius: 12,
+                padding: '10px 12px',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              Admettre
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Bouton hôte + badge file d'attente */}
       <button
@@ -187,7 +269,7 @@ export default function HostControls({ roomId }) {
           />
 
           <div style={{
-            position: 'absolute', bottom: '100%', right: 0, marginBottom: 8,
+            position: 'absolute', top: '100%', right: 0, marginTop: 8,
             background: '#111827',
             border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: 14, padding: '14px',

@@ -48,13 +48,24 @@ export function TranscriptionProvider({ roomId, userName, children }) {
     }, [apiUrl]);
 
     useEffect(() => {
-        if (!roomId) return;
+        if (!roomId || !transcriptOpen) return;
 
         fetch(`${apiUrl}/api/rooms/${roomId}/transcript`, {
             headers: socket?.id ? { 'x-requester-id': socket.id } : {},
         })
-            .then((res) => res.json())
+            .then(async (res) => {
+                if (res.status === 403) {
+                    return null;
+                }
+
+                if (!res.ok) {
+                    throw new Error(`TRANSCRIPT_LOAD_FAILED_${res.status}`);
+                }
+
+                return res.json();
+            })
             .then((data) => {
+                if (!data) return;
                 setSegments(data.segments || []);
                 setTranscriptionActive(Boolean(data.active));
                 if (data.language) {
@@ -62,7 +73,7 @@ export function TranscriptionProvider({ roomId, userName, children }) {
                 }
             })
             .catch(() => {});
-    }, [roomId, apiUrl, socket?.id]);
+    }, [roomId, apiUrl, socket?.id, transcriptOpen]);
 
     useEffect(() => {
         if (!socket) return;

@@ -12,6 +12,7 @@
     "dev:client:lan":"npm run dev --workspace=client -- --host 0.0.0.0",
     "dev:desktop":"node scripts/run-desktop-env.cjs",
     "dev:desktop:raw":"concurrently \"npm run dev:server\" \"npm run dev:client\" \"npm run electron:open\"",
+    "dev:desktop:remote":"electron .",
     "dev:desktop:lan":"concurrently \"npm run dev:server\" \"npm run dev:client:lan\" \"npm run electron:open\"",
     "electron:open":"wait-on tcp:4000 tcp:5173 && electron .",
     "build":      "npm run build --workspace=client",

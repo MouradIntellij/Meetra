@@ -6,6 +6,19 @@ let mainWindow = null;
 let presenterWindow = null;
 let presenterState = null;
 
+function getRendererEntryUrl() {
+    const configuredRemoteUrl =
+        process.env.APP_CLIENT_URL ||
+        process.env.APP_PUBLIC_JOIN_BASE_URL ||
+        '';
+
+    if (configuredRemoteUrl) {
+        return configuredRemoteUrl.replace(/\/+$/, '');
+    }
+
+    return 'http://localhost:5173';
+}
+
 function createMainWindow() {
     mainWindow = new BrowserWindow({
         width: 1440,
@@ -23,7 +36,7 @@ function createMainWindow() {
     });
 
     if (isDev) {
-        mainWindow.loadURL('http://localhost:5173');
+        mainWindow.loadURL(getRendererEntryUrl());
         mainWindow.webContents.openDevTools({ mode: 'detach' });
         return mainWindow;
     }
