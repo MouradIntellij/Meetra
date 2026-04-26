@@ -131,7 +131,7 @@ export function MediaProvider({ children, initialStream = null }) {
   // ─────────────────────────────────────────────
   const buildPC = useCallback((targetId) => {
     if (peerConnections.current.has(targetId)) {
-      peerConnections.current.get(targetId).close();
+      return peerConnections.current.get(targetId);
     }
 
     const pc = createPeerConnection({
@@ -388,14 +388,6 @@ export function MediaProvider({ children, initialStream = null }) {
       await createAndSendOffer(socketId);
     };
 
-    const onRoomParticipants = async ({ participants = [] }) => {
-      for (const participant of participants) {
-        if (!participant?.socketId || participant.socketId === socket.id) continue;
-        if (peerConnections.current.has(participant.socketId)) continue;
-        await createAndSendOffer(participant.socketId);
-      }
-    };
-
     const onOffer = async ({ offer, fromUserId }) => {
       const pc = buildPC(fromUserId);
 
@@ -444,7 +436,6 @@ export function MediaProvider({ children, initialStream = null }) {
       pendingIceCandidates.current.delete(socketId);
     };
 
-    socket.on(EVENTS.ROOM_PARTICIPANTS, onRoomParticipants);
     socket.on(EVENTS.USER_JOINED, onUserJoined);
     socket.on(EVENTS.OFFER, onOffer);
     socket.on(EVENTS.ANSWER, onAnswer);
@@ -452,7 +443,6 @@ export function MediaProvider({ children, initialStream = null }) {
     socket.on(EVENTS.USER_LEFT, onUserLeft);
 
     return () => {
-      socket.off(EVENTS.ROOM_PARTICIPANTS, onRoomParticipants);
       socket.off(EVENTS.USER_JOINED, onUserJoined);
       socket.off(EVENTS.OFFER, onOffer);
       socket.off(EVENTS.ANSWER, onAnswer);
