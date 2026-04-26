@@ -3,9 +3,12 @@ const ICE_SERVERS = {
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' },
-  ],
+    {
+      urls: import.meta.env.VITE_TURN_URL,
+      username: import.meta.env.VITE_TURN_USERNAME,
+      credential: import.meta.env.VITE_TURN_CREDENTIAL,
+    },
+  ].filter((server) => server.urls),
 };
 
 /**
@@ -23,7 +26,6 @@ const ICE_SERVERS = {
 export function createPeerConnection({ targetId, socket, roomId, stream, onTrack }) {
   const pc = new RTCPeerConnection(ICE_SERVERS);
 
-  // ICE candidates
   pc.onicecandidate = (event) => {
     if (event.candidate) {
       socket.emit('ice-candidate', {
@@ -34,16 +36,14 @@ export function createPeerConnection({ targetId, socket, roomId, stream, onTrack
     }
   };
 
-  // ✅ FIX: pass (socketId, stream) — socketId FIRST, stream SECOND
   pc.ontrack = (event) => {
     if (onTrack && event.streams[0]) {
-      onTrack(targetId, event.streams[0]); // ← targetId first!
+      onTrack(targetId, event.streams[0]);
     }
   };
 
-  // Add local tracks
   if (stream) {
-    stream.getTracks().forEach(track => pc.addTrack(track, stream));
+    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
   }
 
   return pc;
