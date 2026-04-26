@@ -28,6 +28,7 @@ const I = {
     People:()=>(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>),
     Board: ()=>(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>),
     CC:    ()=>(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M9 10.5c-.5-.8-1.2-1.2-2.1-1.2-1.7 0-2.9 1.4-2.9 3.2s1.2 3.2 2.9 3.2c.9 0 1.6-.4 2.1-1.2"/><path d="M18.5 10.5c-.5-.8-1.2-1.2-2.1-1.2-1.7 0-2.9 1.4-2.9 3.2s1.2 3.2 2.9 3.2c.9 0 1.6-.4 2.1-1.2"/></svg>),
+    Hand:  ({ raised = false })=>(<svg viewBox="0 0 24 24" fill={raised ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M18 11V6a1 1 0 0 0-2 0v5"/><path d="M14 10V5a1 1 0 0 0-2 0v8"/><path d="M10 10.5V4a1 1 0 0 0-2 0v9"/><path d="M6 11V8a1 1 0 0 0-2 0v8a4 4 0 0 0 4 4h5a5 5 0 0 0 5-5v-4a1 1 0 0 0-2 0"/></svg>),
     Bg:    ()=>(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7"><rect x="2" y="3" width="20" height="14" rx="2"/><circle cx="8" cy="8" r="2"/><path d="M21 14l-5-5L8 17"/><line x1="2" y1="20" x2="22" y2="20"/></svg>),
     X:     ()=>(<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>),
     Check: ()=>(<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>),
@@ -94,15 +95,20 @@ function drawImageCover(ctx, img, W, H) {
 // ══════════════════════════════════════════════════════════════
 function ZoomBtn({ onClick, active, danger, highlight, title, icon, label, pulse }) {
     return (
-        <button onClick={onClick} title={title} className={`relative flex flex-col items-center justify-center gap-1.5 min-w-[78px] px-3.5 py-3.5 rounded-[22px] text-[10px] font-bold tracking-[0.22em] uppercase transition-all duration-200 select-none group backdrop-blur-xl ${danger?'bg-red-600/90 hover:bg-red-500 text-white shadow-[0_16px_35px_rgba(127,29,29,0.45)] border border-red-400/30':highlight?'bg-emerald-500/18 hover:bg-emerald-500/24 text-emerald-100 shadow-[0_18px_40px_rgba(34,197,94,0.2)] border border-emerald-400/25':active?'bg-slate-700/90 text-white ring-2 ring-white/20 border border-white/10':'bg-slate-900/82 hover:bg-slate-800/92 text-slate-300 hover:text-white border border-white/10 shadow-[0_12px_30px_rgba(2,6,23,0.3)]'} ${pulse?'ring-2 ring-offset-2 ring-offset-slate-950 ring-emerald-400/60':''}`}>
+        <button onClick={onClick} title={title} className={`relative flex flex-col items-center justify-center gap-1.5 min-w-[68px] px-3 py-3 rounded-[20px] text-[9px] font-bold tracking-[0.18em] uppercase transition-all duration-200 select-none group backdrop-blur-xl ${danger?'bg-red-600/90 hover:bg-red-500 text-white shadow-[0_16px_35px_rgba(127,29,29,0.45)] border border-red-400/30':highlight?'bg-emerald-500/18 hover:bg-emerald-500/24 text-emerald-100 shadow-[0_18px_40px_rgba(34,197,94,0.2)] border border-emerald-400/25':active?'bg-slate-700/90 text-white ring-2 ring-white/20 border border-white/10':'bg-slate-900/82 hover:bg-slate-800/92 text-slate-300 hover:text-white border border-white/10 shadow-[0_12px_30px_rgba(2,6,23,0.3)]'} ${pulse?'ring-2 ring-offset-2 ring-offset-slate-950 ring-emerald-400/60':''}`}>
             <span className="transition-transform duration-150 group-hover:scale-110 group-active:scale-95">{icon}</span>
             <span className="leading-none whitespace-nowrap">{label}</span>
         </button>
     );
 }
-function PanelBtn({ onClick, active, title, icon, label }) {
+function PanelBtn({ onClick, active, title, icon, label, badge = 0 }) {
     return (
-        <button onClick={onClick} title={title} className={`flex flex-col items-center justify-center gap-1 min-w-[58px] px-2.5 py-2.5 rounded-2xl text-[9px] font-bold tracking-[0.2em] uppercase transition-all duration-200 backdrop-blur-xl ${active?'bg-blue-500/20 text-blue-100 border border-blue-400/25 shadow-[0_14px_30px_rgba(59,130,246,0.2)]':'bg-slate-900/72 hover:bg-slate-800/90 text-slate-400 hover:text-white border border-white/10'}`}>
+        <button onClick={onClick} title={title} className={`relative flex flex-col items-center justify-center gap-1 min-w-[54px] px-2 py-2.5 rounded-2xl text-[9px] font-bold tracking-[0.2em] uppercase transition-all duration-200 backdrop-blur-xl ${active?'bg-blue-500/20 text-blue-100 border border-blue-400/25 shadow-[0_14px_30px_rgba(59,130,246,0.2)]':'bg-slate-900/72 hover:bg-slate-800/90 text-slate-400 hover:text-white border border-white/10'}`}>
+            {badge > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full border-2 border-slate-950 bg-red-500 px-1 text-[9px] font-extrabold text-white">
+                    {badge > 9 ? '9+' : badge}
+                </span>
+            )}
             {icon}<span className="leading-none mt-0.5">{label}</span>
         </button>
     );
@@ -126,9 +132,9 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
         setVirtualBackgroundStream,
     } = useMedia();
     const { locked } = useRoom();
-    const { chatOpen, setChatOpen, participantsOpen, setParticipantsOpen, whiteboardOpen, setWhiteboardOpen, transcriptOpen, setTranscriptOpen, layout, toggleLayout } = useUI();
+    const { chatOpen, setChatOpen, chatUnread, participantsOpen, setParticipantsOpen, whiteboardOpen, setWhiteboardOpen, transcriptOpen, setTranscriptOpen, layout, toggleLayout } = useUI();
     const { isRecording, toggle: toggleRecording } = useRecording();
-    const { captionsEnabled, setCaptionsEnabled, transcriptionActive } = useTranscription();
+    const { captionsEnabled, setCaptionsEnabled, transcriptionActive, startTranscription, stopTranscription } = useTranscription();
 
     const [bgOpen, setBgOpen] = useState(false);
     const [bgActive, setBgActive] = useState(false);
@@ -183,17 +189,31 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
         await startScreenShare(stream, opts);
     };
 
+    const handleTranscriptionToggle = () => {
+        setTranscriptOpen(true);
+
+        if (transcriptionActive) {
+            setCaptionsEnabled(false);
+            stopTranscription();
+            return;
+        }
+
+        setCaptionsEnabled(true);
+        startTranscription();
+    };
+
     return (
         <>
-            <div className="border-t border-white/10 bg-[linear-gradient(180deg,rgba(2,6,23,0.88)_0%,rgba(15,23,42,0.96)_100%)] px-4 py-3 flex items-center justify-between gap-3 shadow-[0_-18px_50px_rgba(2,6,23,0.45)] backdrop-blur-2xl" style={{ minHeight:'94px' }}>
+            <div className="border-t border-white/10 bg-[linear-gradient(180deg,rgba(2,6,23,0.88)_0%,rgba(15,23,42,0.96)_100%)] px-4 py-3 shadow-[0_-18px_50px_rgba(2,6,23,0.45)] backdrop-blur-2xl" style={{ minHeight:'94px' }}>
+                <div className="grid items-center gap-3" style={{ gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)' }}>
                 {/* Gauche */}
-                <div className="hidden md:flex items-center gap-3 w-48 shrink-0">
+                <div className="hidden min-w-0 md:flex items-center gap-3">
                     {locked && (<span className="flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1.5 text-[11px] font-semibold text-amber-200"><svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Réunion verrouillée</span>)}
                     {isSharing && (<button onClick={stopScreenShare} className="flex items-center gap-2 rounded-full border border-red-400/25 bg-red-500/15 px-3.5 py-2 text-[11px] font-bold text-red-100 shadow-[0_12px_25px_rgba(127,29,29,0.28)] backdrop-blur-xl transition hover:bg-red-500/22"><svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>Arrêter le partage</button>)}
                 </div>
 
                 {/* Centre — tous les boutons */}
-                <div className="flex items-center gap-2.5 mx-auto flex-wrap justify-center rounded-[28px] border border-white/10 bg-white/[0.03] px-3 py-2 shadow-[0_20px_50px_rgba(2,6,23,0.25)]">
+                <div className="mx-auto flex min-w-0 max-w-full items-center gap-2 overflow-x-auto rounded-[28px] border border-white/10 bg-white/[0.03] px-3 py-2 shadow-[0_20px_50px_rgba(2,6,23,0.25)]">
                     <ZoomBtn onClick={toggleAudio} active={!audioEnabled} icon={audioEnabled?<I.MicOn/>:<I.MicOff/>} label={audioEnabled?'Micro':'Muet'} title={audioEnabled?'Couper le micro':'Activer le micro'}/>
                     <ZoomBtn onClick={toggleVideo} active={!videoEnabled} icon={videoEnabled?<I.CamOn/>:<I.CamOff/>} label={videoEnabled?'Vidéo':'Arrêtée'} title={videoEnabled?'Couper la caméra':'Activer la caméra'}/>
 
@@ -220,16 +240,22 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
 
                     <ZoomBtn onClick={toggleRecording} active={isRecording} icon={isRecording?<I.Stop/>:<I.Rec/>} label={isRecording?'Stop Rec':'Enregistrer'} title={isRecording?"Arrêter l'enregistrement":"Démarrer l'enregistrement"}/>
                     <ZoomBtn
-                        onClick={() => {
-                            setCaptionsEnabled((current) => !current);
-                            setTranscriptOpen(true);
-                        }}
-                        active={!captionsEnabled}
+                        onClick={handleTranscriptionToggle}
+                        active={captionsEnabled && !transcriptionActive}
                         highlight={transcriptionActive}
                         pulse={transcriptionActive}
                         icon={<I.CC/>}
-                        label={transcriptionActive ? 'CC ●' : 'Sous-titres'}
+                        label={transcriptionActive ? 'CC ●' : captionsEnabled ? 'CC prêt' : 'Sous-titres'}
                         title="Sous-titres et transcription"
+                    />
+                    <ZoomBtn
+                        onClick={toggleHand}
+                        active={handRaised}
+                        highlight={handRaised}
+                        pulse={handRaised}
+                        icon={<I.Hand raised={handRaised} />}
+                        label={handRaised ? 'Main levée' : 'Lever main'}
+                        title={handRaised ? 'Baisser la main' : 'Lever la main'}
                     />
                     <ReactionBar roomId={roomId} userName={userName} toggleHand={toggleHand} handRaised={handRaised}/>
                     <ZoomBtn onClick={toggleLayout} icon={layout==='grid'?<I.Grid/>:<I.Focus/>} label={layout==='grid'?'Grille':'Focus'} title="Changer la disposition"/>
@@ -238,11 +264,11 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
                 </div>
 
                 {/* Droite */}
-                <div className="flex items-center gap-2 w-48 justify-end shrink-0">
+                <div className="flex min-w-0 items-center justify-end gap-2">
                     {!isSharing && (
                         <button
                             onClick={() => setShowScreenShareSelector(true)}
-                            className="hidden lg:flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
+                            className="hidden xl:flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
                             title="Choix avance de la source"
                         >
                             <I.Share/>
@@ -250,9 +276,10 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
                         </button>
                     )}
                     <PanelBtn onClick={()=>setParticipantsOpen(o=>!o)} active={participantsOpen} icon={<I.People/>} label="Participants"/>
-                    <PanelBtn onClick={()=>setChatOpen(o=>!o)} active={chatOpen} icon={<I.Chat/>} label="Chat"/>
+                    <PanelBtn onClick={()=>setChatOpen(o=>!o)} active={chatOpen} icon={<I.Chat/>} label="Chat" badge={chatUnread}/>
                     <PanelBtn onClick={()=>setTranscriptOpen(o=>!o)} active={transcriptOpen} icon={<I.CC/>} label="Transcript"/>
                     <PanelBtn onClick={()=>setWhiteboardOpen(o=>!o)} active={whiteboardOpen} icon={<I.Board/>} label="Tableau"/>
+                </div>
                 </div>
             </div>
 

@@ -11,6 +11,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSocket } from '../../context/SocketContext.jsx';
 import { useUI }     from '../../context/UIContext.jsx';
 import { EVENTS }    from '../../utils/events.js';
+import { platform }  from '../../services/platform/index.js';
 
 const EV_CHAT     = EVENTS.CHAT          ?? 'chat-message';
 const EV_REACT    = EVENTS.CHAT_REACTION ?? 'chat-reaction';
@@ -174,12 +175,11 @@ function Pending({file,preview,progress,onRemove}){
 ══════════════════════════════════════════════════════════════ */
 export default function ChatSidebar({roomId,userName,userId}){
   const{socket}=useSocket();
-  const{chatOpen,setChatOpen}=useUI();
+  const{chatOpen,setChatOpen,chatUnread,setChatUnread}=useUI();
 
   const[messages,setMessages]=useState([]);
   const[reactions,setReactions]=useState({});
   const[input,setInput]=useState('');
-  const[unread,setUnread]=useState(0);
   const[dragging,setDragging]=useState(false);
   const[pending,setPending]=useState(null);   // {file,preview}
   const[progress,setProgress]=useState(null);
@@ -192,12 +192,27 @@ export default function ChatSidebar({roomId,userName,userId}){
   const inputRef=useRef(null);
 
   useEffect(()=>{ endRef.current?.scrollIntoView({behavior:'smooth'}); },[messages]);
-  useEffect(()=>{ if(chatOpen) setUnread(0); },[chatOpen]);
+  useEffect(()=>{ if(chatOpen) setChatUnread(0); },[chatOpen, setChatUnread]);
 
   /* Socket listeners */
   useEffect(()=>{
     if(!socket)return;
-    const onMsg=msg=>{setMessages(p=>[...p,msg]);if(!chatOpen)setUnread(n=>n+1);};
+    const onMsg=msg=>{
+      setMessages(p=>[...p,msg]);
+
+      const isMine = msg.socketId===socket?.id || msg.userId===userId;
+      if (isMine) return;
+
+      if(!chatOpen){
+        setChatUnread(n=>n+1);
+        platform.notify({
+          title: `Nouveau message · ${msg.userName || 'Chat'}`,
+          body: msg.type === 'text'
+            ? (msg.message || 'Message reçu')
+            : `Fichier reçu${msg.fileName ? `: ${msg.fileName}` : ''}`,
+        }).catch(() => {});
+      }
+    };
     const onRx=({messageId,emoji,userId:uid,userName:un})=>{
       setReactions(p=>{
         const list=p[messageId]||[];
@@ -208,7 +223,7 @@ export default function ChatSidebar({roomId,userName,userId}){
     socket.on(EV_CHAT,onMsg);
     socket.on(EV_REACT,onRx);
     return()=>{socket.off(EV_CHAT,onMsg);socket.off(EV_REACT,onRx);};
-  },[socket,chatOpen]);
+  },[socket,chatOpen,userId,setChatUnread]);
 
   /* ✅ CLEF DU FIX : input créé dynamiquement dans le DOM → ref jamais null */
   const openImagePicker=useCallback(()=>{
@@ -344,7 +359,7 @@ export default function ChatSidebar({roomId,userName,userId}){
             <div style={{fontSize:10,color:'rgba(255,255,255,0.3)',marginTop:1}}>{messages.length} message{messages.length!==1?'s':''}</div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:6}}>
-            {unread>0&&<div style={{background:'#ef4444',color:'#fff',borderRadius:20,padding:'1px 7px',fontSize:10,fontWeight:800}}>{unread}</div>}
+            {chatUnread>0&&<div style={{background:'#ef4444',color:'#fff',borderRadius:20,padding:'1px 7px',fontSize:10,fontWeight:800}}>{chatUnread}</div>}
             <button onClick={()=>setChatOpen(false)}
                     style={{width:26,height:26,borderRadius:'50%',border:'none',background:'rgba(255,255,255,0.07)',color:'rgba(255,255,255,0.5)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}
                     onMouseEnter={e=>{e.currentTarget.style.background='rgba(255,255,255,0.14)';e.currentTarget.style.color='#fff';}}

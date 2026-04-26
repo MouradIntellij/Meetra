@@ -14,6 +14,7 @@ export function UIProvider({ children }) {
   const [activeSpeakerId, setActiveSpeakerId] = useState(null);
 
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatUnread, setChatUnread] = useState(0);
   const [participantsOpen, setParticipantsOpen] = useState(false);
   const [whiteboardOpen, setWhiteboardOpen] = useState(false);
   const [breakoutOpen, setBreakoutOpen] = useState(false);
@@ -50,6 +51,9 @@ export function UIProvider({ children }) {
 
         chatOpen,
         setChatOpen,
+
+        chatUnread,
+        setChatUnread,
 
         participantsOpen,
         setParticipantsOpen,

@@ -475,8 +475,8 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
     };
 
     return (
-        <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/75 px-4 py-6 backdrop-blur-md">
-            <div className="flex max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-[28px] border border-white/10 bg-[#0a1020] text-white shadow-[0_30px_120px_rgba(0,0,0,0.6)]">
+        <div className="fixed inset-0 z-[1200] overflow-y-auto bg-slate-950/75 px-4 py-6 backdrop-blur-md">
+            <div className="mx-auto flex max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-[28px] border border-white/10 bg-[#0a1020] text-white shadow-[0_30px_120px_rgba(0,0,0,0.6)]">
                 <div className="flex min-w-0 flex-1 flex-col">
                     <div className="flex items-start justify-between border-b border-white/10 px-8 py-6">
                         <div>
@@ -505,7 +505,7 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
                     </div>
 
                     <div className="grid min-h-0 flex-1 grid-cols-[1.25fr_0.75fr]">
-                        <div className="min-w-0 border-r border-white/10 px-8 py-7">
+                        <div className="min-w-0 overflow-y-auto border-r border-white/10 px-8 py-7">
                             <div className={`grid gap-4 ${visibleSources.length >= 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
                                 {visibleSources.map((source) => {
                                     const selected = source.id === selectedSource;
@@ -583,7 +583,7 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
                                             {loading ? 'Chargement des miniatures…' : `${electronSources.length} source${electronSources.length > 1 ? 's' : ''}`}
                                         </div>
                                     </div>
-                                    <div className="grid gap-4 xl:grid-cols-2">
+                                    <div className="grid max-h-[34vh] gap-4 overflow-y-auto pr-1 xl:grid-cols-2">
                                         {electronSources.map((source) => (
                                             <ElectronSourceCard
                                                 key={source.id}
@@ -649,7 +649,7 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
                             )}
                         </div>
 
-                        <aside className="flex min-h-0 flex-col bg-white/[0.02] px-7 py-7">
+                        <aside className="flex min-h-0 flex-col overflow-y-auto bg-white/[0.02] px-7 py-7">
                             <div className="text-[11px] font-bold uppercase tracking-[0.35em] text-slate-500">Options</div>
 
                             <div className="mt-5 space-y-3">
@@ -721,7 +721,7 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
                                 </div>
                             )}
 
-                            <div className="mt-auto pt-6">
+                            <div className="sticky bottom-0 mt-auto bg-[linear-gradient(180deg,rgba(10,16,32,0)_0%,rgba(10,16,32,0.92)_18%,rgba(10,16,32,1)_100%)] pt-6">
                                 <div className="flex gap-3">
                                     <button
                                         type="button"

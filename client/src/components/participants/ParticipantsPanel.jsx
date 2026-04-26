@@ -2,6 +2,7 @@ import { useRoom }   from '../../context/RoomContext.jsx';
 import { useSocket }  from '../../context/SocketContext.jsx';
 import { useUI }      from '../../context/UIContext.jsx';
 import { EVENTS }     from '../../utils/events.js';
+import { BanIcon, CameraOffIcon, CloseIcon, CrownIcon, HandIcon, MicOffIcon, UsersIcon } from '../common/AppIcons.jsx';
 
 export default function ParticipantsPanel({ roomId }) {
   const { participants, hostId } = useRoom();
@@ -27,10 +28,13 @@ export default function ParticipantsPanel({ roomId }) {
   return (
     <div className={`flex flex-col h-full bg-gray-900 border-l border-gray-700 transition-all duration-200 ${participantsOpen ? 'w-64' : 'w-0 overflow-hidden'}`}>
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-        <h3 className="text-white font-semibold text-sm">
-          👥 Participants ({participants.length + 1})
+        <h3 className="flex items-center gap-2 text-white font-semibold text-sm">
+          <UsersIcon size={15} />
+          Participants ({participants.length + 1})
         </h3>
-        <button onClick={() => setParticipantsOpen(false)} className="text-gray-400 hover:text-white text-lg">✕</button>
+        <button onClick={() => setParticipantsOpen(false)} className="text-gray-400 hover:text-white">
+          <CloseIcon size={16} />
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -69,20 +73,26 @@ function ParticipantItem({ name, isHost, isLocal, audioEnabled = true, videoEnab
       <div className="flex-1 min-w-0">
         <p className="text-white text-sm truncate">
           {name}
-          {isHost  && <span className="ml-1 text-yellow-400 text-xs">👑</span>}
+          {isHost  && <span className="ml-1 inline-flex align-middle text-yellow-400"><CrownIcon size={12} color="currentColor" /></span>}
           {isLocal && <span className="ml-1 text-gray-400 text-xs">(vous)</span>}
         </p>
       </div>
       <div className="flex items-center gap-1 text-xs shrink-0">
-        {!audioEnabled && <span className="text-red-400">🔇</span>}
-        {!videoEnabled && <span className="text-red-400">📷</span>}
-        {handRaised    && <span className="text-yellow-400">✋</span>}
+        {!audioEnabled && <span className="text-red-400"><MicOffIcon size={13} color="currentColor" /></span>}
+        {!videoEnabled && <span className="text-red-400"><CameraOffIcon size={13} color="currentColor" /></span>}
+        {handRaised    && <span className="text-yellow-400"><HandIcon size={13} color="currentColor" /></span>}
       </div>
       {canControl && (
         <div className="hidden group-hover:flex items-center gap-1">
-          <button onClick={onMute}       title="Couper micro" className="text-gray-400 hover:text-white text-xs px-1">🔇</button>
-          <button onClick={onKick}       title="Expulser"     className="text-gray-400 hover:text-red-400 text-xs px-1">🚫</button>
-          <button onClick={onAssignHost} title="Nommer hôte"  className="text-gray-400 hover:text-yellow-400 text-xs px-1">👑</button>
+          <button onClick={onMute} title="Couper micro" className="text-gray-400 hover:text-white px-1">
+            <MicOffIcon size={13} color="currentColor" />
+          </button>
+          <button onClick={onKick} title="Expulser" className="text-gray-400 hover:text-red-400 px-1">
+            <BanIcon size={13} color="currentColor" />
+          </button>
+          <button onClick={onAssignHost} title="Nommer hôte" className="text-gray-400 hover:text-yellow-400 px-1">
+            <CrownIcon size={13} color="currentColor" />
+          </button>
         </div>
       )}
     </div>

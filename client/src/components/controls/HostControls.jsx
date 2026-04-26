@@ -4,6 +4,7 @@ import { useRoom }    from '../../context/RoomContext.jsx';
 import { useUI }      from '../../context/UIContext.jsx';
 import { EVENTS }     from '../../utils/events.js';
 import { platform }   from '../../services/platform/index.js';
+import { CrownIcon, MuteGroupIcon, ShieldLockIcon, ShieldOpenIcon, SparkIcon } from '../common/AppIcons.jsx';
 
 // ─── Icônes ───────────────────────────────────────────────────
 const CheckIcon = () => (
@@ -242,7 +243,8 @@ export default function HostControls({ roomId }) {
           fontFamily: 'inherit',
         }}
       >
-        👑 Hôte
+        <CrownIcon size={14} color="currentColor" />
+        Hôte
         {/* Badge nombre en attente */}
         {hasPending && (
           <span style={{
@@ -340,23 +342,28 @@ export default function HostControls({ roomId }) {
             {/* ── Actions standards ── */}
             {[
               {
-                label: '🔇 Couper tous les micros',
+                icon: <MuteGroupIcon size={14} color="currentColor" />,
+                label: 'Couper tous les micros',
                 onClick: muteAll,
                 style: { background: 'rgba(255,255,255,0.06)', color: '#e2e8f0' },
               },
               {
-                label: locked ? '🔓 Déverrouiller la salle' : '🔒 Verrouiller la salle',
+                icon: locked
+                  ? <ShieldOpenIcon size={14} color="currentColor" />
+                  : <ShieldLockIcon size={14} color="currentColor" />,
+                label: locked ? 'Déverrouiller la salle' : 'Verrouiller la salle',
                 onClick: toggleLock,
                 style: locked
                   ? { background: 'rgba(34,197,94,0.15)', color: '#4ade80' }
                   : { background: 'rgba(245,158,11,0.15)', color: '#fbbf24' },
               },
               {
-                label: '🧩 Salles de groupes',
+                icon: <SparkIcon size={14} color="currentColor" />,
+                label: 'Salles de groupes',
                 onClick: () => { setBreakoutOpen(true); setShowPanel(false); },
                 style: { background: 'rgba(139,92,246,0.15)', color: '#a78bfa' },
               },
-            ].map(({ label, onClick, style }) => (
+            ].map(({ icon, label, onClick, style }) => (
               <button
                 key={label}
                 onClick={onClick}
@@ -372,6 +379,7 @@ export default function HostControls({ roomId }) {
                 onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.15)'}
                 onMouseLeave={e => e.currentTarget.style.filter = 'none'}
               >
+                {icon}
                 {label}
               </button>
             ))}

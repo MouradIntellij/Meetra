@@ -18,6 +18,7 @@ import BreakoutPanel     from '../components/layout/BreakoutPanel.jsx';
 import ReactionsOverlay  from '../components/layout/ReactionsOverlay.jsx';
 import CaptionsOverlay   from '../components/transcription/CaptionsOverlay.jsx';
 import TranscriptPanel   from '../components/transcription/TranscriptPanel.jsx';
+import { BanIcon, CalendarIcon, CloseIcon, GridIcon, HandIcon, LaunchIcon, LinkIcon, MailIcon, SpotlightIcon, UsersIcon, VideoAppIcon } from '../components/common/AppIcons.jsx';
 
 const PUBLIC_JOIN_BASE_URL = getPublicJoinBaseUrl();
 const API_URL = getApiUrl();
@@ -148,7 +149,7 @@ function RaisedHandsAlert({ participants }) {
           textTransform: 'uppercase', letterSpacing: '0.07em',
           marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5,
         }}>
-          <span style={{ fontSize: 14 }}>✋</span>
+          <HandIcon size={14} color="#f59e0b" />
           Main levée ({raisedHands.length})
         </div>
         {raisedHands.map(p => (
@@ -168,7 +169,9 @@ function RaisedHandsAlert({ participants }) {
               <span style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 500 }}>
             {p.name}
           </span>
-              <span style={{ marginLeft: 'auto', fontSize: 14, animation: 'wave 0.8s ease-in-out infinite alternate' }}>✋</span>
+              <span style={{ marginLeft: 'auto', display: 'inline-flex', animation: 'wave 0.8s ease-in-out infinite alternate' }}>
+                <HandIcon size={14} color="#fbbf24" />
+              </span>
             </div>
         ))}
         <style>{`
@@ -394,6 +397,9 @@ function InviteDialog({ roomId, onDismiss }) {
               <button
                   onClick={handleCopy}
                   style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
                     padding: '10px 14px',
                     borderRadius: 12,
                     border: 'none',
@@ -405,13 +411,17 @@ function InviteDialog({ roomId, onDismiss }) {
                     fontFamily: 'inherit',
                   }}
               >
-                {copied ? '✓ Lien copie' : 'Copier le lien'}
+                <LinkIcon size={14} color="currentColor" />
+                {copied ? 'Lien copié' : 'Copier le lien'}
               </button>
 
               <button
                   onClick={handleEmail}
                   disabled={!hasPublicLink}
                   style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
                     padding: '10px 14px',
                     borderRadius: 12,
                     border: '1px solid rgba(148,163,184,0.14)',
@@ -423,13 +433,17 @@ function InviteDialog({ roomId, onDismiss }) {
                     fontFamily: 'inherit',
                   }}
               >
-                {emailed ? '✓ Email prepare' : 'Ouvrir email'}
+                <MailIcon size={14} color="currentColor" />
+                {emailed ? 'Email préparé' : 'Ouvrir email'}
               </button>
 
               <button
                   onClick={handleCalendar}
                   disabled={!hasPublicLink}
                   style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
                     padding: '10px 14px',
                     borderRadius: 12,
                     border: '1px solid rgba(148,163,184,0.14)',
@@ -441,13 +455,17 @@ function InviteDialog({ roomId, onDismiss }) {
                     fontFamily: 'inherit',
                   }}
               >
-                {calendarSaved ? '✓ Calendrier telecharge' : 'Telecharger .ics'}
+                <CalendarIcon size={14} color="currentColor" />
+                {calendarSaved ? 'Calendrier téléchargé' : 'Télécharger .ics'}
               </button>
 
               {platform.isElectron && hasPublicLink && (
                   <button
                       onClick={handleOpen}
                       style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
                         padding: '10px 14px',
                         borderRadius: 12,
                         border: '1px solid rgba(148,163,184,0.14)',
@@ -459,7 +477,8 @@ function InviteDialog({ roomId, onDismiss }) {
                         fontFamily: 'inherit',
                       }}
                   >
-                    {opened ? '✓ Lien ouvert' : 'Ouvrir le lien web'}
+                    <LaunchIcon size={14} color="currentColor" />
+                    {opened ? 'Lien ouvert' : 'Ouvrir le lien web'}
                   </button>
               )}
 
@@ -548,7 +567,9 @@ export default function Room({ roomId, userName, onLeave }) {
             textAlign: 'center', border: '1px solid rgba(239,68,68,0.3)',
             maxWidth: 360,
           }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🚫</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16, color: '#f87171' }}>
+              <BanIcon size={42} color="currentColor" />
+            </div>
             <h2 style={{ color: '#f1f5f9', fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
               Vous avez été expulsé
             </h2>
@@ -625,14 +646,11 @@ export default function Room({ roomId, userName, onLeave }) {
                 justifyContent: 'center',
                 boxShadow: '0 10px 24px rgba(37,99,235,0.18)',
               }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="#93c5fd" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
-                <polygon points="23 7 16 12 23 17 23 7"/>
-                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-              </svg>
+                <VideoAppIcon size={18} color="#93c5fd" />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <span style={{ color: '#f8fafc', fontWeight: 700, fontSize: 14, letterSpacing: '0.02em' }}>
-                  VideoConf
+                  Meetra
                 </span>
                 <span style={{ color: 'rgba(148,163,184,0.82)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', fontWeight: 700 }}>
                   Session live
@@ -661,12 +679,7 @@ export default function Room({ roomId, userName, onLeave }) {
               fontSize: 11, color: '#93c5fd', fontWeight: 600,
               display: 'flex', alignItems: 'center', gap: 4,
             }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 11, height: 11 }}>
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-              </svg>
+              <UsersIcon size={11} color="currentColor" />
               {participants.length + 1}
             </div>
 
@@ -693,9 +706,9 @@ export default function Room({ roomId, userName, onLeave }) {
           {/* Center: layout toggle */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 4, borderRadius: 999, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
             {[
-              { id: 'grid', label: '⊞', title: 'Grille' },
-              { id: 'spotlight', label: '📌', title: 'Vedette' },
-            ].map(({ id, label, title }) => (
+              { id: 'grid', icon: <GridIcon size={14} color="currentColor" />, title: 'Grille' },
+              { id: 'spotlight', icon: <SpotlightIcon size={14} color="currentColor" />, title: 'Vedette' },
+            ].map(({ id, icon, title }) => (
                 <button
                     key={id}
                     onClick={() => id !== layout && toggleLayout()}
@@ -709,7 +722,7 @@ export default function Room({ roomId, userName, onLeave }) {
                       fontWeight: 700,
                     }}
                 >
-                  {label}
+                  <span style={{ display: 'inline-flex' }}>{icon}</span>
                 </button>
             ))}
           </div>
@@ -733,7 +746,7 @@ export default function Room({ roomId, userName, onLeave }) {
                       transition: 'background 0.2s',
                     }}
                 >
-                  ✋ {raisedCount}
+                  <HandIcon size={13} color="currentColor" /> {raisedCount}
                 </button>
             )}
 
@@ -751,10 +764,7 @@ export default function Room({ roomId, userName, onLeave }) {
                   fontFamily: 'inherit', transition: 'all 0.15s',
                 }}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-              </svg>
+              <LinkIcon size={12} color="currentColor" />
               Inviter
             </button>
           </div>
@@ -794,7 +804,7 @@ export default function Room({ roomId, userName, onLeave }) {
                     flexShrink: 0,
                   }}
               >
-                ×
+                <CloseIcon size={14} color="currentColor" />
               </button>
             </div>
         )}

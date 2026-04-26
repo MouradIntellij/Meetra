@@ -3,6 +3,7 @@ import { useMedia } from '../../context/MediaContext.jsx';
 import { useRoom } from '../../context/RoomContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
 import { useSocket } from '../../context/SocketContext.jsx';
+import { platform } from '../../services/platform/index.js';
 import VideoTile from './VideoTile.jsx';
 
 // ─── VideoPlayer (Composant réutilisable pour les flux vidéo) ──────
@@ -401,6 +402,7 @@ const ScreenShareFullscreen = ({ screenStream, localStream, participants, remote
     const [shouldSuggestAntiMirror, setShouldSuggestAntiMirror] = useState(false);
     const { screenShareMeta, stopScreenShare } = useMedia();
     const isEntireScreenShare = screenShareMeta?.displaySurface === 'monitor';
+    const showLocalShareBanner = !platform.isElectron;
 
     useEffect(() => {
         setElapsed(formatElapsed(screenShareMeta?.startedAt));
@@ -618,127 +620,131 @@ const ScreenShareFullscreen = ({ screenStream, localStream, participants, remote
                 )}
 
                 {/* Indicateur de partage d'écran */}
-                <div style={{
-                    position: 'absolute',
-                    top: 18,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'rgba(4,10,25,0.82)',
-                    color: '#fff',
-                    borderRadius: 24,
-                    padding: '12px 14px',
-                    fontSize: 12,
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    boxShadow: '0 18px 50px rgba(0,0,0,0.38)',
-                    backdropFilter: 'blur(18px)',
-                    zIndex: 12,
-                    transition: 'opacity 0.3s',
-                    opacity: controlsVisible ? 1 : 0,
-                    border: '1px solid rgba(34,197,94,0.35)',
-                    minWidth: 520,
-                    maxWidth: 'calc(100% - 32px)',
-                }}>
-                    <span style={{
-                        width: 9,
-                        height: 9,
-                        borderRadius: '50%',
-                        background: '#22c55e',
-                        boxShadow: '0 0 0 4px rgba(34,197,94,0.18)',
-                        animation: 'pulse 1.5s ease-in-out infinite',
-                    }} />
-                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 3, flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                            <span style={{ whiteSpace: 'nowrap' }}>Vous partagez votre ecran</span>
-                            <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                borderRadius: 999,
-                                padding: '2px 8px',
-                                background: 'rgba(34,197,94,0.14)',
-                                color: '#bbf7d0',
-                                fontSize: 11,
-                                letterSpacing: '0.06em',
-                                textTransform: 'uppercase',
-                                whiteSpace: 'nowrap',
-                            }}>
-                                {elapsed}
-                            </span>
-                        </div>
-                        {screenShareMeta?.label && (
-                            <span style={{
-                                maxWidth: 340,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                color: 'rgba(255,255,255,0.72)',
-                                fontWeight: 600,
-                            }}>
-                                {screenShareMeta.label}
-                            </span>
-                        )}
-                    </div>
-                    <button
-                        type="button"
-                        onClick={stopScreenShare}
-                        style={{
-                            border: '1px solid rgba(248,113,113,0.35)',
-                            background: 'rgba(127,29,29,0.75)',
-                            color: '#fee2e2',
-                            borderRadius: 14,
-                            padding: '10px 14px',
+                {showLocalShareBanner && (
+                    <>
+                        <div style={{
+                            position: 'absolute',
+                            top: 18,
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            background: 'rgba(4,10,25,0.82)',
+                            color: '#fff',
+                            borderRadius: 24,
+                            padding: '12px 14px',
                             fontSize: 12,
                             fontWeight: 700,
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                        }}
-                    >
-                        Arreter le partage
-                    </button>
-                </div>
-
-                <div style={{
-                    position: 'absolute',
-                    left: 16,
-                    top: 96,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 8,
-                    zIndex: 9,
-                    transition: 'opacity 0.3s',
-                    opacity: controlsVisible ? 1 : 0,
-                }}>
-                    <div style={{
-                        background: 'rgba(34,197,94,0.14)',
-                        color: '#dcfce7',
-                        border: '1px solid rgba(34,197,94,0.28)',
-                        borderRadius: 999,
-                        padding: '6px 12px',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        letterSpacing: '0.06em',
-                        textTransform: 'uppercase',
-                        backdropFilter: 'blur(10px)',
-                    }}>
-                        Bordure verte active
-                    </div>
-                    {screenShareMeta?.displaySurface && (
-                        <div style={{
-                            background: 'rgba(15,23,42,0.7)',
-                            color: 'rgba(255,255,255,0.8)',
-                            border: '1px solid rgba(255,255,255,0.12)',
-                            borderRadius: 14,
-                            padding: '8px 12px',
-                            fontSize: 12,
-                            backdropFilter: 'blur(10px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            boxShadow: '0 18px 50px rgba(0,0,0,0.38)',
+                            backdropFilter: 'blur(18px)',
+                            zIndex: 12,
+                            transition: 'opacity 0.3s',
+                            opacity: controlsVisible ? 1 : 0,
+                            border: '1px solid rgba(34,197,94,0.35)',
+                            minWidth: 520,
+                            maxWidth: 'calc(100% - 32px)',
                         }}>
-                            Source: {screenShareMeta.displaySurface === 'window' ? 'Application' : screenShareMeta.displaySurface === 'browser' ? 'Onglet navigateur' : 'Plein ecran'}
+                            <span style={{
+                                width: 9,
+                                height: 9,
+                                borderRadius: '50%',
+                                background: '#22c55e',
+                                boxShadow: '0 0 0 4px rgba(34,197,94,0.18)',
+                                animation: 'pulse 1.5s ease-in-out infinite',
+                            }} />
+                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 3, flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                                    <span style={{ whiteSpace: 'nowrap' }}>Vous partagez votre ecran</span>
+                                    <span style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        borderRadius: 999,
+                                        padding: '2px 8px',
+                                        background: 'rgba(34,197,94,0.14)',
+                                        color: '#bbf7d0',
+                                        fontSize: 11,
+                                        letterSpacing: '0.06em',
+                                        textTransform: 'uppercase',
+                                        whiteSpace: 'nowrap',
+                                    }}>
+                                        {elapsed}
+                                    </span>
+                                </div>
+                                {screenShareMeta?.label && (
+                                    <span style={{
+                                        maxWidth: 340,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        color: 'rgba(255,255,255,0.72)',
+                                        fontWeight: 600,
+                                    }}>
+                                        {screenShareMeta.label}
+                                    </span>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={stopScreenShare}
+                                style={{
+                                    border: '1px solid rgba(248,113,113,0.35)',
+                                    background: 'rgba(127,29,29,0.75)',
+                                    color: '#fee2e2',
+                                    borderRadius: 14,
+                                    padding: '10px 14px',
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap',
+                                }}
+                            >
+                                Arreter le partage
+                            </button>
                         </div>
-                    )}
-                </div>
+
+                        <div style={{
+                            position: 'absolute',
+                            left: 16,
+                            top: 96,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 8,
+                            zIndex: 9,
+                            transition: 'opacity 0.3s',
+                            opacity: controlsVisible ? 1 : 0,
+                        }}>
+                            <div style={{
+                                background: 'rgba(34,197,94,0.14)',
+                                color: '#dcfce7',
+                                border: '1px solid rgba(34,197,94,0.28)',
+                                borderRadius: 999,
+                                padding: '6px 12px',
+                                fontSize: 11,
+                                fontWeight: 700,
+                                letterSpacing: '0.06em',
+                                textTransform: 'uppercase',
+                                backdropFilter: 'blur(10px)',
+                            }}>
+                                Bordure verte active
+                            </div>
+                            {screenShareMeta?.displaySurface && (
+                                <div style={{
+                                    background: 'rgba(15,23,42,0.7)',
+                                    color: 'rgba(255,255,255,0.8)',
+                                    border: '1px solid rgba(255,255,255,0.12)',
+                                    borderRadius: 14,
+                                    padding: '8px 12px',
+                                    fontSize: 12,
+                                    backdropFilter: 'blur(10px)',
+                                }}>
+                                    Source: {screenShareMeta.displaySurface === 'window' ? 'Application' : screenShareMeta.displaySurface === 'browser' ? 'Onglet navigateur' : 'Plein ecran'}
+                                </div>
+                            )}
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Bottom filmstrip: participants */}

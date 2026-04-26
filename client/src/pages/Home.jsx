@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { getApiUrl } from '../utils/appConfig.js';
+import { CalendarIcon, DoorExitIcon, LinkIcon, VideoAppIcon } from '../components/common/AppIcons.jsx';
 
 const API_URL = getApiUrl();
 
@@ -118,19 +119,20 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-blue-950 to-purple-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
-          <div className="text-7xl mb-3">📹</div>
-          <h1 className="text-4xl font-bold text-white mb-1">VideoConf</h1>
-          <p className="text-gray-400 text-sm">Conférence vidéo collaborative · Step 7</p>
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-[28px] border border-blue-400/20 bg-gradient-to-br from-blue-500/20 to-emerald-400/10 shadow-[0_28px_60px_rgba(30,64,175,0.28)]">
+            <VideoAppIcon size={38} color="#bfdbfe" />
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-1 tracking-tight">Meetra</h1>
+          <p className="text-gray-400 text-sm">Réunion vidéo collaborative · Desktop et Web</p>
         </div>
 
         <div className="bg-gray-900/80 backdrop-blur border border-gray-800 rounded-2xl p-6 shadow-2xl space-y-4">
-
-          {/* Invitation notice */}
           {prefillRoomId && (
             <div className="bg-blue-900/40 border border-blue-700/50 rounded-xl px-4 py-3 flex items-center gap-3">
-              <span className="text-2xl">🔗</span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500/15 text-blue-300">
+                <LinkIcon size={19} />
+              </div>
               <div>
                 <p className="text-blue-300 text-sm font-semibold">Vous avez été invité</p>
                 <p className="text-gray-400 text-xs mt-0.5">Entrez votre nom pour rejoindre la réunion</p>
@@ -138,7 +140,6 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
             </div>
           )}
 
-          {/* Name input */}
           <div>
             <label className="block text-gray-300 text-xs font-medium mb-1.5">Votre nom</label>
             <input
@@ -154,7 +155,9 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
           {!prefillRoomId && createdMeeting && (
             <div className="bg-emerald-950/40 border border-emerald-700/50 rounded-xl px-4 py-4 space-y-3">
               <div className="flex items-start gap-3">
-                <span className="text-2xl">📅</span>
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300">
+                  <CalendarIcon size={20} />
+                </div>
                 <div>
                   <p className="text-emerald-300 text-sm font-semibold">Réunion créée à l’avance</p>
                   <p className="text-gray-400 text-xs mt-0.5">Partage ce lien, puis entre plus tard comme hôte si tu veux.</p>
@@ -171,21 +174,22 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
               <div className="flex gap-2">
                 <button
                   onClick={copyCreatedLink}
-                  className="flex-1 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors text-sm"
+                  className="flex flex-1 items-center justify-center gap-2 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors text-sm"
                 >
-                  {copied ? '✓ Lien copié' : 'Copier le lien'}
+                  <LinkIcon size={15} />
+                  {copied ? 'Lien copié' : 'Copier le lien'}
                 </button>
                 <button
                   onClick={enterCreatedRoom}
-                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors text-sm"
+                  className="flex flex-1 items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors text-sm"
                 >
+                  <VideoAppIcon size={16} />
                   Entrer comme hôte
                 </button>
               </div>
             </div>
           )}
 
-          {/* If invited via link: show room id (read-only) + join button */}
           {prefillRoomId ? (
             <>
               <div>
@@ -199,28 +203,30 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
               <button
                 onClick={joinRoom}
                 disabled={loading}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-bold rounded-xl transition-colors text-sm"
+                className="flex w-full items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-bold rounded-xl transition-colors text-sm"
               >
-                {loading ? '⏳ Connexion...' : '🚀 Rejoindre la réunion'}
+                <VideoAppIcon size={16} />
+                {loading ? 'Connexion...' : 'Rejoindre la réunion'}
               </button>
             </>
           ) : (
-            /* Normal home: create OR join */
             <>
               <button
                 onClick={createRoom}
                 disabled={loading}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors text-sm"
+                className="flex w-full items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors text-sm"
               >
-                {loading ? '⏳...' : '🚀 Créer et démarrer maintenant'}
+                <VideoAppIcon size={16} />
+                {loading ? 'Création...' : 'Créer et démarrer maintenant'}
               </button>
 
               <button
                 onClick={scheduleRoom}
                 disabled={loading}
-                className="w-full py-3 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors text-sm"
+                className="flex w-full items-center justify-center gap-2 py-3 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors text-sm"
               >
-                {loading ? '⏳...' : '🔗 Créer un lien de réunion'}
+                <LinkIcon size={16} />
+                {loading ? 'Préparation...' : 'Créer un lien de réunion'}
               </button>
 
               <div className="flex items-center gap-3">
@@ -242,9 +248,10 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3 bg-purple-700 hover:bg-purple-600 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors text-sm"
+                  className="flex w-full items-center justify-center gap-2 py-3 bg-purple-700 hover:bg-purple-600 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors text-sm"
                 >
-                  🚪 Rejoindre la salle
+                  <DoorExitIcon size={16} />
+                  Rejoindre la salle
                 </button>
               </form>
             </>
@@ -252,7 +259,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
 
           {error && (
             <div className="bg-red-900/40 border border-red-700 text-red-300 text-xs rounded-lg px-4 py-2.5">
-              ⚠️ {error}
+              {error}
             </div>
           )}
         </div>

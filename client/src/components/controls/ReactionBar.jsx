@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useSocket } from '../../context/SocketContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
 import { EVENTS } from '../../utils/events.js';
+import { HandIcon, SparkIcon } from '../common/AppIcons.jsx';
 
 // ─── Réactions "Send with effect" ───────────────────────
 const EFFECT_REACTIONS = [
@@ -126,8 +127,8 @@ export default function ReactionBar({
                     minWidth: 64,
                 }}
             >
-        <span style={{ fontSize: 20 }}>
-          {handRaised ? '✋' : '😀'}
+                <span style={{ display: 'inline-flex' }}>
+          {handRaised ? <HandIcon size={18} color="currentColor" /> : <SparkIcon size={18} color="currentColor" />}
         </span>
                 <span style={{ fontSize: 10 }}>
           {handRaised ? 'Main levée' : 'Réagir'}
@@ -153,7 +154,7 @@ export default function ReactionBar({
                 >
 
                     {/* EFFECT */}
-                    <p style={{ fontSize: 11, opacity: 0.5 }}>Send with effect</p>
+                    <p style={{ fontSize: 11, opacity: 0.5 }}>Effets</p>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 4 }}>
                         {EFFECT_REACTIONS.map(r => (
                             <button key={r.emoji} onClick={() => send(r.emoji, true)}>
@@ -165,7 +166,7 @@ export default function ReactionBar({
                     <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '10px 0' }} />
 
                     {/* QUICK */}
-                    <p style={{ fontSize: 11, opacity: 0.5 }}>Reactions</p>
+                    <p style={{ fontSize: 11, opacity: 0.5 }}>Réactions</p>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 4 }}>
                         {QUICK_REACTIONS.map(r => (
                             <button key={r.emoji} onClick={() => send(r.emoji, false)}>
