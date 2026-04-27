@@ -2,8 +2,39 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSocket } from '../context/SocketContext.jsx';
 import { EVENTS }   from '../utils/events.js';
 import { getApiUrl } from '../utils/appConfig.js';
+import { createAudioAnalyser } from '../utils/audioLevel.js';
 
 const API_URL = getApiUrl();
+const AUDIO_DEVICE_STORAGE_KEY = 'meetra-preferred-audio-input';
+const VIDEO_DEVICE_STORAGE_KEY = 'meetra-preferred-video-input';
+const AUDIO_ENABLED_STORAGE_KEY = 'meetra-preferred-audio-enabled';
+const VIDEO_ENABLED_STORAGE_KEY = 'meetra-preferred-video-enabled';
+
+function readStoredValue(key, fallback = '') {
+  if (typeof window === 'undefined') return fallback;
+  return window.localStorage.getItem(key) ?? fallback;
+}
+
+function readStoredBool(key, fallback = true) {
+  if (typeof window === 'undefined') return fallback;
+  const value = window.localStorage.getItem(key);
+  if (value === null) return fallback;
+  return value !== 'false';
+}
+
+function persistValue(key, value) {
+  if (typeof window === 'undefined') return;
+  if (value) {
+    window.localStorage.setItem(key, value);
+    return;
+  }
+  window.localStorage.removeItem(key);
+}
+
+function persistBool(key, value) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(key, String(value));
+}
 
 // ─── Icônes SVG ───────────────────────────────────────────────
 const MicOnIcon = () => (
@@ -227,9 +258,16 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
 
   // Flux média local (preview)
   const [stream,        setStream]        = useState(null);
-  const [audioEnabled,  setAudioEnabled]  = useState(true);
-  const [videoEnabled,  setVideoEnabled]  = useState(true);
+  const [audioEnabled,  setAudioEnabled]  = useState(() => readStoredBool(AUDIO_ENABLED_STORAGE_KEY, true));
+  const [videoEnabled,  setVideoEnabled]  = useState(() => readStoredBool(VIDEO_ENABLED_STORAGE_KEY, true));
   const [mediaError,    setMediaError]    = useState('');
+  const [availableDevices, setAvailableDevices] = useState({ audioInputs: [], videoInputs: [] });
+  const [selectedAudioInputId, setSelectedAudioInputId] = useState(() => readStoredValue(AUDIO_DEVICE_STORAGE_KEY, ''));
+  const [selectedVideoInputId, setSelectedVideoInputId] = useState(() => readStoredValue(VIDEO_DEVICE_STORAGE_KEY, ''));
+  const [applyingDevices, setApplyingDevices] = useState(false);
+  const [refreshingDevices, setRefreshingDevices] = useState(false);
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [deviceStatus, setDeviceStatus] = useState('');
 
   // Participants déjà dans la salle
   const [participants,  setParticipants]  = useState([]);
@@ -245,36 +283,128 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
   const videoRef  = useRef(null);
   const streamRef = useRef(null);
   const timerRef  = useRef(null);
+  const cleanupAudioRef = useRef(null);
+
+  const persistPreviewPreferences = useCallback((nextAudioEnabled, nextVideoEnabled, audioDeviceId, videoDeviceId) => {
+    persistBool(AUDIO_ENABLED_STORAGE_KEY, nextAudioEnabled);
+    persistBool(VIDEO_ENABLED_STORAGE_KEY, nextVideoEnabled);
+    persistValue(AUDIO_DEVICE_STORAGE_KEY, audioDeviceId);
+    persistValue(VIDEO_DEVICE_STORAGE_KEY, videoDeviceId);
+  }, []);
+
+  const syncDeviceInventory = useCallback(async () => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const audioInputs = devices.filter((item) => item.kind === 'audioinput');
+    const videoInputs = devices.filter((item) => item.kind === 'videoinput');
+    setAvailableDevices({ audioInputs, videoInputs });
+
+    setSelectedAudioInputId((current) => current || audioInputs[0]?.deviceId || '');
+    setSelectedVideoInputId((current) => current || videoInputs[0]?.deviceId || '');
+  }, []);
+
+  const attachPreviewStream = useCallback((nextStream, nextAudioEnabled, nextVideoEnabled) => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    cleanupAudioRef.current?.();
+
+    const audioTrack = nextStream?.getAudioTracks?.()[0];
+    const videoTrack = nextStream?.getVideoTracks?.()[0];
+
+    if (audioTrack) {
+      audioTrack.enabled = nextAudioEnabled;
+    }
+    if (videoTrack) {
+      videoTrack.enabled = nextVideoEnabled;
+    }
+
+    streamRef.current = nextStream;
+    setStream(nextStream);
+    setAudioEnabled(Boolean(audioTrack?.enabled ?? nextAudioEnabled));
+    setVideoEnabled(Boolean(videoTrack?.enabled ?? nextVideoEnabled));
+    setMediaError('');
+    setAudioLevel(0);
+
+    cleanupAudioRef.current = createAudioAnalyser(nextStream, (level) => {
+      setAudioLevel(Math.min(100, Math.round((level / 255) * 100)));
+    });
+  }, []);
+
+  const openPreviewStream = useCallback(async ({
+    audioDeviceId = selectedAudioInputId,
+    videoDeviceId = selectedVideoInputId,
+    nextAudioEnabled = audioEnabled,
+    nextVideoEnabled = videoEnabled,
+  } = {}) => {
+    const wantsAudio = Boolean(audioDeviceId) || nextAudioEnabled;
+    const wantsVideo = Boolean(videoDeviceId) || nextVideoEnabled;
+
+    try {
+      const nextStream = await navigator.mediaDevices.getUserMedia({
+        video: wantsVideo ? {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'user',
+          ...(videoDeviceId ? { deviceId: { exact: videoDeviceId } } : {}),
+        } : false,
+        audio: wantsAudio ? {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          ...(audioDeviceId ? { deviceId: { exact: audioDeviceId } } : {}),
+        } : false,
+      });
+
+      attachPreviewStream(nextStream, nextAudioEnabled, nextVideoEnabled);
+      await syncDeviceInventory();
+      persistPreviewPreferences(nextAudioEnabled, nextVideoEnabled, audioDeviceId, videoDeviceId);
+      return true;
+    } catch {
+      streamRef.current = null;
+      cleanupAudioRef.current?.();
+      cleanupAudioRef.current = null;
+      setStream(null);
+      setAudioLevel(0);
+      setAudioEnabled(false);
+      setVideoEnabled(false);
+      setMediaError("Impossible d'accéder à la caméra ou au micro.\nVous pouvez continuer et rejoindre la salle sans vidéo.");
+      persistPreviewPreferences(false, false, audioDeviceId, videoDeviceId);
+      return false;
+    }
+  }, [attachPreviewStream, audioEnabled, persistPreviewPreferences, selectedAudioInputId, selectedVideoInputId, syncDeviceInventory, videoEnabled]);
 
   // ── 1. Ouvrir la caméra ───────────────────────────────────
   useEffect(() => {
     let alive = true;
     (async () => {
-      try {
-        const s = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        });
-        if (!alive) { s.getTracks().forEach(t => t.stop()); return; }
-        streamRef.current = s;
-        setStream(s);
-      } catch {
-        setAudioEnabled(false);
-        setVideoEnabled(false);
-        setMediaError("Impossible d'accéder à la caméra ou au micro.\nVous pouvez continuer et rejoindre la salle sans vidéo.");
+      const ok = await openPreviewStream({
+        audioDeviceId: selectedAudioInputId,
+        videoDeviceId: selectedVideoInputId,
+        nextAudioEnabled: readStoredBool(AUDIO_ENABLED_STORAGE_KEY, true),
+        nextVideoEnabled: readStoredBool(VIDEO_ENABLED_STORAGE_KEY, true),
+      });
+      if (!alive && ok) {
+        streamRef.current?.getTracks().forEach((track) => track.stop());
       }
     })();
     return () => {
       alive = false;
+      cleanupAudioRef.current?.();
       streamRef.current?.getTracks().forEach(t => t.stop());
     };
-  }, []);
+  }, [openPreviewStream, selectedAudioInputId, selectedVideoInputId]);
 
   // ── 2. Attacher le stream à la balise <video> ─────────────
   useEffect(() => {
     const el = videoRef.current;
     if (el && stream) { el.srcObject = stream; el.play().catch(() => {}); }
   }, [stream]);
+
+  useEffect(() => {
+    if (!navigator.mediaDevices?.addEventListener) return undefined;
+    navigator.mediaDevices.addEventListener('devicechange', syncDeviceInventory);
+    return () => navigator.mediaDevices.removeEventListener('devicechange', syncDeviceInventory);
+  }, [syncDeviceInventory]);
 
   // ── 3. Charger les participants via REST ──────────────────
   useEffect(() => {
@@ -372,23 +502,55 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
 
   const cleanup = useCallback(() => {
     clearInterval(timerRef.current);
+    cleanupAudioRef.current?.();
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
   }, []);
 
   const toggleAudio = useCallback(() => {
     const track = streamRef.current?.getAudioTracks()[0];
-    if (!track) return;
-    track.enabled = !track.enabled;
-    setAudioEnabled(track.enabled);
-  }, []);
+    const nextEnabled = track ? !track.enabled : !audioEnabled;
+    if (track) {
+      track.enabled = nextEnabled;
+    }
+    setAudioEnabled(nextEnabled);
+    persistBool(AUDIO_ENABLED_STORAGE_KEY, nextEnabled);
+  }, [audioEnabled]);
 
   const toggleVideo = useCallback(() => {
     const track = streamRef.current?.getVideoTracks()[0];
-    if (!track) return;
-    track.enabled = !track.enabled;
-    setVideoEnabled(track.enabled);
-  }, []);
+    const nextEnabled = track ? !track.enabled : !videoEnabled;
+    if (track) {
+      track.enabled = nextEnabled;
+    }
+    setVideoEnabled(nextEnabled);
+    persistBool(VIDEO_ENABLED_STORAGE_KEY, nextEnabled);
+  }, [videoEnabled]);
+
+  const handleRefreshDevices = useCallback(async () => {
+    setRefreshingDevices(true);
+    try {
+      await syncDeviceInventory();
+      setDeviceStatus('Périphériques actualisés.');
+    } catch {
+      setDeviceStatus("Impossible d'actualiser la liste pour le moment.");
+    } finally {
+      setRefreshingDevices(false);
+    }
+  }, [syncDeviceInventory]);
+
+  const handleApplyDevices = useCallback(async () => {
+    setApplyingDevices(true);
+    setDeviceStatus('');
+    const ok = await openPreviewStream({
+      audioDeviceId: selectedAudioInputId,
+      videoDeviceId: selectedVideoInputId,
+      nextAudioEnabled: audioEnabled,
+      nextVideoEnabled: videoEnabled,
+    });
+    setApplyingDevices(false);
+    setDeviceStatus(ok ? 'Pré-test mis à jour avec ces périphériques.' : "Impossible d'utiliser cette combinaison.");
+  }, [audioEnabled, openPreviewStream, selectedAudioInputId, selectedVideoInputId, videoEnabled]);
 
   // ── Entrer dans la salle ──────────────────────────────────
   const handleEnterRoom = useCallback(() => {
@@ -625,6 +787,210 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
                   IconOff={CamOffIcon}
                   label="Caméra"
               />
+            </div>
+
+            {/* Pré-test audio / vidéo */}
+            <div style={{
+              margin: '0 14px 14px',
+              padding: '14px',
+              borderRadius: 16,
+              border: '1px solid rgba(255,255,255,0.07)',
+              background: 'rgba(255,255,255,0.03)',
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 10,
+                marginBottom: 12,
+                flexWrap: 'wrap',
+              }}>
+                <div>
+                  <div style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    color: 'rgba(255,255,255,0.3)',
+                    marginBottom: 4,
+                  }}>
+                    Pré-test avant entrée
+                  </div>
+                  <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600 }}>
+                    Vérifiez vos périphériques avant de rejoindre la réunion
+                  </div>
+                </div>
+                <div style={{
+                  padding: '6px 10px',
+                  borderRadius: 999,
+                  background: 'rgba(59,130,246,0.12)',
+                  border: '1px solid rgba(96,165,250,0.2)',
+                  fontSize: 11,
+                  color: '#93c5fd',
+                  fontWeight: 700,
+                }}>
+                  Niveau micro {audioLevel}%
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    color: 'rgba(255,255,255,0.32)',
+                    marginBottom: 6,
+                  }}>
+                    Microphone
+                  </label>
+                  <select
+                    value={selectedAudioInputId}
+                    onChange={(event) => setSelectedAudioInputId(event.target.value)}
+                    style={{
+                      width: '100%',
+                      borderRadius: 12,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      background: 'rgba(8,12,20,0.88)',
+                      color: '#e2e8f0',
+                      padding: '11px 12px',
+                      fontSize: 13,
+                      outline: 'none',
+                    }}
+                  >
+                    {availableDevices.audioInputs.length === 0 && <option value="">Aucun microphone détecté</option>}
+                    {availableDevices.audioInputs.map((device, index) => (
+                      <option key={device.deviceId || index} value={device.deviceId}>
+                        {device.label || `Microphone ${index + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    color: 'rgba(255,255,255,0.32)',
+                    marginBottom: 6,
+                  }}>
+                    Caméra
+                  </label>
+                  <select
+                    value={selectedVideoInputId}
+                    onChange={(event) => setSelectedVideoInputId(event.target.value)}
+                    style={{
+                      width: '100%',
+                      borderRadius: 12,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      background: 'rgba(8,12,20,0.88)',
+                      color: '#e2e8f0',
+                      padding: '11px 12px',
+                      fontSize: 13,
+                      outline: 'none',
+                    }}
+                  >
+                    {availableDevices.videoInputs.length === 0 && <option value="">Aucune caméra détectée</option>}
+                    {availableDevices.videoInputs.map((device, index) => (
+                      <option key={device.deviceId || index} value={device.deviceId}>
+                        {device.label || `Caméra ${index + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  marginBottom: 6,
+                }}>
+                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', fontWeight: 600 }}>
+                    Test de niveau micro
+                  </span>
+                  <span style={{ fontSize: 11, color: audioEnabled ? '#4ade80' : 'rgba(255,255,255,0.28)', fontWeight: 700 }}>
+                    {audioEnabled ? 'Entrée détectée' : 'Micro coupé'}
+                  </span>
+                </div>
+                <div style={{
+                  height: 10,
+                  borderRadius: 999,
+                  overflow: 'hidden',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                }}>
+                  <div style={{
+                    width: `${audioEnabled ? audioLevel : 0}%`,
+                    height: '100%',
+                    borderRadius: 999,
+                    background: audioLevel > 72
+                      ? 'linear-gradient(90deg, #22c55e 0%, #f59e0b 70%, #ef4444 100%)'
+                      : 'linear-gradient(90deg, #22c55e 0%, #60a5fa 100%)',
+                    transition: 'width 0.08s linear',
+                  }} />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 14 }}>
+                <button
+                  onClick={handleApplyDevices}
+                  disabled={applyingDevices}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: 12,
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                    color: '#fff',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: applyingDevices ? 'wait' : 'pointer',
+                    opacity: applyingDevices ? 0.75 : 1,
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {applyingDevices ? 'Application...' : 'Appliquer et retester'}
+                </button>
+                <button
+                  onClick={handleRefreshDevices}
+                  disabled={refreshingDevices}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: 12,
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    background: 'rgba(255,255,255,0.05)',
+                    color: '#e2e8f0',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: refreshingDevices ? 'wait' : 'pointer',
+                    opacity: refreshingDevices ? 0.75 : 1,
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {refreshingDevices ? 'Actualisation...' : 'Actualiser la liste'}
+                </button>
+              </div>
+
+              {deviceStatus && (
+                <div style={{
+                  marginTop: 12,
+                  borderRadius: 12,
+                  border: '1px solid rgba(96,165,250,0.18)',
+                  background: 'rgba(37,99,235,0.1)',
+                  color: '#dbeafe',
+                  padding: '9px 12px',
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                }}>
+                  {deviceStatus}
+                </div>
+              )}
             </div>
 
             {/* Indication qualité */}

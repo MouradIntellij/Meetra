@@ -236,13 +236,13 @@ export default function SettingsPanel() {
 
             <SettingBlock
               icon={<CameraOffIcon size={18} />}
-              title="À venir"
-              description="Fondations déjà prêtes pour une version plus Teams/Zoom."
+              title="Expérience de réunion"
+              description="Les derniers raffinements produits déjà présents dans Meetra."
             >
               <ul className="space-y-2 text-sm text-slate-300">
+                <li>Pré-test audio et vidéo disponible avant l’entrée en salle.</li>
                 <li>Changement de haut-parleur de sortie quand le runtime le permet.</li>
                 <li>Présets personnels de réunion et qualité vidéo préférée.</li>
-                <li>Tests micro/caméra avant entrée dans la salle.</li>
               </ul>
             </SettingBlock>
           </div>

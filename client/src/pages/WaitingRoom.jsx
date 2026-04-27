@@ -14,6 +14,28 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSocket } from '../context/SocketContext.jsx';
 import { EVENTS }   from '../utils/events.js';
 
+const AUDIO_DEVICE_STORAGE_KEY = 'meetra-preferred-audio-input';
+const VIDEO_DEVICE_STORAGE_KEY = 'meetra-preferred-video-input';
+const AUDIO_ENABLED_STORAGE_KEY = 'meetra-preferred-audio-enabled';
+const VIDEO_ENABLED_STORAGE_KEY = 'meetra-preferred-video-enabled';
+
+function readStoredValue(key, fallback = '') {
+  if (typeof window === 'undefined') return fallback;
+  return window.localStorage.getItem(key) ?? fallback;
+}
+
+function readStoredBool(key, fallback = true) {
+  if (typeof window === 'undefined') return fallback;
+  const value = window.localStorage.getItem(key);
+  if (value === null) return fallback;
+  return value !== 'false';
+}
+
+function persistBool(key, value) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(key, String(value));
+}
+
 // ─── Icônes ───────────────────────────────────────────────────
 const Mic = ({ on, size = 18 }) => on
   ? <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
@@ -212,8 +234,8 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
 
   // Caméra locale
   const [stream,       setStream]       = useState(null);
-  const [audioOn,      setAudioOn]      = useState(true);
-  const [videoOn,      setVideoOn]      = useState(true);
+  const [audioOn,      setAudioOn]      = useState(() => readStoredBool(AUDIO_ENABLED_STORAGE_KEY, true));
+  const [videoOn,      setVideoOn]      = useState(() => readStoredBool(VIDEO_ENABLED_STORAGE_KEY, true));
   const [mediaError,   setMediaError]   = useState('');
 
   // Données salle
@@ -238,12 +260,28 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
     (async () => {
       try {
         const s = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          video: {
+            width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user',
+            ...(readStoredValue(VIDEO_DEVICE_STORAGE_KEY) ? { deviceId: { exact: readStoredValue(VIDEO_DEVICE_STORAGE_KEY) } } : {}),
+          },
+          audio: {
+            echoCancellation: true, noiseSuppression: true, autoGainControl: true,
+            ...(readStoredValue(AUDIO_DEVICE_STORAGE_KEY) ? { deviceId: { exact: readStoredValue(AUDIO_DEVICE_STORAGE_KEY) } } : {}),
+          },
         });
         if (!alive) { s.getTracks().forEach(t => t.stop()); return; }
+        const audioTrack = s.getAudioTracks()[0];
+        const videoTrack = s.getVideoTracks()[0];
+        if (audioTrack) {
+          audioTrack.enabled = readStoredBool(AUDIO_ENABLED_STORAGE_KEY, true);
+        }
+        if (videoTrack) {
+          videoTrack.enabled = readStoredBool(VIDEO_ENABLED_STORAGE_KEY, true);
+        }
         streamRef.current = s;
         setStream(s);
+        setAudioOn(Boolean(audioTrack?.enabled ?? true));
+        setVideoOn(Boolean(videoTrack?.enabled ?? true));
       } catch {
         setAudioOn(false);
         setVideoOn(false);
@@ -339,17 +377,19 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
   // ── Toggles micro / cam ───────────────────────────────────
   const toggleAudio = useCallback(() => {
     const t = streamRef.current?.getAudioTracks()[0];
-    if (!t) return;
-    t.enabled = !t.enabled;
-    setAudioOn(t.enabled);
-  }, []);
+    const nextEnabled = t ? !t.enabled : !audioOn;
+    if (t) t.enabled = nextEnabled;
+    setAudioOn(nextEnabled);
+    persistBool(AUDIO_ENABLED_STORAGE_KEY, nextEnabled);
+  }, [audioOn]);
 
   const toggleVideo = useCallback(() => {
     const t = streamRef.current?.getVideoTracks()[0];
-    if (!t) return;
-    t.enabled = !t.enabled;
-    setVideoOn(t.enabled);
-  }, []);
+    const nextEnabled = t ? !t.enabled : !videoOn;
+    if (t) t.enabled = nextEnabled;
+    setVideoOn(nextEnabled);
+    persistBool(VIDEO_ENABLED_STORAGE_KEY, nextEnabled);
+  }, [videoOn]);
 
   // ── Hôte : admettre / refuser ─────────────────────────────
   const admit = useCallback((targetSocketId) => {

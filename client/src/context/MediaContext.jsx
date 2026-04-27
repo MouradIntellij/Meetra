@@ -7,6 +7,22 @@ import { createAudioAnalyser }  from '../utils/audioLevel.js';
 import { platform } from '../services/platform/index.js';
 
 const MediaContext = createContext(null);
+const AUDIO_DEVICE_STORAGE_KEY = 'meetra-preferred-audio-input';
+const VIDEO_DEVICE_STORAGE_KEY = 'meetra-preferred-video-input';
+const AUDIO_ENABLED_STORAGE_KEY = 'meetra-preferred-audio-enabled';
+const VIDEO_ENABLED_STORAGE_KEY = 'meetra-preferred-video-enabled';
+
+function readStorageValue(key, fallback = '') {
+  if (typeof window === 'undefined') return fallback;
+  return window.localStorage.getItem(key) ?? fallback;
+}
+
+function readStorageBool(key, fallback = true) {
+  if (typeof window === 'undefined') return fallback;
+  const value = window.localStorage.getItem(key);
+  if (value === null) return fallback;
+  return value !== 'false';
+}
 
 export const useMedia = () => {
   const ctx = useContext(MediaContext);
@@ -20,8 +36,8 @@ export function MediaProvider({ children, initialStream = null }) {
 
   const [localStream, setLocalStream] = useState(initialStream);
   const [remoteStreams, setRemoteStreams] = useState(new Map());
-  const [audioEnabled, setAudioEnabled] = useState(true);
-  const [videoEnabled, setVideoEnabled] = useState(true);
+  const [audioEnabled, setAudioEnabled] = useState(() => readStorageBool(AUDIO_ENABLED_STORAGE_KEY, true));
+  const [videoEnabled, setVideoEnabled] = useState(() => readStorageBool(VIDEO_ENABLED_STORAGE_KEY, true));
   const [screenStream, setScreenStream] = useState(null);
   const [screenShareMeta, setScreenShareMeta] = useState(null);
   const [screenShareError, setScreenShareError] = useState('');
@@ -33,8 +49,8 @@ export function MediaProvider({ children, initialStream = null }) {
     videoInputs: [],
     audioOutputs: [],
   });
-  const [selectedAudioInputId, setSelectedAudioInputId] = useState('');
-  const [selectedVideoInputId, setSelectedVideoInputId] = useState('');
+  const [selectedAudioInputId, setSelectedAudioInputId] = useState(() => readStorageValue(AUDIO_DEVICE_STORAGE_KEY, ''));
+  const [selectedVideoInputId, setSelectedVideoInputId] = useState(() => readStorageValue(VIDEO_DEVICE_STORAGE_KEY, ''));
 
   const peerConnections = useRef(new Map());
   const pendingIceCandidates = useRef(new Map());
@@ -47,6 +63,34 @@ export function MediaProvider({ children, initialStream = null }) {
   useEffect(() => {
     localStreamRef.current = localStream;
   }, [localStream]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(AUDIO_ENABLED_STORAGE_KEY, String(audioEnabled));
+  }, [audioEnabled]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(VIDEO_ENABLED_STORAGE_KEY, String(videoEnabled));
+  }, [videoEnabled]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (selectedAudioInputId) {
+      window.localStorage.setItem(AUDIO_DEVICE_STORAGE_KEY, selectedAudioInputId);
+      return;
+    }
+    window.localStorage.removeItem(AUDIO_DEVICE_STORAGE_KEY);
+  }, [selectedAudioInputId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (selectedVideoInputId) {
+      window.localStorage.setItem(VIDEO_DEVICE_STORAGE_KEY, selectedVideoInputId);
+      return;
+    }
+    window.localStorage.removeItem(VIDEO_DEVICE_STORAGE_KEY);
+  }, [selectedVideoInputId]);
 
   // ─────────────────────────────────────────────
   // HELPERS
@@ -219,9 +263,17 @@ export function MediaProvider({ children, initialStream = null }) {
       });
 
       localStreamRef.current = stream;
+      const audioTrack = stream.getAudioTracks()[0];
+      const videoTrack = stream.getVideoTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = audioEnabled;
+      }
+      if (videoTrack) {
+        videoTrack.enabled = videoEnabled;
+      }
       setLocalStream(stream);
-      setAudioEnabled(Boolean(stream.getAudioTracks()[0]?.enabled ?? true));
-      setVideoEnabled(Boolean(stream.getVideoTracks()[0]?.enabled ?? true));
+      setAudioEnabled(Boolean(audioTrack?.enabled ?? audioEnabled));
+      setVideoEnabled(Boolean(videoTrack?.enabled ?? videoEnabled));
       setMediaAccessError('');
 
       cleanupAudio.current?.();
@@ -241,7 +293,7 @@ export function MediaProvider({ children, initialStream = null }) {
       setVideoEnabled(false);
       return null;
     }
-  }, [socket, roomId, selectedAudioInputId, selectedVideoInputId, refreshAvailableDevices]);
+  }, [audioEnabled, videoEnabled, socket, roomId, selectedAudioInputId, selectedVideoInputId, refreshAvailableDevices]);
 
   const replaceMediaDevices = useCallback(async ({ audioDeviceId, videoDeviceId }) => {
     const wantsAudio = audioDeviceId !== undefined ? Boolean(audioDeviceId) : true;
@@ -264,10 +316,20 @@ export function MediaProvider({ children, initialStream = null }) {
       });
 
       const previousStream = localStreamRef.current;
+      const nextAudioTrack = nextStream.getAudioTracks()[0] || null;
+      const nextVideoTrack = nextStream.getVideoTracks()[0] || null;
+
+      if (nextAudioTrack) {
+        nextAudioTrack.enabled = audioEnabled;
+      }
+      if (nextVideoTrack) {
+        nextVideoTrack.enabled = videoEnabled;
+      }
+
       localStreamRef.current = nextStream;
       setLocalStream(nextStream);
-      setAudioEnabled(Boolean(nextStream.getAudioTracks()[0]?.enabled ?? false));
-      setVideoEnabled(Boolean(nextStream.getVideoTracks()[0]?.enabled ?? false));
+      setAudioEnabled(Boolean(nextAudioTrack?.enabled ?? false));
+      setVideoEnabled(Boolean(nextVideoTrack?.enabled ?? false));
       setMediaAccessError('');
 
       if (audioDeviceId !== undefined) {
@@ -278,9 +340,6 @@ export function MediaProvider({ children, initialStream = null }) {
       }
 
       peerConnections.current.forEach((pc) => {
-        const nextAudioTrack = nextStream.getAudioTracks()[0] || null;
-        const nextVideoTrack = nextStream.getVideoTracks()[0] || null;
-
         const audioSender = pc.getSenders().find((sender) => sender.track?.kind === 'audio');
         if (audioSender) {
           audioSender.replaceTrack(nextAudioTrack);
@@ -308,7 +367,7 @@ export function MediaProvider({ children, initialStream = null }) {
       setMediaAccessError("Impossible de basculer vers les périphériques sélectionnés.");
       return false;
     }
-  }, [refreshAvailableDevices, roomId, screenStream, socket]);
+  }, [audioEnabled, videoEnabled, refreshAvailableDevices, roomId, screenStream, socket]);
 
   // ─────────────────────────────────────────────
   // AUDIO / VIDEO TOGGLES
