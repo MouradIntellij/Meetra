@@ -14,6 +14,8 @@ export async function createScheduledRoom(options = {}) {
     timezone: options.timezone || null,
     durationMinutes: options.durationMinutes || 60,
     hostName: options.hostName || null,
+    hostEmail: options.hostEmail || null,
+    hostPhone: options.hostPhone || null,
   };
 
   return meetingService.createMeeting({
@@ -35,6 +37,8 @@ export async function updateMeetingSchedule(roomId, updates = {}) {
       ...(updates.timezone !== undefined ? { timezone: updates.timezone || null } : {}),
       ...(updates.durationMinutes !== undefined ? { durationMinutes: updates.durationMinutes || 60 } : {}),
       ...(updates.hostName !== undefined ? { hostName: updates.hostName || null } : {}),
+      ...(updates.hostEmail !== undefined ? { hostEmail: updates.hostEmail || null } : {}),
+      ...(updates.hostPhone !== undefined ? { hostPhone: updates.hostPhone || null } : {}),
     },
   });
 }
@@ -76,6 +80,8 @@ export async function getMeetingRoomInfo(roomId) {
     timezone: meeting?.metadata?.timezone || null,
     durationMinutes: meeting?.metadata?.durationMinutes || 60,
     hostName: meeting?.metadata?.hostName || null,
+    hostEmail: meeting?.metadata?.hostEmail || null,
+    hostPhone: meeting?.metadata?.hostPhone || null,
   };
 }
 
@@ -204,5 +210,7 @@ export async function getRecentMeetings(limit = 8) {
     timezone: meeting.metadata?.timezone || null,
     durationMinutes: meeting.metadata?.durationMinutes || 60,
     hostName: meeting.metadata?.hostName || null,
+    hostEmail: meeting.metadata?.hostEmail || null,
+    hostPhone: meeting.metadata?.hostPhone || null,
   }));
 }

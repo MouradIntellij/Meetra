@@ -17,4 +17,6 @@ export const ENV = {
   TRANSCRIPTION_PROVIDER: process.env.TRANSCRIPTION_PROVIDER || 'browser',
   OPENAI_TRANSCRIPTION_MODEL: process.env.OPENAI_TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe',
   OPENAI_TRANSCRIPTION_URL: process.env.OPENAI_TRANSCRIPTION_URL || 'https://api.openai.com/v1/audio/transcriptions',
+  HOST_ALERT_EMAIL_WEBHOOK_URL: process.env.HOST_ALERT_EMAIL_WEBHOOK_URL || '',
+  HOST_ALERT_SMS_WEBHOOK_URL: process.env.HOST_ALERT_SMS_WEBHOOK_URL || '',
 };

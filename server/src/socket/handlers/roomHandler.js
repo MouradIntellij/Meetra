@@ -1,6 +1,7 @@
 import { EVENTS } from '../../constants/events.js';
 import * as roomService from '../../rooms/roomService.js';
 import { logger } from '../../utils/logger.js';
+import { notifyHostWaitingGuest } from '../../services/notifications/hostAlertService.js';
 
 // ─── Waiting room store (in-memory, par roomId) ───────────────
 // Structure : Map<roomId, Map<socketId, { socketId, userName, joinedAt }>>
@@ -83,7 +84,7 @@ export function registerRoomHandlers(io, socket) {
 
   // ── Entrer en salle d'attente ──────────────────────────────
   // Émis par WaitingRoom.jsx au montage, AVANT de rejoindre la salle principale.
-  socket.on(EVENTS.WAITING_JOIN, ({ roomId, userName }) => {
+  socket.on(EVENTS.WAITING_JOIN, async ({ roomId, userName }) => {
     logger.socket(EVENTS.WAITING_JOIN, { roomId, userName });
 
     socket.data.roomId   = roomId;
@@ -108,6 +109,17 @@ export function registerRoomHandlers(io, socket) {
 
     // Prévenir tout le monde (en attente + hôte) de la nouvelle liste
     broadcastWaitingUpdate(io, roomId);
+
+    const meeting = await roomService.getMeetingRoomInfo(roomId);
+    const joinUrl = process.env.CLIENT_URL
+      ? `${String(process.env.CLIENT_URL).replace(/\/+$/, '')}/room/${roomId}`
+      : null;
+    notifyHostWaitingGuest({
+      meeting,
+      roomId,
+      guestName: userName,
+      joinUrl,
+    }).catch(() => {});
 
     logger.info(`${userName} entered waiting room for ${roomId} (${getWaiting(roomId).size} waiting)`);
   });

@@ -75,10 +75,13 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
   const [error, setError] = useState('');
   const [createdMeeting, setCreatedMeeting] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [copiedMeetingId, setCopiedMeetingId] = useState('');
   const [meetingTitle, setMeetingTitle] = useState('Réunion Meetra');
   const [scheduledDate, setScheduledDate] = useState(getDefaultScheduleDate);
   const [scheduledTime, setScheduledTime] = useState(getDefaultScheduleTime);
   const [timezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Toronto');
+  const [hostEmail, setHostEmail] = useState('');
+  const [hostPhone, setHostPhone] = useState('');
   const [recentMeetings, setRecentMeetings] = useState([]);
   const [loadingRecent, setLoadingRecent] = useState(false);
   const [editingRoomId, setEditingRoomId] = useState('');
@@ -111,6 +114,8 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
           timezone,
           durationMinutes: DEFAULT_DURATION_MINUTES,
           hostName: userName.trim() || null,
+          hostEmail: hostEmail.trim() || null,
+          hostPhone: hostPhone.trim() || null,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -127,6 +132,8 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
         timezone: data.timezone || timezone,
         durationMinutes: data.durationMinutes || DEFAULT_DURATION_MINUTES,
         hostName: data.hostName || userName.trim() || null,
+        hostEmail: data.hostEmail || hostEmail.trim() || null,
+        hostPhone: data.hostPhone || hostPhone.trim() || null,
       };
     } catch {
       const fallbackRoomId = generateFallbackRoomId();
@@ -138,6 +145,8 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
         timezone,
         durationMinutes: DEFAULT_DURATION_MINUTES,
         hostName: userName.trim() || null,
+        hostEmail: hostEmail.trim() || null,
+        hostPhone: hostPhone.trim() || null,
       };
     }
   };
@@ -149,6 +158,8 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       title: meeting.title || 'Réunion Meetra',
       date: nextDate ? nextDate.toISOString().slice(0, 10) : getDefaultScheduleDate(),
       time: nextDate ? nextDate.toISOString().slice(11, 16) : getDefaultScheduleTime(),
+      hostEmail: meeting.hostEmail || '',
+      hostPhone: meeting.hostPhone || '',
     });
   };
 
@@ -170,6 +181,8 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
           scheduledFor,
           timezone,
           durationMinutes: DEFAULT_DURATION_MINUTES,
+          hostEmail: editForm.hostEmail?.trim() || null,
+          hostPhone: editForm.hostPhone?.trim() || null,
         }),
       });
       const updated = await res.json().catch(() => ({}));
@@ -274,6 +287,13 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
     await navigator.clipboard.writeText(createdMeeting.joinUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const copyRecentMeetingLink = async (meeting) => {
+    if (!meeting?.joinUrl) return;
+    await navigator.clipboard.writeText(meeting.joinUrl);
+    setCopiedMeetingId(meeting.roomId);
+    setTimeout(() => setCopiedMeetingId(''), 2000);
   };
 
   const enterCreatedRoom = () => {
@@ -485,6 +505,28 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                       />
                     </div>
                   </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="meetra-section-label">Email de notification hôte</label>
+                      <input
+                        type="email"
+                        value={hostEmail}
+                        onChange={(e) => setHostEmail(e.target.value)}
+                        placeholder="alice@entreprise.com"
+                        className="meetra-focus-ring mt-2 w-full rounded-[18px] border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-blue-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="meetra-section-label">Téléphone de notification</label>
+                      <input
+                        type="tel"
+                        value={hostPhone}
+                        onChange={(e) => setHostPhone(e.target.value)}
+                        placeholder="+1 514 555 1234"
+                        className="meetra-focus-ring mt-2 w-full rounded-[18px] border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-blue-400"
+                      />
+                    </div>
+                  </div>
                   <div className="rounded-[18px] border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
                     <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Prévisualisation</div>
                     <div className="mt-2 font-semibold text-slate-100">
@@ -495,6 +537,9 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                     </div>
                     <div className="mt-1 text-xs text-slate-500">
                       Fuseau: {timezone} · Durée par défaut: {DEFAULT_DURATION_MINUTES} minutes
+                    </div>
+                    <div className="mt-2 text-xs text-slate-500">
+                      Alertes hôte: {hostEmail.trim() || hostPhone.trim() ? [hostEmail.trim(), hostPhone.trim()].filter(Boolean).join(' · ') : 'aucune'}
                     </div>
                   </div>
                 </div>
@@ -617,6 +662,26 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                                 />
                               </div>
                             </div>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div>
+                                <label className="meetra-section-label">Email hôte</label>
+                                <input
+                                  type="email"
+                                  value={editForm.hostEmail || ''}
+                                  onChange={(e) => setEditForm((current) => ({ ...current, hostEmail: e.target.value }))}
+                                  className="meetra-focus-ring mt-2 w-full rounded-[16px] border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
+                                />
+                              </div>
+                              <div>
+                                <label className="meetra-section-label">Téléphone hôte</label>
+                                <input
+                                  type="tel"
+                                  value={editForm.hostPhone || ''}
+                                  onChange={(e) => setEditForm((current) => ({ ...current, hostPhone: e.target.value }))}
+                                  className="meetra-focus-ring mt-2 w-full rounded-[16px] border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
+                                />
+                              </div>
+                            </div>
                             <div className="flex flex-wrap gap-2">
                               <button
                                 type="button"
@@ -639,14 +704,10 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                         <div className="mt-3 flex flex-wrap gap-2">
                           <button
                             type="button"
-                            onClick={async () => {
-                              await navigator.clipboard.writeText(meeting.joinUrl);
-                              setCopied(true);
-                              setTimeout(() => setCopied(false), 2000);
-                            }}
+                            onClick={() => copyRecentMeetingLink(meeting)}
                             className="meetra-button meetra-focus-ring px-3 py-2 text-xs font-semibold text-slate-200"
                           >
-                            {copied ? 'Lien copié' : 'Copier le lien'}
+                            {copiedMeetingId === meeting.roomId ? 'Lien copié' : 'Copier le lien'}
                           </button>
                           <button
                             type="button"

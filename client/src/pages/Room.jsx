@@ -62,12 +62,16 @@ function formatIcsDate(date) {
   return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 }
 
-function downloadInviteIcs({ roomId, link }) {
-  const now = new Date();
-  const end = new Date(now.getTime() + (60 * 60 * 1000));
+function downloadInviteIcs({ roomId, link, title = 'Réunion Meetra', scheduledFor = null, durationMinutes = 60, hostName = '' }) {
+  const startDate = scheduledFor ? new Date(scheduledFor) : new Date();
+  const end = new Date(startDate.getTime() + (durationMinutes * 60 * 1000));
   const stamp = formatIcsDate(new Date());
-  const start = formatIcsDate(now);
+  const start = formatIcsDate(startDate);
   const finish = formatIcsDate(end);
+  const descriptionLines = [
+    `Rejoignez la reunion Meetra via ce lien: ${link}`,
+    hostName ? `Hote: ${hostName}` : '',
+  ].filter(Boolean);
 
   const ics = [
     'BEGIN:VCALENDAR',
@@ -79,8 +83,8 @@ function downloadInviteIcs({ roomId, link }) {
     `DTSTAMP:${stamp}`,
     `DTSTART:${start}`,
     `DTEND:${finish}`,
-    `SUMMARY:Reunion Meetra`,
-    `DESCRIPTION:Rejoignez la reunion Meetra via ce lien: ${link}`,
+    `SUMMARY:${title}`,
+    `DESCRIPTION:${descriptionLines.join('\\n')}`,
     `LOCATION:${link}`,
     'END:VEVENT',
     'END:VCALENDAR',
@@ -231,6 +235,7 @@ function InviteDialog({ roomId, onDismiss }) {
   const [emailed, setEmailed] = useState(false);
   const [calendarSaved, setCalendarSaved] = useState(false);
   const [emailInput, setEmailInput] = useState('');
+  const [meetingInfo, setMeetingInfo] = useState(null);
   const link = buildInviteLink(roomId);
   const hasPublicLink = /^https?:\/\//i.test(link);
 
@@ -239,8 +244,32 @@ function InviteDialog({ roomId, onDismiss }) {
     .map((value) => value.trim())
     .filter(Boolean);
 
-  const inviteSubject = encodeURIComponent('Invitation a rejoindre la reunion');
-  const inviteBody = encodeURIComponent(`Bonjour,\n\nRejoignez ma reunion avec ce lien :\n${link}\n\nA bientot.`);
+  useEffect(() => {
+    let alive = true;
+    fetch(`${API_URL}/api/rooms/${roomId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!alive || !data?.exists) return;
+        setMeetingInfo(data);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [roomId]);
+
+  const meetingTitle = meetingInfo?.title || 'Réunion Meetra';
+  const meetingWhen = meetingInfo?.scheduledFor
+    ? new Intl.DateTimeFormat('fr-CA', {
+      dateStyle: 'full',
+      timeStyle: 'short',
+      timeZone: meetingInfo?.timezone || undefined,
+    }).format(new Date(meetingInfo.scheduledFor))
+    : 'Dès que vous êtes prêt';
+  const inviteSubject = encodeURIComponent(`Invitation Meetra · ${meetingTitle}`);
+  const inviteBody = encodeURIComponent(
+    `Bonjour,\n\nVous etes invite a rejoindre "${meetingTitle}".\nHoraire: ${meetingWhen}\n${meetingInfo?.hostName ? `Hote: ${meetingInfo.hostName}\n` : ''}\nLien de reunion:\n${link}\n\nA bientot.`
+  );
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(link);
@@ -272,7 +301,14 @@ function InviteDialog({ roomId, onDismiss }) {
 
   const handleCalendar = () => {
     if (!hasPublicLink) return;
-    downloadInviteIcs({ roomId, link });
+    downloadInviteIcs({
+      roomId,
+      link,
+      title: meetingTitle,
+      scheduledFor: meetingInfo?.scheduledFor || null,
+      durationMinutes: meetingInfo?.durationMinutes || 60,
+      hostName: meetingInfo?.hostName || '',
+    });
     setCalendarSaved(true);
     setTimeout(() => setCalendarSaved(false), 2500);
   };
@@ -314,6 +350,31 @@ function InviteDialog({ roomId, onDismiss }) {
                     Configurez `VITE_PUBLIC_JOIN_BASE_URL` pour partager un vrai lien web public depuis Electron.
                   </div>
               )}
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gap: 10,
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            }}>
+              <div style={{ borderRadius: 14, border: '1px solid rgba(148,163,184,0.14)', background: 'rgba(15,23,42,0.4)', padding: 12 }}>
+                <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(148,163,184,0.82)', fontWeight: 700, marginBottom: 6 }}>
+                  Réunion
+                </div>
+                <div style={{ fontSize: 13, color: '#f8fafc', fontWeight: 700 }}>{meetingTitle}</div>
+              </div>
+              <div style={{ borderRadius: 14, border: '1px solid rgba(148,163,184,0.14)', background: 'rgba(15,23,42,0.4)', padding: 12 }}>
+                <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(148,163,184,0.82)', fontWeight: 700, marginBottom: 6 }}>
+                  Horaire
+                </div>
+                <div style={{ fontSize: 13, color: '#f8fafc', fontWeight: 700 }}>{meetingWhen}</div>
+              </div>
+              <div style={{ borderRadius: 14, border: '1px solid rgba(148,163,184,0.14)', background: 'rgba(15,23,42,0.4)', padding: 12 }}>
+                <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(148,163,184,0.82)', fontWeight: 700, marginBottom: 6 }}>
+                  Hôte
+                </div>
+                <div style={{ fontSize: 13, color: '#f8fafc', fontWeight: 700 }}>{meetingInfo?.hostName || 'Meetra'}</div>
+              </div>
             </div>
 
             <div style={{ display: 'grid', gap: 8 }}>

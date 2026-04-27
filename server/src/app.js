@@ -20,6 +20,8 @@ export function createApp() {
       timezone: meeting.timezone || meeting.metadata?.timezone || null,
       durationMinutes: meeting.durationMinutes || meeting.metadata?.durationMinutes || 60,
       hostName: meeting.hostName || meeting.metadata?.hostName || null,
+      hostEmail: meeting.hostEmail || meeting.metadata?.hostEmail || null,
+      hostPhone: meeting.hostPhone || meeting.metadata?.hostPhone || null,
       status: meeting.status || 'scheduled',
       locked: Boolean(meeting.locked),
       createdAt: meeting.createdAt || null,
@@ -63,6 +65,8 @@ export function createApp() {
         timezone = null,
         durationMinutes = 60,
         hostName = null,
+        hostEmail = null,
+        hostPhone = null,
       } = req.body || {};
 
       if (scheduledFor) {
@@ -78,6 +82,8 @@ export function createApp() {
         timezone,
         durationMinutes,
         hostName,
+        hostEmail,
+        hostPhone,
         source: 'api',
       });
       const origin = resolveClientOrigin(req);
@@ -92,6 +98,8 @@ export function createApp() {
         timezone: room.metadata?.timezone || null,
         durationMinutes: room.metadata?.durationMinutes || durationMinutes,
         hostName: room.metadata?.hostName || hostName || null,
+        hostEmail: room.metadata?.hostEmail || hostEmail || null,
+        hostPhone: room.metadata?.hostPhone || hostPhone || null,
       });
     } catch (err) {
       logger.error('createRoom error:', err);
@@ -128,6 +136,8 @@ export function createApp() {
         timezone,
         durationMinutes,
         hostName,
+        hostEmail,
+        hostPhone,
       } = req.body || {};
 
       if (scheduledFor) {
@@ -143,6 +153,8 @@ export function createApp() {
         timezone,
         durationMinutes,
         hostName,
+        hostEmail,
+        hostPhone,
       });
 
       const origin = resolveClientOrigin(req);
@@ -154,6 +166,8 @@ export function createApp() {
         timezone: updated.metadata?.timezone,
         durationMinutes: updated.metadata?.durationMinutes,
         hostName: updated.metadata?.hostName,
+        hostEmail: updated.metadata?.hostEmail,
+        hostPhone: updated.metadata?.hostPhone,
       }, origin));
     } catch (err) {
       logger.error('updateRoom error:', err);
