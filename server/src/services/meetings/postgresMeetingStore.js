@@ -118,3 +118,29 @@ export async function saveMeetingToDb(roomId, payload) {
 
   return true;
 }
+
+export async function listRecentMeetingsFromDb(limit = 8) {
+  if (!isPostgresMeetingStoreEnabled()) return [];
+  await initMeetingTables();
+
+  const db = getPool();
+  const result = await db.query(
+    `SELECT room_id, locked, status, source, created_at, updated_at, started_at, ended_at, metadata
+     FROM meetings
+     ORDER BY updated_at DESC
+     LIMIT $1`,
+    [limit]
+  );
+
+  return result.rows.map((row) => ({
+    roomId: row.room_id,
+    locked: row.locked,
+    status: row.status,
+    source: row.source,
+    createdAt: Number(row.created_at),
+    updatedAt: Number(row.updated_at),
+    startedAt: row.started_at ? Number(row.started_at) : null,
+    endedAt: row.ended_at ? Number(row.ended_at) : null,
+    metadata: row.metadata || {},
+  }));
+}

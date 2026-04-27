@@ -10,6 +10,25 @@ import { purgeExpiredTranscriptFiles } from './services/transcription/transcript
 export function createApp() {
   const app = express();
 
+  function serializeMeetingSummary(meeting, origin) {
+    const roomId = meeting.roomId || meeting.id;
+    return {
+      roomId,
+      title: meeting.title || meeting.metadata?.title || 'Réunion Meetra',
+      joinUrl: origin ? `${String(origin).replace(/\/+$/, '')}/room/${roomId}` : null,
+      scheduledFor: meeting.scheduledFor || meeting.metadata?.scheduledFor || null,
+      timezone: meeting.timezone || meeting.metadata?.timezone || null,
+      durationMinutes: meeting.durationMinutes || meeting.metadata?.durationMinutes || 60,
+      hostName: meeting.hostName || meeting.metadata?.hostName || null,
+      status: meeting.status || 'scheduled',
+      locked: Boolean(meeting.locked),
+      createdAt: meeting.createdAt || null,
+      updatedAt: meeting.updatedAt || null,
+      startedAt: meeting.startedAt || null,
+      endedAt: meeting.endedAt || null,
+    };
+  }
+
   function resolveClientOrigin(req) {
     const origin = req.get('origin');
     if (origin) return origin;
@@ -38,12 +57,42 @@ export function createApp() {
   // ── POST /api/rooms — créer une salle ─────────────────────
   app.post('/api/rooms', async (req, res) => {
     try {
-      const room = await roomService.createRoom();
+      const {
+        title = 'Réunion Meetra',
+        scheduledFor = null,
+        timezone = null,
+        durationMinutes = 60,
+        hostName = null,
+      } = req.body || {};
+
+      if (scheduledFor) {
+        const parsed = Date.parse(scheduledFor);
+        if (Number.isNaN(parsed)) {
+          return res.status(400).json({ error: 'INVALID_SCHEDULED_DATE' });
+        }
+      }
+
+      const room = await roomService.createScheduledRoom({
+        title,
+        scheduledFor,
+        timezone,
+        durationMinutes,
+        hostName,
+        source: 'api',
+      });
       const origin = resolveClientOrigin(req);
       const joinUrl = origin ? `${String(origin).replace(/\/+$/, '')}/room/${room.roomId}` : null;
 
       logger.info('Room created:', room.roomId);
-      res.json({ roomId: room.roomId, joinUrl });
+      res.json({
+        roomId: room.roomId,
+        joinUrl,
+        title: room.metadata?.title || title,
+        scheduledFor: room.metadata?.scheduledFor || null,
+        timezone: room.metadata?.timezone || null,
+        durationMinutes: room.metadata?.durationMinutes || durationMinutes,
+        hostName: room.metadata?.hostName || hostName || null,
+      });
     } catch (err) {
       logger.error('createRoom error:', err);
       res.status(500).json({ error: err.message });
@@ -61,6 +110,67 @@ export function createApp() {
       }
     } catch (err) {
       logger.error('getRoomInfo error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.patch('/api/rooms/:roomId', async (req, res) => {
+    try {
+      const { roomId } = req.params;
+      const existing = await roomService.getMeetingRoomInfo(roomId);
+      if (!existing) {
+        return res.status(404).json({ error: 'ROOM_NOT_FOUND' });
+      }
+
+      const {
+        title,
+        scheduledFor,
+        timezone,
+        durationMinutes,
+        hostName,
+      } = req.body || {};
+
+      if (scheduledFor) {
+        const parsed = Date.parse(scheduledFor);
+        if (Number.isNaN(parsed)) {
+          return res.status(400).json({ error: 'INVALID_SCHEDULED_DATE' });
+        }
+      }
+
+      const updated = await roomService.updateMeetingSchedule(roomId, {
+        title,
+        scheduledFor,
+        timezone,
+        durationMinutes,
+        hostName,
+      });
+
+      const origin = resolveClientOrigin(req);
+      return res.json(serializeMeetingSummary({
+        roomId,
+        ...updated,
+        title: updated.metadata?.title,
+        scheduledFor: updated.metadata?.scheduledFor,
+        timezone: updated.metadata?.timezone,
+        durationMinutes: updated.metadata?.durationMinutes,
+        hostName: updated.metadata?.hostName,
+      }, origin));
+    } catch (err) {
+      logger.error('updateRoom error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/meetings', async (req, res) => {
+    try {
+      const limit = Math.min(Math.max(Number(req.query.limit) || 8, 1), 20);
+      const meetings = await roomService.getRecentMeetings(limit);
+      const origin = resolveClientOrigin(req);
+      res.json({
+        meetings: meetings.map((meeting) => serializeMeetingSummary(meeting, origin)),
+      });
+    } catch (err) {
+      logger.error('listMeetings error:', err);
       res.status(500).json({ error: err.message });
     }
   });

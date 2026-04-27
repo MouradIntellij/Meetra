@@ -24,7 +24,10 @@ export const EVENTS = {
   KICK_USER:        "kick-user",
   LOCK_ROOM:        "lock-room",
   ASSIGN_HOST:      "assign-host",
+  ASSIGN_COHOST:    "assign-cohost",
+  REMOVE_COHOST:    "remove-cohost",
   HOST_CHANGED:     "host-changed",
+  COHOSTS_UPDATED:  "cohosts-updated",
 
   // Participant status
   TOGGLE_VIDEO:     "toggle-video",

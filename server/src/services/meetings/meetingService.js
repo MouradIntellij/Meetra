@@ -1,5 +1,5 @@
 import { generateId } from '../../utils/uuid.js';
-import { loadMeeting, saveMeeting } from './meetingPersistenceService.js';
+import { listRecentMeetings, loadMeeting, saveMeeting } from './meetingPersistenceService.js';
 
 function buildMeetingPayload(roomId, existing, updates = {}) {
   const now = Date.now();
@@ -78,4 +78,8 @@ export async function markMeetingIdle(roomId) {
     status: 'idle',
     endedAt: Date.now(),
   });
+}
+
+export async function getRecentMeetings(limit = 8) {
+  return listRecentMeetings(limit);
 }

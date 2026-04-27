@@ -92,12 +92,14 @@ function WaitingEntry({ person, onAdmit, onReject }) {
 // ─── HostControls principal ───────────────────────────────────
 export default function HostControls({ roomId }) {
   const { socket }              = useSocket();
-  const { hostId, locked }      = useRoom();
+  const { hostId, locked, coHostIds }      = useRoom();
   const { breakoutOpen, setBreakoutOpen } = useUI();
 
   const [showPanel,    setShowPanel]    = useState(false);
   const [waitingList,  setWaitingList]  = useState([]);  // ← file d'attente en temps réel
   const previousWaitingCount = useRef(0);
+  const iAmHost = socket?.id === hostId;
+  const iAmCoHost = coHostIds.includes(socket?.id);
 
   // ── Écouter les mises à jour de la file d'attente ─────────
   useEffect(() => {
@@ -110,7 +112,7 @@ export default function HostControls({ roomId }) {
   }, [socket]);
 
   useEffect(() => {
-    if (socket?.id !== hostId) return;
+    if (!iAmHost && !iAmCoHost) return;
 
     const previous = previousWaitingCount.current;
     const current = waitingList.length;
@@ -127,10 +129,10 @@ export default function HostControls({ roomId }) {
     }
 
     previousWaitingCount.current = current;
-  }, [waitingList, socket, hostId]);
+  }, [waitingList, iAmHost, iAmCoHost]);
 
-  // Pas hôte → rien à afficher
-  if (socket?.id !== hostId) return null;
+  // Pas modérateur → rien à afficher
+  if (!iAmHost && !iAmCoHost) return null;
 
   // ── Actions hôte ──────────────────────────────────────────
   const muteAll    = () => socket.emit(EVENTS.MUTE_ALL,    { roomId });
@@ -244,7 +246,7 @@ export default function HostControls({ roomId }) {
         }}
       >
         <CrownIcon size={14} color="currentColor" />
-        Hôte
+        {iAmHost ? 'Hôte' : 'Co-hôte'}
         {/* Badge nombre en attente */}
         {hasPending && (
           <span style={{

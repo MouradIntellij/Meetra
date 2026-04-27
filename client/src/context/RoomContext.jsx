@@ -11,6 +11,7 @@ export const useRoom = () => {
 export function RoomProvider({ children, initialRoomId = '' }) {
     const [roomId, setRoomId] = useState(initialRoomId);
     const [hostId, setHostId] = useState('');
+    const [coHostIds, setCoHostIds] = useState([]);
     const [locked, setLocked] = useState(false);
     const [participants, setParticipants] = useState([]);
     const [breakoutRooms, setBreakoutRooms] = useState([]);
@@ -22,6 +23,11 @@ export function RoomProvider({ children, initialRoomId = '' }) {
     const isHost = useCallback(
         (socketId) => socketId === hostId,
         [hostId]
+    );
+
+    const isCoHost = useCallback(
+        (socketId) => coHostIds.includes(socketId),
+        [coHostIds]
     );
 
     const updateParticipant = useCallback((socketId, updates) => {
@@ -56,6 +62,9 @@ export function RoomProvider({ children, initialRoomId = '' }) {
                 hostId,
                 setHostId,
 
+                coHostIds,
+                setCoHostIds,
+
                 locked,
                 setLocked,
 
@@ -69,6 +78,7 @@ export function RoomProvider({ children, initialRoomId = '' }) {
                 setCurrentBreakout,
 
                 isHost,
+                isCoHost,
                 updateParticipant,
                 addParticipant,
                 removeParticipant,

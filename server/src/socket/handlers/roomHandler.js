@@ -25,9 +25,10 @@ function broadcastWaitingUpdate(io, roomId) {
 
   // Notifier l'hôte (dans la salle principale) qu'il y a des gens en attente
   const room = roomService.getRoomInfo(roomId);
-  if (room?.hostId) {
-    io.to(room.hostId).emit(EVENTS.WAITING_UPDATE, { waitingList: list });
-  }
+  const moderators = new Set([room?.hostId, ...(room?.coHostIds || [])].filter(Boolean));
+  moderators.forEach((socketId) => {
+    io.to(socketId).emit(EVENTS.WAITING_UPDATE, { waitingList: list });
+  });
 }
 
 // ─── Handler principal ────────────────────────────────────────
@@ -61,6 +62,7 @@ export function registerRoomHandlers(io, socket) {
       participants,
       hostId: room.hostId,
       locked: room.locked,
+      coHostIds: roomService.getCoHostIds(roomId),
     });
 
     // Notifier les autres participants
@@ -70,6 +72,7 @@ export function registerRoomHandlers(io, socket) {
       name:         userName,
       userName:     userName,
       hostId:       room.hostId,
+      coHostIds:    roomService.getCoHostIds(roomId),
       audioEnabled: true,
       videoEnabled: true,
       handRaised:   false,
@@ -100,6 +103,7 @@ export function registerRoomHandlers(io, socket) {
       waitingList:  waitingList(roomId),
       participants: room?.participants || [],
       hostId:       room?.hostId || null,
+      coHostIds:    room?.coHostIds || [],
     });
 
     // Prévenir tout le monde (en attente + hôte) de la nouvelle liste
@@ -119,7 +123,7 @@ export function registerRoomHandlers(io, socket) {
   // ── Hôte : admettre un utilisateur ────────────────────────
   socket.on(EVENTS.WAITING_ADMIT, ({ roomId, targetSocketId }) => {
     // Vérifier que c'est bien l'hôte qui émet
-    if (!roomService.isHost(roomId, socket.id)) {
+    if (!roomService.isModerator(roomId, socket.id)) {
       logger.warn(`WAITING_ADMIT refusé : ${socket.id} n'est pas l'hôte de ${roomId}`);
       return;
     }
@@ -146,7 +150,7 @@ export function registerRoomHandlers(io, socket) {
 
   // ── Hôte : refuser un utilisateur ─────────────────────────
   socket.on(EVENTS.WAITING_REJECT, ({ roomId, targetSocketId }) => {
-    if (!roomService.isHost(roomId, socket.id)) return;
+    if (!roomService.isModerator(roomId, socket.id)) return;
 
     const user = getWaiting(roomId)?.get(targetSocketId);
     getWaiting(roomId)?.delete(targetSocketId);
@@ -161,7 +165,7 @@ export function registerRoomHandlers(io, socket) {
 
   // ── Hôte : admettre tout le monde ─────────────────────────
   socket.on(EVENTS.WAITING_ADMIT_ALL, ({ roomId }) => {
-    if (!roomService.isHost(roomId, socket.id)) return;
+    if (!roomService.isModerator(roomId, socket.id)) return;
 
     const waiting = getWaiting(roomId);
     const toAdmit = Array.from(waiting.values());
@@ -206,10 +210,15 @@ export function registerRoomHandlers(io, socket) {
 
     // Réassigner l'hôte si nécessaire
     if (room && room.participants.size > 0 && room.hostId === socket.id) {
-      const newHost = room.participants.values().next().value;
+      const promotedCoHostId = Array.from(room.coHostIds || []).find((candidateId) => room.participants.has(candidateId));
+      const newHost = promotedCoHostId
+        ? room.participants.get(promotedCoHostId)
+        : room.participants.values().next().value;
       if (newHost) {
         room.hostId = newHost.socketId;
+        room.coHostIds?.delete(newHost.socketId);
         io.to(roomId).emit(EVENTS.HOST_CHANGED, { newHostId: newHost.socketId });
+        io.to(roomId).emit(EVENTS.COHOSTS_UPDATED, { coHostIds: roomService.getCoHostIds(roomId) });
 
         // Notifier les gens EN ATTENTE du changement d'hôte
         broadcastWaitingUpdate(io, roomId);

@@ -8,7 +8,7 @@ import { EVENTS } from '../utils/events.js';
 export function useWebRTC(roomId, userName) {
   const { socket } = useSocket();
   const {
-    setHostId, setLocked, setParticipants,
+    setHostId, setLocked, setParticipants, setCoHostIds,
     addParticipant, removeParticipant, updateParticipant,
     setBreakoutRooms, setCurrentBreakout, setScreenSharingId, screenSharingId,
   } = useRoom();
@@ -47,11 +47,12 @@ export function useWebRTC(roomId, userName) {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on(EVENTS.ROOM_PARTICIPANTS, ({ participants, hostId, locked }) => {
+    socket.on(EVENTS.ROOM_PARTICIPANTS, ({ participants, hostId, locked, coHostIds = [] }) => {
       const others = participants.filter(p => p.socketId !== socket.id);
       setParticipants(others);
       setHostId(hostId);
       setLocked(locked);
+      setCoHostIds(coHostIds);
     });
 
     socket.on(EVENTS.USER_JOINED, (user) => {
@@ -65,11 +66,14 @@ export function useWebRTC(roomId, userName) {
         audioEnabled: true,
         videoEnabled: true,
         handRaised:   false,
+        isCoHost: user.coHostIds?.includes?.(user.socketId) || false,
       });
       if (user.hostId) setHostId(user.hostId);
+      if (user.coHostIds) setCoHostIds(user.coHostIds);
     });
 
     socket.on(EVENTS.HOST_CHANGED,  ({ newHostId }) => setHostId(newHostId));
+    socket.on(EVENTS.COHOSTS_UPDATED, ({ coHostIds = [] }) => setCoHostIds(coHostIds));
     socket.on(EVENTS.ROOM_LOCKED,   ({ locked }) => setLocked(locked));
 
     socket.on(EVENTS.VIDEO_TOGGLED, ({ userId, enabled }) =>
@@ -109,6 +113,7 @@ export function useWebRTC(roomId, userName) {
       socket.off(EVENTS.ROOM_PARTICIPANTS);
       socket.off(EVENTS.USER_JOINED);
       socket.off(EVENTS.HOST_CHANGED);
+      socket.off(EVENTS.COHOSTS_UPDATED);
       socket.off(EVENTS.ROOM_LOCKED);
       socket.off(EVENTS.VIDEO_TOGGLED);
       socket.off(EVENTS.AUDIO_TOGGLED);
@@ -122,7 +127,7 @@ export function useWebRTC(roomId, userName) {
       socket.off(EVENTS.BREAKOUT_END_ALL);
       socket.off(EVENTS.USER_LEFT);
     };
-  }, [socket, setHostId, setLocked, setParticipants, addParticipant,
+  }, [socket, setHostId, setLocked, setParticipants, setCoHostIds, addParticipant,
     updateParticipant, setBreakoutRooms, setCurrentBreakout, setActiveSpeakerId, setScreenSharingId, screenSharingId]);
 
   return { joinRoom, toggleHand };

@@ -14,7 +14,7 @@ function EmptyState() {
   );
 }
 
-function ParticipantItem({ name, isHost, isLocal, audioEnabled = true, videoEnabled = true, handRaised, canControl, onMute, onKick, onAssignHost }) {
+function ParticipantItem({ name, isHost, isCoHost, isLocal, audioEnabled = true, videoEnabled = true, handRaised, canControl, canManageRoles, onMute, onKick, onAssignHost, onAssignCoHost, onRemoveCoHost }) {
   return (
     <div className="group rounded-[20px] border border-white/8 bg-white/[0.03] px-3 py-3 transition hover:bg-white/[0.05]">
       <div className="flex items-center gap-3">
@@ -31,6 +31,12 @@ function ParticipantItem({ name, isHost, isLocal, audioEnabled = true, videoEnab
               <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/20 bg-amber-500/10 px-2 py-1 text-amber-200">
                 <CrownIcon size={12} color="currentColor" />
                 Hôte
+              </span>
+            )}
+            {!isHost && isCoHost && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-blue-400/20 bg-blue-500/10 px-2 py-1 text-blue-200">
+                <CrownIcon size={12} color="currentColor" />
+                Co-hôte
               </span>
             )}
             {handRaised && (
@@ -52,9 +58,22 @@ function ParticipantItem({ name, isHost, isLocal, audioEnabled = true, videoEnab
           <button onClick={onMute} className="meetra-button meetra-focus-ring px-3 py-2 text-xs font-semibold text-slate-200">
             Couper micro
           </button>
-          <button onClick={onAssignHost} className="meetra-button meetra-focus-ring px-3 py-2 text-xs font-semibold text-amber-200">
-            Nommer hôte
-          </button>
+          {canManageRoles && (
+            <>
+              <button onClick={onAssignHost} className="meetra-button meetra-focus-ring px-3 py-2 text-xs font-semibold text-amber-200">
+                Nommer hôte
+              </button>
+              {isCoHost ? (
+                <button onClick={onRemoveCoHost} className="meetra-button meetra-focus-ring px-3 py-2 text-xs font-semibold text-blue-200">
+                  Retirer co-hôte
+                </button>
+              ) : (
+                <button onClick={onAssignCoHost} className="meetra-button meetra-focus-ring px-3 py-2 text-xs font-semibold text-blue-200">
+                  Nommer co-hôte
+                </button>
+              )}
+            </>
+          )}
           <button onClick={onKick} className="meetra-button meetra-focus-ring px-3 py-2 text-xs font-semibold text-red-200">
             Expulser
           </button>
@@ -65,11 +84,12 @@ function ParticipantItem({ name, isHost, isLocal, audioEnabled = true, videoEnab
 }
 
 export default function ParticipantsPanel({ roomId }) {
-  const { participants, hostId } = useRoom();
+  const { participants, hostId, coHostIds } = useRoom();
   const { socket } = useSocket();
   const { participantsOpen, setParticipantsOpen } = useUI();
 
   const iAmHost = socket?.id === hostId;
+  const iAmCoHost = coHostIds.includes(socket?.id);
   const [isCompact, setIsCompact] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 1100 : false));
 
   useEffect(() => {
@@ -90,6 +110,14 @@ export default function ParticipantsPanel({ roomId }) {
 
   const assignHost = (targetSocketId) => {
     socket.emit(EVENTS.ASSIGN_HOST, { roomId, targetSocketId });
+  };
+
+  const assignCoHost = (targetSocketId) => {
+    socket.emit(EVENTS.ASSIGN_COHOST, { roomId, targetSocketId });
+  };
+
+  const removeCoHost = (targetSocketId) => {
+    socket.emit(EVENTS.REMOVE_COHOST, { roomId, targetSocketId });
   };
 
   return (
@@ -117,6 +145,7 @@ export default function ParticipantsPanel({ roomId }) {
         <ParticipantItem
           name="Vous"
           isHost={socket?.id === hostId}
+          isCoHost={coHostIds.includes(socket?.id)}
           isLocal
         />
 
@@ -128,13 +157,17 @@ export default function ParticipantsPanel({ roomId }) {
               key={participant.socketId}
               name={participant.name}
               isHost={participant.socketId === hostId}
+              isCoHost={coHostIds.includes(participant.socketId)}
               audioEnabled={participant.audioEnabled}
               videoEnabled={participant.videoEnabled}
               handRaised={participant.handRaised}
-              canControl={iAmHost && participant.socketId !== socket?.id}
+              canControl={(iAmHost || iAmCoHost) && participant.socketId !== socket?.id}
+              canManageRoles={iAmHost}
               onMute={() => muteUser(participant.socketId)}
               onKick={() => kickUser(participant.socketId)}
               onAssignHost={() => assignHost(participant.socketId)}
+              onAssignCoHost={() => assignCoHost(participant.socketId)}
+              onRemoveCoHost={() => removeCoHost(participant.socketId)}
             />
           ))
         )}

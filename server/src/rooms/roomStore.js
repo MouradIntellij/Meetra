@@ -5,6 +5,7 @@ import { generateId } from '../utils/uuid.js';
  * Shape:
  * {
  *   id, hostId, locked, createdAt,
+ *   coHostIds: Set<socketId>,
  *   participants: Map<socketId, { id, name, socketId, handRaised, audioEnabled, videoEnabled }>,
  *   breakoutRooms: Map<breakoutId, { id, name, participants: Set<socketId> }>
  * }
@@ -25,6 +26,7 @@ export function createRoomWithId(id, overrides = {}) {
     hostId: null,
     locked: overrides.locked ?? false,
     createdAt: overrides.createdAt || new Date().toISOString(),
+    coHostIds: new Set(overrides.coHostIds || []),
     participants: new Map(),
     breakoutRooms: new Map(),
   });
@@ -66,6 +68,7 @@ export function removeParticipant(socketId) {
   const participant = room.participants.get(socketId);
   room.participants.delete(socketId);
   userRoomIndex.delete(socketId);
+  room.coHostIds.delete(socketId);
 
   // Remove from breakout rooms
   room.breakoutRooms.forEach(br => br.participants.delete(socketId));

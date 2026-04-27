@@ -268,6 +268,9 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
   const [refreshingDevices, setRefreshingDevices] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [deviceStatus, setDeviceStatus] = useState('');
+  const [playingSpeakerTest, setPlayingSpeakerTest] = useState(false);
+  const [networkQuality, setNetworkQuality] = useState('unknown');
+  const [networkStats, setNetworkStats] = useState({ effectiveType: '', downlink: null, rtt: null });
 
   // Participants déjà dans la salle
   const [participants,  setParticipants]  = useState([]);
@@ -284,6 +287,7 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
   const streamRef = useRef(null);
   const timerRef  = useRef(null);
   const cleanupAudioRef = useRef(null);
+  const speakerTestTimerRef = useRef(null);
 
   const persistPreviewPreferences = useCallback((nextAudioEnabled, nextVideoEnabled, audioDeviceId, videoDeviceId) => {
     persistBool(AUDIO_ENABLED_STORAGE_KEY, nextAudioEnabled);
@@ -406,6 +410,33 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
     return () => navigator.mediaDevices.removeEventListener('devicechange', syncDeviceInventory);
   }, [syncDeviceInventory]);
 
+  useEffect(() => {
+    if (!navigator.connection) return undefined;
+
+    const updateConnection = () => {
+      const connection = navigator.connection;
+      const effectiveType = connection?.effectiveType || '';
+      const downlink = typeof connection?.downlink === 'number' ? connection.downlink : null;
+      const rtt = typeof connection?.rtt === 'number' ? connection.rtt : null;
+
+      setNetworkStats({ effectiveType, downlink, rtt });
+
+      if (effectiveType === '4g' || (downlink !== null && downlink >= 8)) {
+        setNetworkQuality('good');
+      } else if (effectiveType === '3g' || (downlink !== null && downlink >= 2)) {
+        setNetworkQuality('fair');
+      } else if (effectiveType) {
+        setNetworkQuality('poor');
+      } else {
+        setNetworkQuality('unknown');
+      }
+    };
+
+    updateConnection();
+    navigator.connection.addEventListener('change', updateConnection);
+    return () => navigator.connection?.removeEventListener('change', updateConnection);
+  }, []);
+
   // ── 3. Charger les participants via REST ──────────────────
   useEffect(() => {
     setLoadingPeers(true);
@@ -502,6 +533,7 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
 
   const cleanup = useCallback(() => {
     clearInterval(timerRef.current);
+    clearTimeout(speakerTestTimerRef.current);
     cleanupAudioRef.current?.();
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
@@ -552,6 +584,50 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
     setDeviceStatus(ok ? 'Pré-test mis à jour avec ces périphériques.' : "Impossible d'utiliser cette combinaison.");
   }, [audioEnabled, openPreviewStream, selectedAudioInputId, selectedVideoInputId, videoEnabled]);
 
+  const handleSpeakerTest = useCallback(async () => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) {
+        setDeviceStatus('Test haut-parleur indisponible sur ce navigateur.');
+        return;
+      }
+
+      clearTimeout(speakerTestTimerRef.current);
+      setPlayingSpeakerTest(true);
+      setDeviceStatus('Lecture d’un son de test sur vos haut-parleurs.');
+
+      const audioContext = new AudioCtx();
+      const masterGain = audioContext.createGain();
+      masterGain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+      masterGain.connect(audioContext.destination);
+
+      const notes = [523.25, 659.25, 783.99];
+      notes.forEach((freq, index) => {
+        const startAt = audioContext.currentTime + (index * 0.18);
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, startAt);
+        gain.gain.setValueAtTime(0.0001, startAt);
+        gain.gain.exponentialRampToValueAtTime(0.18, startAt + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.16);
+        osc.connect(gain);
+        gain.connect(masterGain);
+        osc.start(startAt);
+        osc.stop(startAt + 0.17);
+      });
+
+      speakerTestTimerRef.current = setTimeout(async () => {
+        setPlayingSpeakerTest(false);
+        setDeviceStatus('Si vous avez entendu la sonnerie, vos haut-parleurs sont prêts.');
+        await audioContext.close();
+      }, 800);
+    } catch {
+      setPlayingSpeakerTest(false);
+      setDeviceStatus("Impossible de jouer le son de test sur cet appareil.");
+    }
+  }, []);
+
   // ── Entrer dans la salle ──────────────────────────────────
   const handleEnterRoom = useCallback(() => {
     cleanup();
@@ -589,6 +665,40 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
       : isFirstUser
           ? '🚀 Démarrer la réunion'
           : `✓ Rejoindre (${participants.length} présent${participants.length > 1 ? 's' : ''})`;
+  const speakingNow = audioEnabled && audioLevel >= 18;
+  const selectedAudioLabel = availableDevices.audioInputs.find((device) => device.deviceId === selectedAudioInputId)?.label || (selectedAudioInputId ? 'Microphone sélectionné' : 'Microphone par défaut');
+  const selectedVideoLabel = availableDevices.videoInputs.find((device) => device.deviceId === selectedVideoInputId)?.label || (selectedVideoInputId ? 'Caméra sélectionnée' : 'Caméra par défaut');
+  const previewReady = Boolean(stream || mediaError);
+  const mediaReady = Boolean(stream) || Boolean(mediaError);
+  const checklist = [
+    {
+      label: 'Réseau',
+      ok: networkQuality !== 'poor',
+      detail: networkQuality === 'good'
+        ? 'Connexion solide'
+        : networkQuality === 'fair'
+          ? 'Connexion correcte'
+          : networkQuality === 'poor'
+            ? 'Connexion fragile'
+            : 'État non exposé par le navigateur',
+    },
+    {
+      label: 'Micro',
+      ok: !audioEnabled || audioLevel > 0 || Boolean(stream?.getAudioTracks?.().length),
+      detail: audioEnabled ? (speakingNow ? 'Voix détectée' : 'En écoute') : 'Désactivé volontairement',
+    },
+    {
+      label: 'Caméra',
+      ok: !videoEnabled || Boolean(stream?.getVideoTracks?.().length),
+      detail: videoEnabled ? 'Source prête' : 'Désactivée volontairement',
+    },
+  ];
+  const failingChecks = checklist.filter((item) => !item.ok).length;
+  const readinessTone = !previewReady
+    ? { label: 'Préparation en cours', color: '#fbbf24', bg: 'rgba(245,158,11,0.14)', border: 'rgba(245,158,11,0.22)' }
+    : failingChecks === 0
+      ? { label: 'Prêt à rejoindre', color: '#4ade80', bg: 'rgba(34,197,94,0.12)', border: 'rgba(74,222,128,0.22)' }
+      : { label: 'Prêt avec limites', color: '#fbbf24', bg: 'rgba(245,158,11,0.14)', border: 'rgba(245,158,11,0.22)' };
 
   return (
       <div style={{
@@ -936,6 +1046,35 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
                     transition: 'width 0.08s linear',
                   }} />
                 </div>
+                <div style={{
+                  marginTop: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 10,
+                  flexWrap: 'wrap',
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    fontSize: 11,
+                    color: speakingNow ? '#4ade80' : 'rgba(255,255,255,0.35)',
+                    fontWeight: 700,
+                  }}>
+                    <span style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: speakingNow ? '#22c55e' : 'rgba(255,255,255,0.18)',
+                      boxShadow: speakingNow ? '0 0 10px rgba(34,197,94,0.65)' : 'none',
+                    }} />
+                    {speakingNow ? 'Vous parlez actuellement' : 'Parlez quelques secondes pour vérifier le micro'}
+                  </div>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)' }}>
+                    Seuil conseillé: voix claire sans saturation
+                  </span>
+                </div>
               </div>
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 14 }}>
@@ -974,6 +1113,24 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
                   }}
                 >
                   {refreshingDevices ? 'Actualisation...' : 'Actualiser la liste'}
+                </button>
+                <button
+                  onClick={handleSpeakerTest}
+                  disabled={playingSpeakerTest}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: 12,
+                    border: '1px solid rgba(96,165,250,0.18)',
+                    background: playingSpeakerTest ? 'rgba(37,99,235,0.18)' : 'rgba(37,99,235,0.1)',
+                    color: '#dbeafe',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: playingSpeakerTest ? 'wait' : 'pointer',
+                    opacity: playingSpeakerTest ? 0.82 : 1,
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {playingSpeakerTest ? 'Lecture du test...' : 'Tester les haut-parleurs'}
                 </button>
               </div>
 
@@ -1034,6 +1191,135 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
                 Vous rejoignez en tant que{' '}
                 <span style={{ color: '#93c5fd', fontWeight: 600 }}>{userName}</span>
+              </div>
+            </div>
+
+            <div style={{
+              background: 'rgba(255,255,255,0.025)',
+              border: '1px solid rgba(255,255,255,0.07)',
+              borderRadius: 16,
+              padding: '14px 16px',
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 10,
+                flexWrap: 'wrap',
+                marginBottom: 12,
+              }}>
+                <div>
+                  <div style={{
+                    fontSize: 11,
+                    color: 'rgba(255,255,255,0.3)',
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    marginBottom: 4,
+                  }}>
+                    Diagnostic avant entrée
+                  </div>
+                  <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600 }}>
+                    Résumé instantané de votre préparation
+                  </div>
+                </div>
+                <div style={{
+                  padding: '6px 10px',
+                  borderRadius: 999,
+                  background: readinessTone.bg,
+                  border: `1px solid ${readinessTone.border}`,
+                  color: readinessTone.color,
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}>
+                  {readinessTone.label}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gap: 8 }}>
+                {checklist.map((item) => (
+                  <div
+                    key={item.label}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      padding: '10px 12px',
+                      borderRadius: 12,
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      background: 'rgba(255,255,255,0.03)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{
+                        width: 9,
+                        height: 9,
+                        borderRadius: '50%',
+                        background: item.ok ? '#22c55e' : '#f59e0b',
+                        boxShadow: item.ok ? '0 0 10px rgba(34,197,94,0.55)' : '0 0 10px rgba(245,158,11,0.45)',
+                      }} />
+                      <span style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 700 }}>{item.label}</span>
+                    </div>
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.46)', textAlign: 'right' }}>
+                      {item.detail}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 10,
+                marginTop: 12,
+              }}>
+                <div style={{
+                  padding: '10px 12px',
+                  borderRadius: 12,
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'rgba(255,255,255,0.03)',
+                }}>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
+                    Micro actif
+                  </div>
+                  <div style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {selectedAudioLabel}
+                  </div>
+                </div>
+                <div style={{
+                  padding: '10px 12px',
+                  borderRadius: 12,
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'rgba(255,255,255,0.03)',
+                }}>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
+                    Caméra active
+                  </div>
+                  <div style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {selectedVideoLabel}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                flexWrap: 'wrap',
+                marginTop: 12,
+                paddingTop: 12,
+                borderTop: '1px solid rgba(255,255,255,0.05)',
+              }}>
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+                  Qualité réseau estimée: {networkQuality === 'good' ? 'Excellente' : networkQuality === 'fair' ? 'Correcte' : networkQuality === 'poor' ? 'Faible' : 'Non exposée'}
+                </span>
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)' }}>
+                  {networkStats.effectiveType ? `${networkStats.effectiveType.toUpperCase()} · ` : ''}
+                  {networkStats.downlink !== null ? `${networkStats.downlink} Mb/s` : 'débit n/d'}
+                  {networkStats.rtt !== null ? ` · ${networkStats.rtt} ms` : ''}
+                </span>
               </div>
             </div>
 

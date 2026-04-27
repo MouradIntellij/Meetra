@@ -4,6 +4,7 @@ import { ENV } from '../../config/env.js';
 import { logger } from '../../utils/logger.js';
 import {
   isPostgresMeetingStoreEnabled,
+  listRecentMeetingsFromDb,
   loadMeetingFromDb,
   saveMeetingToDb,
 } from './postgresMeetingStore.js';
@@ -60,5 +61,32 @@ export async function saveMeeting(roomId, payload) {
   } catch (error) {
     logger.error('Meeting save failed:', roomId, error?.message);
     return false;
+  }
+}
+
+export async function listRecentMeetings(limit = 8) {
+  if (isPostgresMeetingStoreEnabled()) {
+    return listRecentMeetingsFromDb(limit);
+  }
+
+  ensureBaseDir();
+
+  try {
+    const files = fs.readdirSync(baseDir).filter((file) => file.endsWith('.json'));
+    const meetings = files
+      .map((file) => {
+        try {
+          return JSON.parse(fs.readFileSync(path.join(baseDir, file), 'utf8'));
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+    return meetings.slice(0, limit);
+  } catch (error) {
+    logger.warn('Meeting list failed:', error?.message);
+    return [];
   }
 }
