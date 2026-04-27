@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { platform } from '../../services/platform/index.js';
+import ModalFrame from '../common/ModalFrame.jsx';
 
 const SOURCES = [
     {
@@ -507,14 +508,18 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
     };
 
     return (
-        <div className="fixed inset-0 z-[1200] overflow-y-auto bg-slate-950/75 px-4 py-6 backdrop-blur-md">
-            <div className="mx-auto flex max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-[28px] border border-white/10 bg-[#0a1020] text-white shadow-[0_30px_120px_rgba(0,0,0,0.6)]">
-                <div className="flex min-w-0 flex-1 flex-col">
-                    <div className="flex items-start justify-between border-b border-white/10 px-8 py-6">
-                        <div>
-                            <div className="text-[11px] font-bold uppercase tracking-[0.35em] text-emerald-400">Screen Share</div>
-                            <h2 className="mt-3 text-2xl font-semibold text-slate-50">Choisir une source a partager</h2>
-                            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+        <ModalFrame
+            onClose={onCancel}
+            badge="Partage d’écran"
+            title="Choisir une source à partager"
+            subtitle="Préparez une source propre pour une démonstration, une application ou un onglet audio."
+            widthClass="max-w-6xl"
+            bodyPaddingClass="p-0"
+            bodyClassName="bg-[#0a1020] text-white"
+        >
+            <div className="flex min-w-0 flex-1 flex-col">
+                    <div className="border-b border-white/10 px-8 py-5">
+                        <p className="max-w-2xl text-sm leading-6 text-slate-400">
                                 {platform.isElectron
                                     ? selectedSource === 'window'
                                         ? 'Pour une application, le sélecteur natif Windows va s’ouvrir. Si Windows refuse, Meetra retombera sur la galerie desktop.'
@@ -528,19 +533,9 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
                                         : 'Mode Electron actif: les miniatures desktop réelles sont disponibles pour les écrans.'
                                     : 'Limite du web: le navigateur ne fournit pas la vraie galerie de miniatures de toutes vos applications avant selection. En revanche, vous pouvez maintenant capturer un aperçu réel de la source choisie puis partager cette même source sans rouvrir la boite.'}
                             </p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={onCancel}
-                            className="rounded-full border border-white/10 bg-white/5 p-3 text-slate-300 transition hover:bg-white/10 hover:text-white"
-                        >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
-                                <path d="M18 6L6 18M6 6l12 12" />
-                            </svg>
-                        </button>
                     </div>
 
-                    <div className="grid min-h-0 flex-1 grid-cols-[1.25fr_0.75fr]">
+                    <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[1.25fr_0.75fr]">
                         <div className="min-w-0 overflow-y-auto border-r border-white/10 px-8 py-7">
                             <div className={`grid gap-4 ${visibleSources.length >= 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
                                 {visibleSources.map((source) => {
@@ -794,8 +789,7 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
                             </div>
                         </aside>
                     </div>
-                </div>
             </div>
-        </div>
+        </ModalFrame>
     );
 }

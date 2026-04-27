@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMedia } from '../../context/MediaContext.jsx';
 import { useTranscription } from '../../context/TranscriptionContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
-import { CameraOffIcon, ChatBubbleIcon, CloseIcon, ComputerIcon, MicOffIcon, SettingsIcon, TranscriptIcon } from '../common/AppIcons.jsx';
+import { CameraOffIcon, ChatBubbleIcon, ComputerIcon, MicOffIcon, SettingsIcon, TranscriptIcon } from '../common/AppIcons.jsx';
+import ModalFrame from '../common/ModalFrame.jsx';
 
 function SettingBlock({ icon, title, description, children }) {
   return (
@@ -112,34 +113,15 @@ export default function SettingsPanel() {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/72 px-4 py-6 backdrop-blur-md"
-      onClick={(event) => event.target === event.currentTarget && setSettingsOpen(false)}
+    <ModalFrame
+      onClose={() => setSettingsOpen(false)}
+      badge="Préférences de réunion"
+      title="Paramètres Meetra"
+      subtitle="Audio, vidéo, sous-titres et confort de réunion dans un seul panneau."
+      icon={<SettingsIcon size={22} />}
+      widthClass="max-w-4xl"
+      bodyClassName="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]"
     >
-      <div className="meetra-surface flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-[30px]">
-        <div className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
-          <div className="min-w-0">
-            <div className="meetra-section-label">Préférences de réunion</div>
-            <div className="mt-2 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-blue-500/14 text-blue-100">
-                <SettingsIcon size={22} />
-              </div>
-              <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-slate-50">Paramètres Meetra</h2>
-                <p className="mt-1 text-sm text-slate-400">Audio, vidéo, sous-titres et confort de réunion dans un seul panneau.</p>
-              </div>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(false)}
-            className="meetra-focus-ring flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
-          >
-            <CloseIcon size={16} />
-          </button>
-        </div>
-
-        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-6 py-5 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-4">
             <SettingBlock
               icon={<MicOffIcon size={18} />}
@@ -264,8 +246,6 @@ export default function SettingsPanel() {
               </ul>
             </SettingBlock>
           </div>
-        </div>
-      </div>
-    </div>
+    </ModalFrame>
   );
 }

@@ -19,6 +19,7 @@ import ReactionsOverlay  from '../components/layout/ReactionsOverlay.jsx';
 import CaptionsOverlay   from '../components/transcription/CaptionsOverlay.jsx';
 import TranscriptPanel   from '../components/transcription/TranscriptPanel.jsx';
 import { BanIcon, CalendarIcon, CloseIcon, GridIcon, HandIcon, LaunchIcon, LinkIcon, MailIcon, SpotlightIcon, UsersIcon, VideoAppIcon } from '../components/common/AppIcons.jsx';
+import ModalFrame from '../components/common/ModalFrame.jsx';
 
 const PUBLIC_JOIN_BASE_URL = getPublicJoinBaseUrl();
 const API_URL = getApiUrl();
@@ -277,66 +278,15 @@ function InviteDialog({ roomId, onDismiss }) {
   };
 
   return (
-      <div
-          onClick={e => e.target === e.currentTarget && onDismiss()}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 80,
-            background: 'rgba(2,6,23,0.72)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 20,
-          }}
+      <ModalFrame
+          onClose={onDismiss}
+          badge="Invitation"
+          title="Inviter des participants"
+          subtitle="Partagez ce lien public pour permettre à un invité Internet de rejoindre la réunion."
+          icon={<LinkIcon size={20} color="currentColor" />}
+          widthClass="max-w-2xl"
+          bodyClassName="grid gap-[18px]"
       >
-        <div style={{
-          width: 'min(680px, 100%)',
-          background: 'linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(2,6,23,0.98) 100%)',
-          border: '1px solid rgba(148,163,184,0.18)',
-          borderRadius: 24,
-          boxShadow: '0 30px 80px rgba(2,6,23,0.5)',
-          overflow: 'hidden',
-        }}>
-          <div style={{
-            padding: '20px 22px 16px',
-            borderBottom: '1px solid rgba(148,163,184,0.12)',
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: 12,
-          }}>
-            <div>
-              <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(148,163,184,0.7)', fontWeight: 700 }}>
-                Invitation
-              </div>
-              <div style={{ marginTop: 6, fontSize: 22, fontWeight: 800, color: '#f8fafc' }}>
-                Inviter des participants
-              </div>
-              <div style={{ marginTop: 6, fontSize: 13, color: 'rgba(226,232,240,0.72)', lineHeight: 1.5 }}>
-                Partagez ce lien public pour permettre a un invite Internet de rejoindre la reunion.
-              </div>
-            </div>
-            <button
-                onClick={onDismiss}
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: '50%',
-                  border: '1px solid rgba(148,163,184,0.12)',
-                  background: 'rgba(255,255,255,0.05)',
-                  color: 'rgba(255,255,255,0.65)',
-                  cursor: 'pointer',
-                  fontSize: 16,
-                  flexShrink: 0,
-                }}
-            >
-              ×
-            </button>
-          </div>
-
-          <div style={{ padding: 22, display: 'grid', gap: 18 }}>
             <div style={{
               border: '1px solid rgba(96,165,250,0.16)',
               background: 'rgba(37,99,235,0.08)',
@@ -393,7 +343,7 @@ function InviteDialog({ roomId, onDismiss }) {
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               <button
                   onClick={handleCopy}
                   style={{
@@ -482,8 +432,8 @@ function InviteDialog({ roomId, onDismiss }) {
                   </button>
               )}
 
-              <button
-                  onClick={onDismiss}
+                <button
+                    onClick={onDismiss}
                   style={{
                     marginLeft: 'auto',
                     padding: '10px 14px',
@@ -496,13 +446,11 @@ function InviteDialog({ roomId, onDismiss }) {
                     cursor: 'pointer',
                     fontFamily: 'inherit',
                   }}
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+                >
+                  Fermer
+                </button>
+              </div>
+      </ModalFrame>
   );
 }
 
@@ -692,25 +640,21 @@ export default function Room({ roomId, userName, onLeave }) {
           </span>}
 
             {/* Participant count */}
-            <div style={{
-              background: 'rgba(59,130,246,0.15)',
-              border: '1px solid rgba(59,130,246,0.22)',
-              borderRadius: 999, padding: '5px 10px',
-              fontSize: 11, color: '#93c5fd', fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 4,
-            }}>
-              <UsersIcon size={11} color="currentColor" />
-              {participants.length + 1}
-            </div>
+              <div className="meetra-badge" style={{
+                background: 'rgba(59,130,246,0.15)',
+                borderColor: 'rgba(59,130,246,0.22)',
+                color: '#93c5fd',
+              }}>
+                <UsersIcon size={11} color="currentColor" />
+                {participants.length + 1}
+              </div>
 
             {/* Screen sharing indicator */}
             {screenStream && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
+                <div className="meetra-badge" style={{
                   background: 'rgba(34,197,94,0.12)',
-                  border: '1px solid rgba(34,197,94,0.24)',
-                  borderRadius: 999, padding: '5px 10px',
-                  fontSize: 11, color: '#4ade80', fontWeight: 600,
+                  borderColor: 'rgba(34,197,94,0.24)',
+                  color: '#4ade80',
                   boxShadow: '0 10px 26px rgba(34,197,94,0.12)',
                 }}>
               <span style={{
@@ -724,7 +668,7 @@ export default function Room({ roomId, userName, onLeave }) {
           </div>
 
           {/* Center: layout toggle */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 4, borderRadius: 999, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', order: isCompact ? 3 : 2, marginLeft: isCompact ? 0 : undefined }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 4, borderRadius: 999, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', order: isCompact ? 3 : 2, marginLeft: isCompact ? 0 : undefined, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}>
             {[
               { id: 'grid', icon: <GridIcon size={14} color="currentColor" />, title: 'Grille' },
               { id: 'spotlight', icon: <SpotlightIcon size={14} color="currentColor" />, title: 'Vedette' },
@@ -748,7 +692,7 @@ export default function Room({ roomId, userName, onLeave }) {
           </div>
 
           {/* Right: tools */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto', order: isCompact ? 2 : 3 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto', order: isCompact ? 2 : 3 }}>
             <NetworkQuality />
             <MeetingTimer />
 
@@ -781,7 +725,7 @@ export default function Room({ roomId, userName, onLeave }) {
                   background: showInvite ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.04)',
                   color: showInvite ? '#bfdbfe' : 'rgba(255,255,255,0.58)',
                   fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                  fontFamily: 'inherit', transition: 'all 0.15s',
+                  fontFamily: 'inherit', transition: 'all 0.15s', boxShadow: showInvite ? '0 12px 26px rgba(37,99,235,0.16)' : 'none',
                 }}
             >
               <LinkIcon size={12} color="currentColor" />

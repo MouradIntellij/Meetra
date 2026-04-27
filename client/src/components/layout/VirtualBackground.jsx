@@ -17,6 +17,7 @@
  */
 
 import { useRef, useState, useEffect, useCallback } from 'react';
+import ModalFrame from '../common/ModalFrame.jsx';
 
 // ─── Images prédéfinies ───────────────────────────────────────
 // URLs libres de droits depuis Unsplash (CDN autorisé via fetch)
@@ -86,13 +87,6 @@ const PRESET_COLORS = [
 ];
 
 // ─── Icônes SVG inline ────────────────────────────────────────
-const CloseIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-         stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-        <line x1="18" y1="6" x2="6" y2="18"/>
-        <line x1="6" y1="6" x2="18" y2="18"/>
-    </svg>
-);
 const BlurIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <circle cx="12" cy="12" r="3"/>
@@ -303,53 +297,16 @@ export default function VirtualBackground({ controller, onClose }) {
     ];
 
     return (
-        <div style={{
-            position: 'fixed', inset: 0, zIndex: 200,
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-            background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
-        }}
-             onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+        <ModalFrame
+            onClose={onClose}
+            badge="Caméra et ambiance"
+            title="Arrière-plan virtuel"
+            subtitle={active ? 'Actif · traitement en cours' : 'Choisissez un mode ci-dessous'}
+            widthClass="max-w-4xl"
+            bodyPaddingClass="p-0"
+            bodyClassName="bg-[#111827]"
         >
-            <div style={{
-                width: '100%', maxWidth: 780,
-                background: '#111827',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '24px 24px 0 0',
-                overflow: 'hidden',
-                fontFamily: "'DM Sans', system-ui, sans-serif",
-                animation: 'slideUp 0.28s cubic-bezier(0.34,1.2,0.64,1)',
-            }}>
-
-                {/* ── Header ── */}
-                <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '18px 20px 14px',
-                    borderBottom: '1px solid rgba(255,255,255,0.07)',
-                }}>
-                    <div>
-                        <h2 style={{
-                            fontSize: 16, fontWeight: 700, color: '#f1f5f9', margin: '0 0 2px',
-                        }}>
-                            🌅 Arrière-plan virtuel
-                        </h2>
-                        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', margin: 0 }}>
-                            {active ? '✓ Actif — traitement en cours' : 'Choisissez un mode ci-dessous'}
-                        </p>
-                    </div>
-                    <button onClick={onClose} style={{
-                        width: 32, height: 32, borderRadius: '50%', border: 'none',
-                        background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)',
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'all 0.15s',
-                    }}
-                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = '#fff'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}
-                    >
-                        <CloseIcon />
-                    </button>
-                </div>
-
-                <div style={{ display: 'flex', gap: 0 }}>
+                <div style={{ display: 'flex', gap: 0, flexWrap: 'wrap' }}>
 
                     {/* ── Panneau gauche : aperçu ── */}
                     <div style={{
@@ -450,7 +407,7 @@ export default function VirtualBackground({ controller, onClose }) {
                     </div>
 
                     {/* ── Panneau droit : sélection ── */}
-                    <div style={{ flex: 1, padding: '16px', overflowY: 'auto', maxHeight: 440 }}>
+                    <div style={{ flex: 1, padding: '16px', overflowY: 'auto', maxHeight: 440, minWidth: 320 }}>
 
                         {/* Tabs */}
                         <div style={{
@@ -682,8 +639,7 @@ export default function VirtualBackground({ controller, onClose }) {
             Recommandé : ordinateur avec GPU pour de meilleures performances.
           </span>
                 </div>
-            </div>
-
+            
             <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
         @keyframes slideUp {
@@ -695,6 +651,6 @@ export default function VirtualBackground({ controller, onClose }) {
           to   { transform: rotate(360deg); }
         }
       `}</style>
-        </div>
+        </ModalFrame>
     );
 }

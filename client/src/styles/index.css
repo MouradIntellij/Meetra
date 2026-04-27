@@ -12,6 +12,7 @@ html, body {
   color: #f9fafb;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 :root {
@@ -132,17 +133,27 @@ video {
   outline-offset: 2px;
 }
 
+.meetra-focus-ring:focus-visible,
+.meetra-button:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18);
+}
+
 .meetra-button {
   border-radius: 14px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   background: rgba(255, 255, 255, 0.05);
   color: var(--meetra-text);
-  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .meetra-button:hover {
   background: rgba(255, 255, 255, 0.09);
   border-color: rgba(191, 219, 254, 0.22);
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.24);
 }
 
 .meetra-button-primary {
@@ -152,4 +163,38 @@ video {
 
 .meetra-button-primary:hover {
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.meetra-input {
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(2, 6, 23, 0.62);
+  color: var(--meetra-text);
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.meetra-input::placeholder {
+  color: rgba(100, 116, 139, 0.92);
+}
+
+.meetra-input:hover {
+  border-color: rgba(191, 219, 254, 0.18);
+}
+
+.meetra-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(226, 232, 240, 0.82);
+}
+
+::selection {
+  background: rgba(59, 130, 246, 0.32);
+  color: #f8fafc;
 }
