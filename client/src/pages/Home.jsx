@@ -291,8 +291,8 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
   }, [prefillRoomId]);
 
   return (
-    <div className="meetra-shell min-h-screen px-4 py-6 md:px-8">
-      <div className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-7xl gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+    <div className="meetra-shell h-screen overflow-y-auto px-4 py-6 md:px-8">
+      <div className="mx-auto grid min-h-full max-w-7xl gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
         <section className="meetra-surface rounded-[32px] px-6 py-8 md:px-10 md:py-10">
           <div className="meetra-section-label">Workspace vidéo</div>
           <div className="mt-4 flex items-start gap-4">
