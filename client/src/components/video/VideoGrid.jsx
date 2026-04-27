@@ -641,57 +641,39 @@ const ScreenShareFullscreen = ({ screenStream, localStream, participants, remote
                     <>
                         <div style={{
                             position: 'absolute',
-                            top: 18,
+                            top: 8,
                             left: '50%',
                             transform: 'translateX(-50%)',
-                            background: 'rgba(4,10,25,0.82)',
+                            background: 'rgba(4,10,25,0.76)',
                             color: '#fff',
-                            borderRadius: 24,
-                            padding: '12px 14px',
-                            fontSize: 12,
+                            borderRadius: 999,
+                            padding: '8px 12px',
+                            fontSize: 11,
                             fontWeight: 700,
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 12,
-                            boxShadow: '0 18px 50px rgba(0,0,0,0.38)',
-                            backdropFilter: 'blur(18px)',
+                            gap: 10,
+                            boxShadow: '0 14px 34px rgba(0,0,0,0.28)',
+                            backdropFilter: 'blur(14px)',
                             zIndex: 12,
                             transition: 'opacity 0.3s',
                             opacity: controlsVisible ? 1 : 0,
                             border: '1px solid rgba(34,197,94,0.35)',
-                            minWidth: 520,
-                            maxWidth: 'calc(100% - 32px)',
+                            maxWidth: 'min(560px, calc(100% - 20px))',
                         }}>
                             <span style={{
-                                width: 9,
-                                height: 9,
+                                width: 8,
+                                height: 8,
                                 borderRadius: '50%',
                                 background: '#22c55e',
                                 boxShadow: '0 0 0 4px rgba(34,197,94,0.18)',
                                 animation: 'pulse 1.5s ease-in-out infinite',
                             }} />
-                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 3, flex: 1 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                                    <span style={{ whiteSpace: 'nowrap' }}>Vous partagez votre ecran</span>
-                                    <span style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        borderRadius: 999,
-                                        padding: '2px 8px',
-                                        background: 'rgba(34,197,94,0.14)',
-                                        color: '#bbf7d0',
-                                        fontSize: 11,
-                                        letterSpacing: '0.06em',
-                                        textTransform: 'uppercase',
-                                        whiteSpace: 'nowrap',
-                                    }}>
-                                        {elapsed}
-                                    </span>
-                                </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                                <span style={{ whiteSpace: 'nowrap' }}>Vous partagez votre ecran</span>
                                 {screenShareMeta?.label && (
                                     <span style={{
-                                        maxWidth: 340,
+                                        minWidth: 0,
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
                                         whiteSpace: 'nowrap',
@@ -701,6 +683,22 @@ const ScreenShareFullscreen = ({ screenStream, localStream, participants, remote
                                         {screenShareMeta.label}
                                     </span>
                                 )}
+                                <span style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: 999,
+                                    padding: '2px 8px',
+                                    background: 'rgba(34,197,94,0.14)',
+                                    color: '#bbf7d0',
+                                    fontSize: 10,
+                                    letterSpacing: '0.06em',
+                                    textTransform: 'uppercase',
+                                    whiteSpace: 'nowrap',
+                                    flexShrink: 0,
+                                }}>
+                                    {elapsed}
+                                </span>
                             </div>
                             <button
                                 type="button"
@@ -709,9 +707,9 @@ const ScreenShareFullscreen = ({ screenStream, localStream, participants, remote
                                     border: '1px solid rgba(248,113,113,0.35)',
                                     background: 'rgba(127,29,29,0.75)',
                                     color: '#fee2e2',
-                                    borderRadius: 14,
-                                    padding: '10px 14px',
-                                    fontSize: 12,
+                                    borderRadius: 999,
+                                    padding: '8px 12px',
+                                    fontSize: 11,
                                     fontWeight: 700,
                                     cursor: 'pointer',
                                     whiteSpace: 'nowrap',
@@ -719,46 +717,6 @@ const ScreenShareFullscreen = ({ screenStream, localStream, participants, remote
                             >
                                 Arreter le partage
                             </button>
-                        </div>
-
-                        <div style={{
-                            position: 'absolute',
-                            left: 16,
-                            top: 96,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 8,
-                            zIndex: 9,
-                            transition: 'opacity 0.3s',
-                            opacity: controlsVisible ? 1 : 0,
-                        }}>
-                            <div style={{
-                                background: 'rgba(34,197,94,0.14)',
-                                color: '#dcfce7',
-                                border: '1px solid rgba(34,197,94,0.28)',
-                                borderRadius: 999,
-                                padding: '6px 12px',
-                                fontSize: 11,
-                                fontWeight: 700,
-                                letterSpacing: '0.06em',
-                                textTransform: 'uppercase',
-                                backdropFilter: 'blur(10px)',
-                            }}>
-                                Bordure verte active
-                            </div>
-                            {screenShareMeta?.displaySurface && (
-                                <div style={{
-                                    background: 'rgba(15,23,42,0.7)',
-                                    color: 'rgba(255,255,255,0.8)',
-                                    border: '1px solid rgba(255,255,255,0.12)',
-                                    borderRadius: 14,
-                                    padding: '8px 12px',
-                                    fontSize: 12,
-                                    backdropFilter: 'blur(10px)',
-                                }}>
-                                    Source: {screenShareMeta.displaySurface === 'window' ? 'Application' : screenShareMeta.displaySurface === 'browser' ? 'Onglet navigateur' : 'Plein ecran'}
-                                </div>
-                            )}
                         </div>
                     </>
                 )}
