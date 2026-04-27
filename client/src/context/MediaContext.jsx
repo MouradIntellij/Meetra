@@ -28,6 +28,13 @@ export function MediaProvider({ children, initialStream = null }) {
   const [mediaAccessError, setMediaAccessError] = useState('');
   const [virtualBackgroundStream, setVirtualBackgroundStream] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [availableDevices, setAvailableDevices] = useState({
+    audioInputs: [],
+    videoInputs: [],
+    audioOutputs: [],
+  });
+  const [selectedAudioInputId, setSelectedAudioInputId] = useState('');
+  const [selectedVideoInputId, setSelectedVideoInputId] = useState('');
 
   const peerConnections = useRef(new Map());
   const pendingIceCandidates = useRef(new Map());
@@ -56,6 +63,26 @@ export function MediaProvider({ children, initialStream = null }) {
   const stopStream = (stream) => {
     stream?.getTracks().forEach(t => t.stop());
   };
+
+  const refreshAvailableDevices = useCallback(async () => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputs = devices.filter((item) => item.kind === 'audioinput');
+      const videoInputs = devices.filter((item) => item.kind === 'videoinput');
+      const audioOutputs = devices.filter((item) => item.kind === 'audiooutput');
+
+      setAvailableDevices({ audioInputs, videoInputs, audioOutputs });
+
+      if (!selectedAudioInputId && audioInputs[0]?.deviceId) {
+        setSelectedAudioInputId(audioInputs[0].deviceId);
+      }
+      if (!selectedVideoInputId && videoInputs[0]?.deviceId) {
+        setSelectedVideoInputId(videoInputs[0].deviceId);
+      }
+    } catch {}
+  }, [selectedAudioInputId, selectedVideoInputId]);
 
   const looksLikeCurrentConferenceSurface = (track, settings = {}) => {
     const displaySurface = settings.displaySurface || '';
@@ -90,6 +117,14 @@ export function MediaProvider({ children, initialStream = null }) {
       socket.emit(EVENTS.AUDIO_LEVEL, { roomId, level });
     });
   }, []);
+
+  useEffect(() => {
+    refreshAvailableDevices();
+
+    if (!navigator.mediaDevices?.addEventListener) return undefined;
+    navigator.mediaDevices.addEventListener('devicechange', refreshAvailableDevices);
+    return () => navigator.mediaDevices.removeEventListener('devicechange', refreshAvailableDevices);
+  }, [refreshAvailableDevices]);
 
   // ─────────────────────────────────────────────
   // REMOTE STREAM
@@ -169,8 +204,18 @@ export function MediaProvider({ children, initialStream = null }) {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: "user",
+          ...(selectedVideoInputId ? { deviceId: { exact: selectedVideoInputId } } : {}),
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          ...(selectedAudioInputId ? { deviceId: { exact: selectedAudioInputId } } : {}),
+        }
       });
 
       localStreamRef.current = stream;
@@ -187,6 +232,8 @@ export function MediaProvider({ children, initialStream = null }) {
         }
       });
 
+      refreshAvailableDevices();
+
       return stream;
     } catch {
       setMediaAccessError("Caméra ou micro indisponibles. Vous pouvez quand même rejoindre la réunion.");
@@ -194,7 +241,74 @@ export function MediaProvider({ children, initialStream = null }) {
       setVideoEnabled(false);
       return null;
     }
-  }, [socket, roomId]);
+  }, [socket, roomId, selectedAudioInputId, selectedVideoInputId, refreshAvailableDevices]);
+
+  const replaceMediaDevices = useCallback(async ({ audioDeviceId, videoDeviceId }) => {
+    const wantsAudio = audioDeviceId !== undefined ? Boolean(audioDeviceId) : true;
+    const wantsVideo = videoDeviceId !== undefined ? Boolean(videoDeviceId) : true;
+
+    try {
+      const nextStream = await navigator.mediaDevices.getUserMedia({
+        audio: wantsAudio ? {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          ...(audioDeviceId ? { deviceId: { exact: audioDeviceId } } : {}),
+        } : false,
+        video: wantsVideo ? {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'user',
+          ...(videoDeviceId ? { deviceId: { exact: videoDeviceId } } : {}),
+        } : false,
+      });
+
+      const previousStream = localStreamRef.current;
+      localStreamRef.current = nextStream;
+      setLocalStream(nextStream);
+      setAudioEnabled(Boolean(nextStream.getAudioTracks()[0]?.enabled ?? false));
+      setVideoEnabled(Boolean(nextStream.getVideoTracks()[0]?.enabled ?? false));
+      setMediaAccessError('');
+
+      if (audioDeviceId !== undefined) {
+        setSelectedAudioInputId(audioDeviceId || '');
+      }
+      if (videoDeviceId !== undefined) {
+        setSelectedVideoInputId(videoDeviceId || '');
+      }
+
+      peerConnections.current.forEach((pc) => {
+        const nextAudioTrack = nextStream.getAudioTracks()[0] || null;
+        const nextVideoTrack = nextStream.getVideoTracks()[0] || null;
+
+        const audioSender = pc.getSenders().find((sender) => sender.track?.kind === 'audio');
+        if (audioSender) {
+          audioSender.replaceTrack(nextAudioTrack);
+        }
+
+        if (!screenStream) {
+          const videoSender = pc.getSenders().find((sender) => sender.track?.kind === 'video');
+          if (videoSender) {
+            videoSender.replaceTrack(nextVideoTrack);
+          }
+        }
+      });
+
+      cleanupAudio.current?.();
+      cleanupAudio.current = createAudioAnalyser(nextStream, (level) => {
+        if (socket && roomId) {
+          socket.emit(EVENTS.AUDIO_LEVEL, { roomId, level });
+        }
+      });
+
+      stopStream(previousStream);
+      refreshAvailableDevices();
+      return true;
+    } catch {
+      setMediaAccessError("Impossible de basculer vers les périphériques sélectionnés.");
+      return false;
+    }
+  }, [refreshAvailableDevices, roomId, screenStream, socket]);
 
   // ─────────────────────────────────────────────
   // AUDIO / VIDEO TOGGLES
@@ -486,8 +600,13 @@ export function MediaProvider({ children, initialStream = null }) {
         setVirtualBackgroundStream,
         isSharing: Boolean(screenStream),
         isRecording,
+        availableDevices,
+        selectedAudioInputId,
+        selectedVideoInputId,
         peerConnections,
         getMedia,
+        refreshAvailableDevices,
+        replaceMediaDevices,
         toggleAudio,
         toggleVideo,
         startScreenShare,

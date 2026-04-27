@@ -9,6 +9,7 @@ import { platform } from '../../services/platform/index.js';
 import ReactionBar from './ReactionBar.jsx';
 import ScreenShareSelector from './ScreenShareSelector.jsx';
 import VirtualBackground from '../layout/VirtualBackground.jsx';
+import SettingsPanel from './SettingsPanel.jsx';
 
 // ══════════════════════════════════════════════════════════════
 //  ICÔNES SVG
@@ -30,6 +31,7 @@ const I = {
     CC:    ()=>(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M9 10.5c-.5-.8-1.2-1.2-2.1-1.2-1.7 0-2.9 1.4-2.9 3.2s1.2 3.2 2.9 3.2c.9 0 1.6-.4 2.1-1.2"/><path d="M18.5 10.5c-.5-.8-1.2-1.2-2.1-1.2-1.7 0-2.9 1.4-2.9 3.2s1.2 3.2 2.9 3.2c.9 0 1.6-.4 2.1-1.2"/></svg>),
     Hand:  ({ raised = false })=>(<svg viewBox="0 0 24 24" fill={raised ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M18 11V6a1 1 0 0 0-2 0v5"/><path d="M14 10V5a1 1 0 0 0-2 0v8"/><path d="M10 10.5V4a1 1 0 0 0-2 0v9"/><path d="M6 11V8a1 1 0 0 0-2 0v8a4 4 0 0 0 4 4h5a5 5 0 0 0 5-5v-4a1 1 0 0 0-2 0"/></svg>),
     Bg:    ()=>(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7"><rect x="2" y="3" width="20" height="14" rx="2"/><circle cx="8" cy="8" r="2"/><path d="M21 14l-5-5L8 17"/><line x1="2" y1="20" x2="22" y2="20"/></svg>),
+    Gear:  ()=>(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>),
     X:     ()=>(<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>),
     Check: ()=>(<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>),
     Upload:()=>(<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>),
@@ -145,7 +147,7 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
         setVirtualBackgroundStream,
     } = useMedia();
     const { locked } = useRoom();
-    const { chatOpen, setChatOpen, chatUnread, participantsOpen, setParticipantsOpen, whiteboardOpen, setWhiteboardOpen, transcriptOpen, setTranscriptOpen, layout, toggleLayout } = useUI();
+    const { chatOpen, setChatOpen, chatUnread, participantsOpen, setParticipantsOpen, whiteboardOpen, setWhiteboardOpen, transcriptOpen, setTranscriptOpen, settingsOpen, setSettingsOpen, layout, toggleLayout } = useUI();
     const { isRecording, toggle: toggleRecording } = useRecording();
     const { captionsEnabled, setCaptionsEnabled, transcriptionActive, startTranscription, stopTranscription } = useTranscription();
 
@@ -232,7 +234,7 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
                 <div className="flex min-w-0 flex-1 justify-center">
                 <div className="mx-auto flex min-w-0 max-w-full items-center gap-2 overflow-x-auto rounded-[28px] border border-white/10 bg-white/[0.03] px-3 py-2 shadow-[0_20px_50px_rgba(2,6,23,0.25)]">
                     <ZoomBtn onClick={toggleAudio} active={!audioEnabled} icon={audioEnabled?<I.MicOn/>:<I.MicOff/>} label={audioEnabled?'Micro':'Muet'} title={audioEnabled?'Couper le micro':'Activer le micro'}/>
-                    <ZoomBtn onClick={toggleVideo} active={!videoEnabled} icon={videoEnabled?<I.CamOn/>:<I.CamOff/>} label={videoEnabled?'Vidéo':'Arrêtée'} title={videoEnabled?'Couper la caméra':'Activer la caméra'}/>
+                    <ZoomBtn onClick={toggleVideo} active={!videoEnabled} icon={videoEnabled?<I.CamOn/>:<I.CamOff/>} label={videoEnabled?'Caméra':'Cam off'} title={videoEnabled?'Couper la caméra':'Activer la caméra'}/>
 
                     {/* ✅ BOUTON FOND VIRTUEL */}
                     <ZoomBtn
@@ -241,7 +243,7 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
                         highlight={bgActive}
                         pulse={bgActive}
                         icon={<I.Bg/>}
-                        label={bgActive ? 'Fond ●' : 'Fond'}
+                        label={bgActive ? 'Fond on' : 'Fond'}
                         title="Arrière-plan virtuel"
                     />
 
@@ -251,7 +253,7 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
                         highlight={isSharing}
                         pulse={isSharing}
                         icon={<I.Share/>}
-                        label={isSharing ? 'Partage' : 'Partager app'}
+                        label={isSharing ? 'Partage' : 'Partager'}
                         title="Partager une application"
                     />
 
@@ -262,7 +264,7 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
                         highlight={transcriptionActive}
                         pulse={transcriptionActive}
                         icon={<I.CC/>}
-                        label={transcriptionActive ? 'CC ●' : captionsEnabled ? 'CC prêt' : 'Sous-titres'}
+                        label={transcriptionActive ? 'CC on' : captionsEnabled ? 'CC prêt' : 'Sous-titres'}
                         title="Sous-titres et transcription"
                     />
                     <ZoomBtn
@@ -300,6 +302,7 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
                     <PanelBtn onClick={()=>setChatOpen(o=>!o)} active={chatOpen} icon={<I.Chat/>} label="Chat" badge={chatUnread}/>
                     <PanelBtn onClick={()=>setTranscriptOpen(o=>!o)} active={transcriptOpen} icon={<I.CC/>} label="Transcript"/>
                     <PanelBtn onClick={()=>setWhiteboardOpen(o=>!o)} active={whiteboardOpen} icon={<I.Board/>} label="Tableau"/>
+                    <PanelBtn onClick={()=>setSettingsOpen(o=>!o)} active={settingsOpen} icon={<I.Gear/>} label="Paramètres"/>
                 </div>
                 </div>
             </div>
@@ -322,6 +325,8 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
                     activeShare={screenShareMeta}
                 />
             )}
+
+            <SettingsPanel />
         </>
     );
 }

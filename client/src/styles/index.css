@@ -14,6 +14,23 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
+:root {
+  --meetra-bg: #030712;
+  --meetra-panel: rgba(15, 23, 42, 0.88);
+  --meetra-panel-soft: rgba(15, 23, 42, 0.72);
+  --meetra-border: rgba(148, 163, 184, 0.16);
+  --meetra-border-strong: rgba(191, 219, 254, 0.2);
+  --meetra-text: #f8fafc;
+  --meetra-text-soft: rgba(226, 232, 240, 0.72);
+  --meetra-text-muted: rgba(148, 163, 184, 0.78);
+  --meetra-brand: #2563eb;
+  --meetra-brand-soft: rgba(37, 99, 235, 0.16);
+  --meetra-success: #22c55e;
+  --meetra-warning: #f59e0b;
+  --meetra-danger: #ef4444;
+  --meetra-shadow: 0 28px 60px rgba(2, 6, 23, 0.38);
+}
+
 #root {
   height: 100%;
   width: 100%;
@@ -64,4 +81,75 @@ video {
 
 .screen-share-fullscreen {
   animation: slideUp 0.3s ease-out;
+}
+
+.meetra-shell {
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.18), transparent 30%),
+    radial-gradient(circle at right center, rgba(16, 185, 129, 0.12), transparent 24%),
+    linear-gradient(180deg, #020617 0%, #030712 100%);
+}
+
+.meetra-surface {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92) 0%, rgba(2, 6, 23, 0.96) 100%);
+  border: 1px solid var(--meetra-border);
+  box-shadow: var(--meetra-shadow);
+  backdrop-filter: blur(18px);
+}
+
+.meetra-surface-soft {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  backdrop-filter: blur(16px);
+}
+
+.meetra-section-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--meetra-text-muted);
+}
+
+.meetra-empty-state {
+  border: 1px dashed rgba(148, 163, 184, 0.22);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.035) 100%);
+  border-radius: 18px;
+  padding: 20px 18px;
+  text-align: center;
+  color: var(--meetra-text-soft);
+}
+
+.meetra-empty-state h4 {
+  margin: 0 0 6px;
+  color: var(--meetra-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.meetra-focus-ring:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.95);
+  outline-offset: 2px;
+}
+
+.meetra-button {
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--meetra-text);
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.meetra-button:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(191, 219, 254, 0.22);
+}
+
+.meetra-button-primary {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  border-color: rgba(96, 165, 250, 0.32);
+}
+
+.meetra-button-primary:hover {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
 }

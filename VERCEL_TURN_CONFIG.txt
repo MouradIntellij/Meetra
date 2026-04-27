@@ -1,0 +1,35 @@
+📌 VERCEL ENVIRONMENT VARIABLES - TURN Server Configuration
+════════════════════════════════════════════════════════════
+
+Copiez ces variables dans Vercel:
+Settings → Environment Variables → paste these
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+VITE_TURN_URL=turn:YOUR_PUBLIC_IP:3478
+
+VITE_TURN_USERNAME=videoconf
+
+VITE_TURN_CREDENTIAL=videoconf123!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  IMPORTANT: Remplacez "YOUR_PUBLIC_IP" par votre adresse IP publique
+  - Pour trouver votre IP: https://whatismyipaddress.com/
+  - Exemple: VITE_TURN_URL=turn:203.0.113.45:3478
+
+📝 Credentials locaux (pour développement):
+  - VITE_TURN_URL=turn:127.0.0.1:3478
+  - VITE_TURN_USERNAME=videoconf
+  - VITE_TURN_CREDENTIAL=videoconf123!
+
+🔧 Ajouter plus d'utilisateurs TURN:
+  1. Éditez: C:\LaSalle\Winter2026\TT4\videoconf-step7\coturn\users.txt
+  2. Format: username:password (une ligne par utilisateur)
+  3. Redémarrez: docker-compose -f docker-compose.coturn.yml restart
+
+✅ Vérifier TURN en local:
+  docker logs videoconf-coturn | findstr "Total General servers"
+
+🚀 TURN Server Status:
+  docker ps | findstr videoconf-coturn

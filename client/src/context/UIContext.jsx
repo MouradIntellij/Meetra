@@ -19,6 +19,7 @@ export function UIProvider({ children }) {
   const [whiteboardOpen, setWhiteboardOpen] = useState(false);
   const [breakoutOpen, setBreakoutOpen] = useState(false);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [reactions, setReactions] = useState([]);
 
@@ -66,6 +67,9 @@ export function UIProvider({ children }) {
 
         transcriptOpen,
         setTranscriptOpen,
+
+        settingsOpen,
+        setSettingsOpen,
 
         reactions,
         addReaction,

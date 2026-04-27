@@ -187,12 +187,18 @@ export default function ChatSidebar({roomId,userName,userId}){
   const[showEmoji,setShowEmoji]=useState(false);
   const[sending,setSending]=useState(false);
   const[composerError,setComposerError]=useState('');
+  const[isCompact,setIsCompact]=useState(()=>typeof window!=='undefined'?window.innerWidth<1180:false);
 
   const endRef  =useRef(null);
   const inputRef=useRef(null);
 
   useEffect(()=>{ endRef.current?.scrollIntoView({behavior:'smooth'}); },[messages]);
   useEffect(()=>{ if(chatOpen) setChatUnread(0); },[chatOpen, setChatUnread]);
+  useEffect(()=>{
+    const onResize=()=>setIsCompact(window.innerWidth<1180);
+    window.addEventListener('resize',onResize);
+    return()=>window.removeEventListener('resize',onResize);
+  },[]);
 
   /* Socket listeners */
   useEffect(()=>{
@@ -341,7 +347,7 @@ export default function ChatSidebar({roomId,userName,userId}){
   if(!chatOpen)return null;
 
   return(
-      <div style={{display:'flex',flexDirection:'column',height:'100%',width:300,background:'#0f1623',borderLeft:'1px solid rgba(255,255,255,0.07)',fontFamily:"'DM Sans',system-ui,sans-serif",position:'relative',flexShrink:0}}
+      <div style={{display:'flex',flexDirection:'column',height:isCompact?'100vh':'100%',width:isCompact?'min(360px,100vw)':300,background:'#0f1623',borderLeft:'1px solid rgba(255,255,255,0.07)',fontFamily:"'DM Sans',system-ui,sans-serif",position:isCompact?'fixed':'relative',top:isCompact?0:undefined,right:isCompact?0:undefined,zIndex:isCompact?95:undefined,flexShrink:0,transform:isCompact?'translateX(0)':'none',boxShadow:isCompact?'0 20px 70px rgba(0,0,0,0.45)':'none'}}
            onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
 
         {/* Drag overlay */}
@@ -353,10 +359,11 @@ export default function ChatSidebar({roomId,userName,userId}){
         )}
 
         {/* Header */}
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 13px',borderBottom:'1px solid rgba(255,255,255,0.07)',background:'rgba(255,255,255,0.02)',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',borderBottom:'1px solid rgba(255,255,255,0.07)',background:'rgba(255,255,255,0.02)',flexShrink:0}}>
           <div>
-            <div style={{fontSize:13,fontWeight:700,color:'#f1f5f9'}}>💬 Discussion</div>
-            <div style={{fontSize:10,color:'rgba(255,255,255,0.3)',marginTop:1}}>{messages.length} message{messages.length!==1?'s':''}</div>
+            <div style={{fontSize:10,fontWeight:800,letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(148,163,184,0.7)'}}>Messagerie</div>
+            <div style={{fontSize:15,fontWeight:700,color:'#f1f5f9',marginTop:3}}>Chat de réunion</div>
+            <div style={{fontSize:10,color:'rgba(255,255,255,0.3)',marginTop:2}}>{messages.length} message{messages.length!==1?'s':''}</div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:6}}>
             {chatUnread>0&&<div style={{background:'#ef4444',color:'#fff',borderRadius:20,padding:'1px 7px',fontSize:10,fontWeight:800}}>{chatUnread}</div>}
@@ -372,11 +379,11 @@ export default function ChatSidebar({roomId,userName,userId}){
         {/* Messages */}
         <div style={{flex:1,overflowY:'auto',padding:'10px 10px 4px',display:'flex',flexDirection:'column',gap:1}} onPaste={onPaste}>
           {messages.length===0?(
-              <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',color:'rgba(255,255,255,0.2)',textAlign:'center',gap:10}}>
-                <span style={{fontSize:36}}>💬</span>
+              <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',color:'rgba(255,255,255,0.2)',textAlign:'center',gap:10,padding:'18px',border:'1px dashed rgba(148,163,184,0.18)',borderRadius:'18px',background:'linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.035) 100%)'}}>
+                <span style={{fontSize:36}}>✉️</span>
                 <div>
-                  <div style={{fontSize:13,fontWeight:600,marginBottom:4}}>Commencez la discussion</div>
-                  <div style={{fontSize:11,lineHeight:1.5,color:'rgba(255,255,255,0.15)'}}>Envoyez un message, une image<br/>ou glissez un fichier ici.</div>
+                  <div style={{fontSize:14,fontWeight:700,marginBottom:6,color:'#f1f5f9'}}>Aucun message pour l’instant</div>
+                  <div style={{fontSize:11,lineHeight:1.6,color:'rgba(255,255,255,0.28)'}}>Envoyez un message, une image ou glissez un fichier ici pour démarrer le fil de discussion.</div>
                 </div>
               </div>
           ):messages.map(msg=>(

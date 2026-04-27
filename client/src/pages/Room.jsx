@@ -511,7 +511,7 @@ export default function Room({ roomId, userName, onLeave }) {
   const { socket, connected }       = useSocket();
   const { participants, hostId }    = useRoom();
   const { screenStream, leaveRoom, screenShareError, clearScreenShareError, mediaAccessError } = useMedia();
-  const { layout, toggleLayout }    = useUI();
+  const { layout, toggleLayout, chatOpen, participantsOpen, transcriptOpen, settingsOpen, setChatOpen, setParticipantsOpen, setTranscriptOpen, setSettingsOpen }    = useUI();
 
   const { joinRoom, toggleHand } = useWebRTC(roomId, userName);
 
@@ -520,18 +520,35 @@ export default function Room({ roomId, userName, onLeave }) {
   const [showInvite,  setShowInvite]  = useState(true);
   const [handRaised,  setHandRaised]  = useState(false);
   const [showHands,   setShowHands]   = useState(false);
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
     //ajout pour resolution du problem effet miroir lors  du full sharing screen
   const [isScreenShareActive, setIsScreenShareActive] = useState(false);
+  const isCompact = viewportWidth < 1180;
+  const isMobile = viewportWidth < 760;
 
   // Auto-show raised hands panel when someone raises hand
   const raisedCount = participants.filter(p => p.handRaised).length;
   const prevRaisedCount = useRef(0);
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   useEffect(() => {
     if (raisedCount > prevRaisedCount.current) {
       setShowHands(true);
     }
     prevRaisedCount.current = raisedCount;
   }, [raisedCount]);
+
+  const closeCompactPanels = useCallback(() => {
+    if (!isCompact) return;
+    setChatOpen(false);
+    setParticipantsOpen(false);
+    setTranscriptOpen(false);
+    setSettingsOpen(false);
+  }, [isCompact, setChatOpen, setParticipantsOpen, setTranscriptOpen, setSettingsOpen]);
 
   useEffect(() => {
     if (!connected || joined) return;
@@ -626,15 +643,17 @@ export default function Room({ roomId, userName, onLeave }) {
           minHeight: 56,
           background: 'linear-gradient(180deg, rgba(15,23,42,0.94) 0%, rgba(2,6,23,0.88) 100%)',
           borderBottom: '1px solid rgba(255,255,255,0.08)',
-          padding: '8px 18px',
+          padding: isMobile ? '10px 12px' : '8px 18px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          flexWrap: isCompact ? 'wrap' : 'nowrap',
+          gap: isCompact ? 10 : 0,
           flexShrink: 0,
           zIndex: 30,
           backdropFilter: 'blur(16px)',
           boxShadow: '0 10px 30px rgba(2,6,23,0.28)',
         }}>
           {/* Left: branding + room info */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: isCompact ? '1 1 100%' : '0 1 auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{
                 width: 34,
@@ -659,9 +678,9 @@ export default function Room({ roomId, userName, onLeave }) {
               </div>
             </div>
 
-            <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.12)' }} />
+            {!isMobile && <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.12)' }} />}
 
-            <span style={{
+            {!isMobile && <span style={{
               color: 'rgba(255,255,255,0.45)', fontSize: 11,
               fontFamily: 'monospace',
               padding: '6px 10px',
@@ -670,7 +689,7 @@ export default function Room({ roomId, userName, onLeave }) {
               border: '1px solid rgba(255,255,255,0.06)',
             }}>
             {roomId.slice(0, 8).toUpperCase()}…
-          </span>
+          </span>}
 
             {/* Participant count */}
             <div style={{
@@ -705,7 +724,7 @@ export default function Room({ roomId, userName, onLeave }) {
           </div>
 
           {/* Center: layout toggle */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 4, borderRadius: 999, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 4, borderRadius: 999, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', order: isCompact ? 3 : 2, marginLeft: isCompact ? 0 : undefined }}>
             {[
               { id: 'grid', icon: <GridIcon size={14} color="currentColor" />, title: 'Grille' },
               { id: 'spotlight', icon: <SpotlightIcon size={14} color="currentColor" />, title: 'Vedette' },
@@ -729,7 +748,7 @@ export default function Room({ roomId, userName, onLeave }) {
           </div>
 
           {/* Right: tools */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto', order: isCompact ? 2 : 3 }}>
             <NetworkQuality />
             <MeetingTimer />
 
@@ -737,7 +756,7 @@ export default function Room({ roomId, userName, onLeave }) {
             {raisedCount > 0 && (
                 <button
                     onClick={() => setShowHands(v => !v)}
-                    style={{
+                style={{
                       display: 'flex', alignItems: 'center', gap: 4,
                       padding: '5px 10px', borderRadius: 999, border: '1px solid rgba(245,158,11,0.14)',
                       background: showHands ? 'rgba(245,158,11,0.25)' : 'rgba(245,158,11,0.12)',
@@ -754,7 +773,7 @@ export default function Room({ roomId, userName, onLeave }) {
             <HostControls roomId={roomId} />
 
             {/* Invite button */}
-            <button
+            {!isMobile && <button
                 onClick={() => setShowInvite(v => !v)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 5,
@@ -767,7 +786,7 @@ export default function Room({ roomId, userName, onLeave }) {
             >
               <LinkIcon size={12} color="currentColor" />
               Inviter
-            </button>
+            </button>}
           </div>
         </div>
 
@@ -833,7 +852,7 @@ export default function Room({ roomId, userName, onLeave }) {
         )}
 
         {/* ── MAIN AREA ── */}
-          <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0, position: 'relative' }}>
               <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
                   <VideoGrid isScreenShareActive={isScreenShareActive} />
                   <ReactionsOverlay />
@@ -844,6 +863,18 @@ export default function Room({ roomId, userName, onLeave }) {
           <ParticipantsPanel roomId={roomId} />
           <ChatSidebar roomId={roomId} userName={userName} userId={socket?.id} />
           <TranscriptPanel />
+          {isCompact && (chatOpen || participantsOpen || transcriptOpen || settingsOpen) && (
+            <div
+              onClick={closeCompactPanels}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 80,
+                background: 'rgba(2,6,23,0.48)',
+                backdropFilter: 'blur(4px)',
+              }}
+            />
+          )}
         </div>
 
         {/* ── CONTROL BAR ── */}

@@ -813,6 +813,13 @@ export default function VideoGrid() {
     const { activeSpeakerId, layout } = useUI();
     const { socket } = useSocket();
     const isElectronWindowShare = platform.isElectron && screenShareMeta?.displaySurface === 'window';
+    const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
+
+    useEffect(() => {
+        const onResize = () => setViewportWidth(window.innerWidth);
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, []);
 
     // Screen share mode
     if (screenStream && !isElectronWindowShare) {
@@ -901,11 +908,13 @@ export default function VideoGrid() {
 
     // Default grid mode
     const totalCount = participants.length + 1; // +1 for local
-    const cols = totalCount <= 1 ? 1
-        : totalCount <= 2 ? 2
-            : totalCount <= 4 ? 2
-                : totalCount <= 6 ? 3
-                    : 4;
+    const cols = viewportWidth < 700
+        ? 1
+        : totalCount <= 1 ? 1
+            : totalCount <= 2 ? 2
+                : totalCount <= 4 ? 2
+                    : totalCount <= 6 ? 3
+                        : 4;
 
     return (
         <div style={{

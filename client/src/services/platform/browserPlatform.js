@@ -23,11 +23,6 @@ const browserPlatform = {
     },
     async notify({ title, body }) {
         if (!('Notification' in window)) return false;
-
-        if (Notification.permission === 'default') {
-            await Notification.requestPermission();
-        }
-
         if (Notification.permission !== 'granted') return false;
 
         new Notification(title, { body });
