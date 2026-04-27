@@ -1,9 +1,19 @@
 import { useTranscription } from '../../context/TranscriptionContext.jsx';
 
 export default function CaptionsOverlay() {
-    const { visibleCaptions, transcriptionActive, captionsEnabled } = useTranscription();
+    const {
+        visibleCaptions,
+        transcriptionActive,
+        captionsEnabled,
+        translationTarget,
+        translationLabel,
+        resolveSegmentText,
+    } = useTranscription();
 
     if (!captionsEnabled || !visibleCaptions) return null;
+
+    const captionText = resolveSegmentText(visibleCaptions);
+    const showOriginal = translationTarget !== 'original' && captionText !== visibleCaptions.text;
 
     return (
         <div style={{
@@ -32,8 +42,25 @@ export default function CaptionsOverlay() {
                     color: transcriptionActive ? '#4ade80' : 'rgba(255,255,255,0.45)',
                     fontWeight: 800,
                     marginBottom: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 10,
                 }}>
-                    {visibleCaptions.speakerName || 'Sous-titres'}
+                    <span>{visibleCaptions.speakerName || 'Sous-titres'}</span>
+                    {translationTarget !== 'original' && (
+                        <span style={{
+                            borderRadius: 999,
+                            border: '1px solid rgba(74,222,128,0.2)',
+                            background: 'rgba(34,197,94,0.12)',
+                            padding: '4px 8px',
+                            fontSize: 10,
+                            letterSpacing: '0.1em',
+                            color: '#bbf7d0',
+                        }}>
+                            Traduction {translationLabel}
+                        </span>
+                    )}
                 </div>
                 <div style={{
                     fontSize: 20,
@@ -41,8 +68,20 @@ export default function CaptionsOverlay() {
                     fontWeight: 600,
                     color: '#f8fafc',
                 }}>
-                    {visibleCaptions.text}
+                    {captionText}
                 </div>
+                {showOriginal && (
+                    <div style={{
+                        marginTop: 8,
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                        color: 'rgba(226,232,240,0.66)',
+                        paddingTop: 8,
+                        borderTop: '1px solid rgba(255,255,255,0.08)',
+                    }}>
+                        {visibleCaptions.text}
+                    </div>
+                )}
             </div>
         </div>
     );

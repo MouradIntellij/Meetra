@@ -11,6 +11,9 @@ export function getTranscriptionCapabilities() {
         preferredMode: serverProviderAvailable ? 'server' : 'browser',
         serverProviderAvailable,
         provider: serverProviderAvailable ? 'openai' : 'browser',
+        translationAvailable: Boolean(ENV.OPENAI_API_KEY),
+        translationProvider: Boolean(ENV.OPENAI_API_KEY) ? 'openai' : 'none',
+        translationLanguages: ['original', 'fr', 'en'],
     };
 }
 

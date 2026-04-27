@@ -1,5 +1,6 @@
 import { EVENTS } from '../../constants/events.js';
 import * as roomService from '../../rooms/roomService.js';
+import { ENV } from '../../config/env.js';
 import { logger } from '../../utils/logger.js';
 import { notifyHostWaitingGuest } from '../../services/notifications/hostAlertService.js';
 
@@ -111,8 +112,8 @@ export function registerRoomHandlers(io, socket) {
     broadcastWaitingUpdate(io, roomId);
 
     const meeting = await roomService.getMeetingRoomInfo(roomId);
-    const joinUrl = process.env.CLIENT_URL
-      ? `${String(process.env.CLIENT_URL).replace(/\/+$/, '')}/room/${roomId}`
+    const joinUrl = ENV.CLIENT_URL
+      ? `${String(ENV.CLIENT_URL).replace(/\/+$/, '')}/room/${roomId}`
       : null;
     notifyHostWaitingGuest({
       meeting,

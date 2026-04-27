@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMedia } from '../../context/MediaContext.jsx';
 import { useTranscription } from '../../context/TranscriptionContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
-import { CameraOffIcon, ChatBubbleIcon, ComputerIcon, MicOffIcon, SettingsIcon, TranscriptIcon } from '../common/AppIcons.jsx';
+import { CameraOffIcon, ChatBubbleIcon, ComputerIcon, GlobeIcon, MicOffIcon, SettingsIcon, TranscriptIcon } from '../common/AppIcons.jsx';
 import ModalFrame from '../common/ModalFrame.jsx';
 
 function SettingBlock({ icon, title, description, children }) {
@@ -78,6 +78,11 @@ export default function SettingsPanel() {
     transcriptionProvider,
     language,
     setLanguage,
+    translationAvailable,
+    translationProvider,
+    translationTarget,
+    setTranslationTarget,
+    translationLabel,
   } = useTranscription();
 
   const [audioInputId, setAudioInputId] = useState(selectedAudioInputId);
@@ -211,6 +216,32 @@ export default function SettingsPanel() {
                   {transcriptionMode === 'server'
                     ? `Serveur${transcriptionProvider === 'openai' ? ' · OpenAI' : ''}`
                     : 'Navigateur local'}
+                </div>
+              </div>
+            </SettingBlock>
+
+            <SettingBlock
+              icon={<GlobeIcon size={18} />}
+              title="Traduction des sous-titres"
+              description="Définissez la langue d’affichage des captions et du transcript quand la traduction live est disponible."
+            >
+              <div>
+                <Label>Langue affichée</Label>
+                <SelectField
+                  value={translationTarget}
+                  onChange={(event) => setTranslationTarget(event.target.value)}
+                >
+                  <option value="original">Original</option>
+                  <option value="fr">Français</option>
+                  <option value="en">English</option>
+                </SelectField>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-300">
+                <div className="font-semibold text-slate-100">Statut actuel</div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {translationAvailable
+                    ? `Traduction active disponible via ${translationProvider === 'openai' ? 'OpenAI' : translationProvider}. Affichage actuel: ${translationLabel}.`
+                    : 'Aucun provider serveur de traduction n’est configuré actuellement.'}
                 </div>
               </div>
             </SettingBlock>

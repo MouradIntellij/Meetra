@@ -9,6 +9,10 @@ async function postWebhook(url, payload) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(ENV.HOST_ALERT_WEBHOOK_SECRET
+          ? { 'x-meetra-webhook-secret': ENV.HOST_ALERT_WEBHOOK_SECRET }
+          : {}),
+        'x-meetra-event': payload?.type || 'unknown',
       },
       body: JSON.stringify(payload),
     });

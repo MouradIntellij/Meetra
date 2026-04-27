@@ -11,6 +11,7 @@ export const ENV = {
   SUMMARY_PROVIDER: process.env.SUMMARY_PROVIDER || 'heuristic',
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
   OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
+  OPENAI_TRANSLATION_MODEL: process.env.OPENAI_TRANSLATION_MODEL || process.env.OPENAI_MODEL || 'gpt-4.1-mini',
   OPENAI_BASE_URL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1/chat/completions',
   TRANSCRIPT_RETENTION_DAYS: Number(process.env.TRANSCRIPT_RETENTION_DAYS || 30),
   TRANSCRIPT_AUDIT_FILE: process.env.TRANSCRIPT_AUDIT_FILE || 'server/data/transcripts/audit.log',
@@ -19,4 +20,5 @@ export const ENV = {
   OPENAI_TRANSCRIPTION_URL: process.env.OPENAI_TRANSCRIPTION_URL || 'https://api.openai.com/v1/audio/transcriptions',
   HOST_ALERT_EMAIL_WEBHOOK_URL: process.env.HOST_ALERT_EMAIL_WEBHOOK_URL || '',
   HOST_ALERT_SMS_WEBHOOK_URL: process.env.HOST_ALERT_SMS_WEBHOOK_URL || '',
+  HOST_ALERT_WEBHOOK_SECRET: process.env.HOST_ALERT_WEBHOOK_SECRET || '',
 };

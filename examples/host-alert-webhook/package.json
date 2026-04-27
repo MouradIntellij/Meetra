@@ -1,0 +1,17 @@
+{
+  "name": "meetra-host-alert-webhook",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Sample webhook receiver for Meetra host waiting-room alerts",
+  "scripts": {
+    "dev": "node index.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

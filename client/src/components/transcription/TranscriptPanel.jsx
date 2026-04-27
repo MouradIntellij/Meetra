@@ -19,6 +19,12 @@ export default function TranscriptPanel() {
     transcriptionMode,
     transcriptionProvider,
     serverProviderAvailable,
+    translationAvailable,
+    translationProvider,
+    translationTarget,
+    setTranslationTarget,
+    translationLabel,
+    resolveSegmentText,
   } = useTranscription();
   const [query, setQuery] = useState('');
   const [isCompact, setIsCompact] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 1180 : false));
@@ -39,6 +45,7 @@ export default function TranscriptPanel() {
     if (!normalized) return segments;
     return segments.filter((segment) =>
       segment.text.toLowerCase().includes(normalized) ||
+      Object.values(segment.translations || {}).some((value) => String(value || '').toLowerCase().includes(normalized)) ||
       segment.speakerName.toLowerCase().includes(normalized)
     );
   }, [segments, query]);
@@ -109,6 +116,18 @@ export default function TranscriptPanel() {
           </button>
         </div>
 
+        {translationAvailable && (
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={() => exportTranscript('bilingual')}
+              className="meetra-button meetra-focus-ring w-full px-4 py-3 text-sm font-semibold text-slate-100"
+            >
+              Exporter bilingue ({translationLabel})
+            </button>
+          </div>
+        )}
+
         <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
           <input
             value={query}
@@ -124,6 +143,24 @@ export default function TranscriptPanel() {
             <option value="fr-CA">FR-CA</option>
             <option value="fr-FR">FR-FR</option>
             <option value="en-US">EN-US</option>
+          </select>
+        </div>
+
+        <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+          <div className="rounded-[16px] border border-white/10 bg-white/[0.03] px-4 py-3 text-xs leading-5 text-slate-400">
+            {translationAvailable
+              ? `Traduction live disponible via ${translationProvider === 'openai' ? 'OpenAI' : translationProvider}.`
+              : 'Traduction live indisponible sans provider IA serveur.'}
+          </div>
+          <select
+            value={translationTarget}
+            onChange={(event) => setTranslationTarget(event.target.value)}
+            disabled={!translationAvailable}
+            className="meetra-focus-ring rounded-[16px] border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400 disabled:opacity-40"
+          >
+            <option value="original">Original</option>
+            <option value="fr">Français</option>
+            <option value="en">English</option>
           </select>
         </div>
 
@@ -152,7 +189,12 @@ export default function TranscriptPanel() {
                 <div className="text-sm font-semibold text-blue-100">{segment.speakerName}</div>
                 <div className="text-xs text-slate-500">{new Date(segment.createdAt).toLocaleTimeString()}</div>
               </div>
-              <div className="mt-2 text-sm leading-6 text-slate-100">{segment.text}</div>
+              <div className="mt-2 text-sm leading-6 text-slate-100">{resolveSegmentText(segment)}</div>
+              {translationTarget !== 'original' && resolveSegmentText(segment) !== segment.text && (
+                <div className="mt-2 text-xs leading-5 text-slate-500">
+                  Original: {segment.text}
+                </div>
+              )}
             </div>
           ))
         )}

@@ -268,7 +268,36 @@ CLIENT_URL=http://localhost:5173
 ```
 NODE_ENV=production
 CLIENT_URL=https://videoconference-server-delta.vercel.app
+OPENAI_TRANSLATION_MODEL=gpt-4.1-mini
+HOST_ALERT_EMAIL_WEBHOOK_URL=
+HOST_ALERT_SMS_WEBHOOK_URL=
+HOST_ALERT_WEBHOOK_SECRET=
 ```
+
+### Alertes hôte par webhook
+
+Quand un invité arrive dans la salle d'attente, Meetra peut envoyer un `POST` JSON à un webhook email et/ou SMS.
+
+Exemple de configuration côté serveur Render:
+
+```
+HOST_ALERT_EMAIL_WEBHOOK_URL=https://votre-service-webhook.onrender.com/meetra-email
+HOST_ALERT_SMS_WEBHOOK_URL=https://votre-service-webhook.onrender.com/meetra-sms
+HOST_ALERT_WEBHOOK_SECRET=change-me
+```
+
+Un exemple prêt à déployer existe dans:
+
+```text
+examples/host-alert-webhook
+```
+
+Ce mini-service:
+- accepte le JSON Meetra
+- vérifie l'en-tête `x-meetra-webhook-secret`
+- peut journaliser simplement les alertes
+- peut envoyer un email via Brevo ou Resend
+- laisse le SMS en stub tant qu'aucun fournisseur payant n'est branché
 
 ---
 

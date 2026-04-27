@@ -149,7 +149,18 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
     const { locked } = useRoom();
     const { chatOpen, setChatOpen, chatUnread, participantsOpen, setParticipantsOpen, whiteboardOpen, setWhiteboardOpen, transcriptOpen, setTranscriptOpen, settingsOpen, setSettingsOpen, layout, toggleLayout } = useUI();
     const { isRecording, toggle: toggleRecording } = useRecording();
-    const { captionsEnabled, setCaptionsEnabled, transcriptionActive, startTranscription, stopTranscription } = useTranscription();
+    const {
+        captionsEnabled,
+        setCaptionsEnabled,
+        transcriptionActive,
+        startTranscription,
+        stopTranscription,
+        translationAvailable,
+        translationTarget,
+        setTranslationTarget,
+        translationLabel,
+        cycleTranslationTarget,
+    } = useTranscription();
 
     const [bgOpen, setBgOpen] = useState(false);
     const [bgActive, setBgActive] = useState(false);
@@ -278,12 +289,39 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
                     />
                     <ReactionBar roomId={roomId} userName={userName} toggleHand={toggleHand} handRaised={handRaised}/>
                     <ZoomBtn onClick={toggleLayout} icon={layout==='grid'?<I.Grid/>:<I.Focus/>} label={layout==='grid'?'Grille':'Focus'} title="Changer la disposition"/>
+                    {translationAvailable && (
+                        <ZoomBtn
+                            onClick={cycleTranslationTarget}
+                            active={translationTarget !== 'original'}
+                            highlight={translationTarget !== 'original'}
+                            icon={<I.CC/>}
+                            label={`Traduire ${translationLabel}`}
+                            title="Basculer la langue des sous-titres"
+                        />
+                    )}
                 </div>
                 </div>
 
                 <div className="flex w-[340px] shrink-0 items-center justify-end gap-2">
                     {locked && (<span className="hidden 2xl:flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1.5 text-[11px] font-semibold text-amber-200"><svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Réunion verrouillée</span>)}
                     {isSharing && (<button onClick={stopScreenShare} className="meetra-focus-ring hidden 2xl:flex items-center gap-2 rounded-full border border-red-400/25 bg-red-500/15 px-3.5 py-2 text-[11px] font-bold text-red-100 shadow-[0_12px_25px_rgba(127,29,29,0.28)] backdrop-blur-xl transition hover:bg-red-500/22"><svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>Arrêter le partage</button>)}
+                    {translationAvailable && (
+                        <>
+                            <span className="hidden 2xl:flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold text-emerald-100">
+                                Traduction {translationLabel}
+                            </span>
+                            <select
+                                value={translationTarget}
+                                onChange={(event) => setTranslationTarget(event.target.value)}
+                                className="hidden 2xl:block rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold text-slate-200 outline-none transition hover:bg-white/[0.08]"
+                                title="Langue des sous-titres"
+                            >
+                                <option value="original">Original</option>
+                                <option value="fr">Français</option>
+                                <option value="en">English</option>
+                            </select>
+                        </>
+                    )}
                     {!isSharing && (
                         <button
                             onClick={() => setShowScreenShareSelector(true)}

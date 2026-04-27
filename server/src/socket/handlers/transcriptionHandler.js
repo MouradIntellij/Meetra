@@ -9,6 +9,7 @@ import {
 } from '../../services/transcription/transcriptStore.js';
 import { buildMeetingSummary } from '../../services/transcription/transcriptSummaryService.js';
 import { transcribeAudioChunk } from '../../services/transcription/transcriptionProvider.js';
+import { translateTranscriptSegment } from '../../services/transcription/translationProvider.js';
 
 export function registerTranscriptionHandlers(io, socket) {
     socket.on(EVENTS.TRANSCRIPTION_START, async ({ roomId, language }) => {
@@ -34,9 +35,17 @@ export function registerTranscriptionHandlers(io, socket) {
     socket.on(EVENTS.TRANSCRIPTION_SEGMENT, async ({ roomId, segment }) => {
         if (!roomId || !segment?.text?.trim()) return;
 
+        const translations = segment.isFinal
+            ? await translateTranscriptSegment({
+                text: segment.text,
+                sourceLanguage: segment.language,
+            })
+            : {};
+
         const normalized = await appendTranscriptSegment(roomId, {
             ...segment,
             speakerId: segment.speakerId || socket.id,
+            translations,
         });
 
         io.to(roomId).emit(EVENTS.TRANSCRIPTION_SEGMENT, normalized);
@@ -58,6 +67,10 @@ export function registerTranscriptionHandlers(io, socket) {
                 speakerId: chunk.speakerId || socket.id,
                 speakerName: chunk.speakerName || 'Participant',
                 text: result.text.trim(),
+                translations: await translateTranscriptSegment({
+                    text: result.text.trim(),
+                    sourceLanguage: chunk.language,
+                }),
                 isFinal: true,
                 language: chunk.language,
                 startMs: chunk.startMs ?? Date.now(),

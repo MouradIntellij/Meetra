@@ -46,13 +46,28 @@ export function createTranscriptionRouter() {
 
         const segments = await getTranscriptSegments(roomId);
         appendTranscriptAudit({ action: 'transcript.export', roomId, requesterId, segmentCount: segments.length });
+        const mode = req.query.mode === 'bilingual' ? 'bilingual' : 'default';
 
         const text = segments
-            .map((segment) => `[${new Date(segment.createdAt).toLocaleTimeString()}] ${segment.speakerName}: ${segment.text}`)
+            .map((segment) => {
+                const baseLine = `[${new Date(segment.createdAt).toLocaleTimeString()}] ${segment.speakerName}: ${segment.text}`;
+                if (mode !== 'bilingual') return baseLine;
+
+                const extraLines = [
+                    segment.translations?.fr && segment.translations.fr !== segment.text
+                        ? `  FR: ${segment.translations.fr}`
+                        : null,
+                    segment.translations?.en && segment.translations.en !== segment.text
+                        ? `  EN: ${segment.translations.en}`
+                        : null,
+                ].filter(Boolean);
+
+                return [baseLine, ...extraLines].join('\n');
+            })
             .join('\n');
 
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="transcript-${roomId}.txt"`);
+        res.setHeader('Content-Disposition', `attachment; filename="${mode === 'bilingual' ? `transcript-bilingual-${roomId}` : `transcript-${roomId}`}.txt"`);
         res.send(text);
     });
 

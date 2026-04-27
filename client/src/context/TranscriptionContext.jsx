@@ -14,6 +14,7 @@ export function useTranscription() {
 export function TranscriptionProvider({ roomId, userName, children }) {
     const { socket, connected, apiUrl } = useSocket();
     const { localStream } = useMedia();
+    const translationPrefKey = 'meetra-translation-target';
     const [captionsEnabled, setCaptionsEnabled] = useState(true);
     const [transcriptOpen, setTranscriptOpen] = useState(false);
     const [transcriptionActive, setTranscriptionActive] = useState(false);
@@ -23,6 +24,12 @@ export function TranscriptionProvider({ roomId, userName, children }) {
     const [transcriptionMode, setTranscriptionMode] = useState('browser');
     const [transcriptionProvider, setTranscriptionProvider] = useState('browser');
     const [serverProviderAvailable, setServerProviderAvailable] = useState(false);
+    const [translationAvailable, setTranslationAvailable] = useState(false);
+    const [translationProvider, setTranslationProvider] = useState('none');
+    const [translationTarget, setTranslationTarget] = useState(() => {
+        if (typeof window === 'undefined') return 'original';
+        return window.localStorage.getItem(translationPrefKey) || 'original';
+    });
     const [summary, setSummary] = useState(null);
     const [summaryLoading, setSummaryLoading] = useState(false);
     const [error, setError] = useState('');
@@ -43,9 +50,18 @@ export function TranscriptionProvider({ roomId, userName, children }) {
                     setTranscriptionProvider(data.provider);
                 }
                 setServerProviderAvailable(Boolean(data?.serverProviderAvailable));
+                setTranslationAvailable(Boolean(data?.translationAvailable));
+                if (data?.translationProvider) {
+                    setTranslationProvider(data.translationProvider);
+                }
             })
             .catch(() => {});
     }, [apiUrl]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        window.localStorage.setItem(translationPrefKey, translationTarget);
+    }, [translationTarget]);
 
     useEffect(() => {
         if (!roomId || !transcriptOpen) return;
@@ -260,9 +276,17 @@ export function TranscriptionProvider({ roomId, userName, children }) {
         socket.emit(EVENTS.TRANSCRIPTION_STOP, { roomId });
     };
 
-    const exportTranscript = () => {
+    const exportTranscript = (mode = 'default') => {
         const requesterId = socket?.id ? `?requesterId=${encodeURIComponent(socket.id)}` : '';
-        window.open(`${apiUrl}/api/rooms/${roomId}/transcript.txt${requesterId}`, '_blank', 'noopener,noreferrer');
+        const params = new URLSearchParams();
+        if (socket?.id) {
+            params.set('requesterId', socket.id);
+        }
+        if (mode === 'bilingual') {
+            params.set('mode', 'bilingual');
+        }
+        const query = params.toString();
+        window.open(`${apiUrl}/api/rooms/${roomId}/transcript.txt${query ? `?${query}` : ''}`, '_blank', 'noopener,noreferrer');
     };
 
     const generateSummary = () => {
@@ -287,6 +311,27 @@ export function TranscriptionProvider({ roomId, userName, children }) {
         return liveSegment || segments[segments.length - 1] || null;
     }, [captionsEnabled, liveSegment, segments]);
 
+    const resolveSegmentText = (segment) => {
+        if (!segment) return '';
+        if (translationTarget === 'original') return segment.text || '';
+        return segment.translations?.[translationTarget] || segment.text || '';
+    };
+
+    const translationLabel =
+        translationTarget === 'fr'
+            ? 'FR'
+            : translationTarget === 'en'
+                ? 'EN'
+                : 'Original';
+
+    const cycleTranslationTarget = () => {
+        setTranslationTarget((current) => {
+            if (current === 'original') return 'fr';
+            if (current === 'fr') return 'en';
+            return 'original';
+        });
+    };
+
     return (
         <TranscriptionContext.Provider value={{
             captionsEnabled,
@@ -310,6 +355,13 @@ export function TranscriptionProvider({ roomId, userName, children }) {
             transcriptionMode,
             transcriptionProvider,
             serverProviderAvailable,
+            translationAvailable,
+            translationProvider,
+            translationTarget,
+            setTranslationTarget,
+            translationLabel,
+            cycleTranslationTarget,
+            resolveSegmentText,
             speechRecognitionSupported: Boolean(SpeechRecognition),
         }}>
             {children}

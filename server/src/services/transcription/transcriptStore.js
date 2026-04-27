@@ -58,6 +58,7 @@ export async function appendTranscriptSegment(roomId, segment) {
         speakerId: segment.speakerId,
         speakerName: segment.speakerName || 'Participant',
         text: segment.text || '',
+        translations: segment.translations || {},
         isFinal: Boolean(segment.isFinal),
         language: segment.language || room.language || 'fr-CA',
         startMs: segment.startMs ?? Date.now(),
