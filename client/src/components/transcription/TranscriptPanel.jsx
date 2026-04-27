@@ -116,6 +116,12 @@ export default function TranscriptPanel() {
           </button>
         </div>
 
+        {transcriptionMode === 'browser' && !speechRecognitionSupported && (
+          <div className="mt-3 rounded-[16px] border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            Ce navigateur ou runtime ne fournit pas `SpeechRecognition`. Configurez un provider serveur OpenAI pour activer la transcription ici.
+          </div>
+        )}
+
         {translationAvailable && (
           <div className="mt-2">
             <button

@@ -540,7 +540,8 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
     }
   };
 
-  const createRoom = async () => {
+  const createRoom = async (event) => {
+    event?.preventDefault?.();
     if (!userName.trim()) {
       setError('Entrez votre nom.');
       return;
@@ -557,7 +558,8 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
     }
   };
 
-  const scheduleRoom = async () => {
+  const scheduleRoom = async (event) => {
+    event?.preventDefault?.();
     if (!userName.trim()) {
       setError('Entrez votre nom.');
       return;
@@ -618,7 +620,8 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
     }
   };
 
-  const copyCreatedLink = async () => {
+  const copyCreatedLink = async (event) => {
+    event?.preventDefault?.();
     if (!createdMeeting?.joinUrl) return;
     await navigator.clipboard.writeText(createdMeeting.joinUrl);
     setCopied(true);
@@ -632,7 +635,8 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
     setTimeout(() => setCopiedMeetingId(''), 2000);
   };
 
-  const enterCreatedRoom = () => {
+  const enterCreatedRoom = (event) => {
+    event?.preventDefault?.();
     if (!userName.trim()) {
       setError('Entrez votre nom pour entrer comme hôte.');
       return;
@@ -1232,6 +1236,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
               </div>
               <div className="mt-4 grid gap-2 sm:grid-cols-2">
                 <button
+                  type="button"
                   onClick={copyCreatedLink}
                   className="meetra-button meetra-focus-ring flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-slate-100"
                 >
@@ -1239,6 +1244,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                   {copied ? 'Lien copié' : 'Copier le lien'}
                 </button>
                 <button
+                  type="button"
                   onClick={enterCreatedRoom}
                   className="meetra-button meetra-button-primary meetra-focus-ring flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white"
                 >
@@ -1260,6 +1266,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                 />
               </div>
               <button
+                type="button"
                 onClick={joinRoom}
                 disabled={loading}
                 className="meetra-button meetra-button-primary meetra-focus-ring flex w-full items-center justify-center gap-2 px-4 py-3.5 text-sm font-semibold text-white disabled:opacity-60"
@@ -1354,6 +1361,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <button
+                  type="button"
                   onClick={createRoom}
                   disabled={loading}
                   className="meetra-button meetra-button-primary meetra-focus-ring flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-semibold text-white disabled:opacity-60"
@@ -1362,6 +1370,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                   {loading ? 'Création...' : 'Créer et démarrer'}
                 </button>
                 <button
+                  type="button"
                   onClick={scheduleRoom}
                   disabled={loading}
                   className="meetra-button meetra-focus-ring flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-semibold text-slate-100 disabled:opacity-60"

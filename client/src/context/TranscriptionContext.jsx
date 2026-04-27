@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import { useSocket } from './SocketContext.jsx';
 import { EVENTS } from '../utils/events.js';
 import { useMedia } from './MediaContext.jsx';
+import { useUI } from './UIContext.jsx';
 
 const TranscriptionContext = createContext(null);
 
@@ -14,9 +15,9 @@ export function useTranscription() {
 export function TranscriptionProvider({ roomId, userName, children }) {
     const { socket, connected, apiUrl } = useSocket();
     const { localStream } = useMedia();
+    const { transcriptOpen, setTranscriptOpen } = useUI();
     const translationPrefKey = 'meetra-translation-target';
     const [captionsEnabled, setCaptionsEnabled] = useState(true);
-    const [transcriptOpen, setTranscriptOpen] = useState(false);
     const [transcriptionActive, setTranscriptionActive] = useState(false);
     const [language, setLanguage] = useState('fr-CA');
     const [segments, setSegments] = useState([]);

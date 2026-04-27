@@ -1,0 +1,19 @@
+{
+  "roomId": "5be4cf66-5347-4511-a038-61959500e367",
+  "locked": false,
+  "status": "scheduled",
+  "source": "api",
+  "createdAt": 1777322163062,
+  "updatedAt": 1777322163062,
+  "startedAt": null,
+  "endedAt": null,
+  "metadata": {
+    "title": "Réunion Meetra",
+    "scheduledFor": "2026-04-28T13:00:00.000Z",
+    "timezone": "America/Toronto",
+    "durationMinutes": 60,
+    "hostName": "Mourad",
+    "hostEmail": "sosi45_h@hotmail.com",
+    "hostPhone": null
+  }
+}
