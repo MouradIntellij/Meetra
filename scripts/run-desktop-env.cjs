@@ -48,10 +48,18 @@ const mergedEnv = {
   ...desktopEnv,
 };
 
-const shouldUseRemoteClient = Boolean(
-  mergedEnv.APP_CLIENT_URL ||
-  mergedEnv.APP_PUBLIC_JOIN_BASE_URL
-);
+const cliArgs = new Set(process.argv.slice(2));
+const shouldUseRemoteClient =
+  cliArgs.has('--remote') &&
+  Boolean(mergedEnv.APP_CLIENT_URL || mergedEnv.APP_PUBLIC_JOIN_BASE_URL);
+
+if (!shouldUseRemoteClient) {
+  delete mergedEnv.APP_CLIENT_URL;
+  delete mergedEnv.APP_PUBLIC_JOIN_BASE_URL;
+  delete mergedEnv.APP_API_URL;
+  delete mergedEnv.VITE_PUBLIC_JOIN_BASE_URL;
+  delete mergedEnv.VITE_API_URL;
+}
 
 const npmScript = shouldUseRemoteClient ? 'dev:desktop:remote' : 'dev:desktop:raw';
 

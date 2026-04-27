@@ -613,7 +613,8 @@ export default function Room({ roomId, userName, onLeave }) {
 
   return (
       <div style={{
-        height: '100vh', background: '#030712',
+        height: '100vh',
+        backgroundColor: '#030712',
         display: 'flex', flexDirection: 'column',
         overflow: 'hidden', fontFamily: 'system-ui, sans-serif',
         position: 'relative',

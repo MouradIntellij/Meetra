@@ -36,6 +36,7 @@ const browserPlatform = {
     async openExternal(url) {
         window.open(url, '_blank', 'noopener,noreferrer');
     },
+    showReaction() {},
 };
 
 export default browserPlatform;

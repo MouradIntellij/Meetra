@@ -1,0 +1,11 @@
+{
+  "roomId": "db8ff1c5-bd65-4da9-a603-d8fe42618507",
+  "locked": false,
+  "status": "scheduled",
+  "source": "api",
+  "createdAt": 1777253805221,
+  "updatedAt": 1777253805221,
+  "startedAt": null,
+  "endedAt": null,
+  "metadata": {}
+}

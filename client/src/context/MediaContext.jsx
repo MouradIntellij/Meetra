@@ -279,6 +279,9 @@ export function MediaProvider({ children, initialStream = null }) {
         label: nextMeta.label,
         displaySurface: nextMeta.displaySurface,
       });
+      if (platform.isElectron && nextMeta.displaySurface === 'window') {
+        platform.minimizeMainWindow?.();
+      }
 
       track.onended = () => {
         isSharingRef.current = false;
@@ -308,6 +311,9 @@ export function MediaProvider({ children, initialStream = null }) {
 
     setScreenSharingId(null);
     platform.hidePresenterToolbar?.();
+    if (platform.isElectron) {
+      platform.restoreMainWindow?.();
+    }
 
     socket?.emit(EVENTS.SCREEN_STOP, { roomId });
 
@@ -378,6 +384,9 @@ export function MediaProvider({ children, initialStream = null }) {
     setVirtualBackgroundStream(null);
     setRemoteStreams(new Map());
     platform.hidePresenterToolbar?.();
+    if (platform.isElectron) {
+      platform.restoreMainWindow?.();
+    }
   }, [screenStream]);
 
   useEffect(() => {

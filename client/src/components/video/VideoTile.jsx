@@ -24,8 +24,9 @@ export default function VideoTile({
 
         el.srcObject = stream;
 
-        // ✅ Désactiver l'effet miroir de manière forcée et définitive
-        el.style.transform = 'none !important';
+        el.style.transform = 'translateZ(0)';
+        el.style.willChange = 'transform, opacity';
+        el.style.opacity = '0.999';
 
         el.play().catch(() => {});
 
@@ -76,7 +77,15 @@ export default function VideoTile({
                 className={`w-full h-full object-cover ${
                     stream && !videoOff ? 'block' : 'hidden'
                 }`}
-                style={isScreenSharer ? { objectFit: 'contain', background: '#050816' } : undefined}
+                style={{
+                    ...(isScreenSharer ? { objectFit: 'contain', background: '#050816' } : {}),
+                    position: 'relative',
+                    zIndex: 0,
+                    transform: 'translateZ(0)',
+                    willChange: 'transform, opacity',
+                    opacity: 0.999,
+                    backfaceVisibility: 'hidden',
+                }}
             />
 
             {/* 👤 AVATAR */}

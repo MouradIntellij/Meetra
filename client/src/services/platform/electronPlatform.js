@@ -60,6 +60,15 @@ const electronPlatform = {
     async openExternal(url) {
         return electronAPI?.openExternal?.(url);
     },
+    showReaction(payload) {
+        return electronAPI?.showReaction?.(payload);
+    },
+    minimizeMainWindow() {
+        return electronAPI?.minimizeMainWindow?.();
+    },
+    restoreMainWindow() {
+        return electronAPI?.restoreMainWindow?.();
+    },
 };
 
 export default electronPlatform;

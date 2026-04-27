@@ -14,7 +14,9 @@ const VideoPlayer = ({ stream, muted, style, className }) => {
         const el = videoRef.current;
         if (!el || !stream) return;
         el.srcObject = stream;
-        el.style.transform = 'none !important'; // Désactiver l'effet miroir
+        el.style.transform = 'translateZ(0)';
+        el.style.willChange = 'transform, opacity';
+        el.style.opacity = '0.999';
         el.play().catch(() => {});
         return () => { el.srcObject = null; };
     }, [stream]);
@@ -25,7 +27,15 @@ const VideoPlayer = ({ stream, muted, style, className }) => {
             autoPlay
             playsInline
             muted={muted}
-            style={style}
+            style={{
+                ...style,
+                position: 'relative',
+                zIndex: 0,
+                transform: 'translateZ(0)',
+                willChange: 'transform, opacity',
+                opacity: 0.999,
+                backfaceVisibility: 'hidden',
+            }}
             className={className}
         />
     );
@@ -402,6 +412,7 @@ const ScreenShareFullscreen = ({ screenStream, localStream, participants, remote
     const [shouldSuggestAntiMirror, setShouldSuggestAntiMirror] = useState(false);
     const { screenShareMeta, stopScreenShare } = useMedia();
     const isEntireScreenShare = screenShareMeta?.displaySurface === 'monitor';
+    const isWindowShare = screenShareMeta?.displaySurface === 'window';
     const showLocalShareBanner = !platform.isElectron;
 
     useEffect(() => {
@@ -478,10 +489,16 @@ const ScreenShareFullscreen = ({ screenStream, localStream, participants, remote
                 alignItems: 'center',
                 justifyContent: 'center',
                 overflow: 'hidden',
-                outline: '3px solid #22c55e',
-                outlineOffset: '-3px',
+                outline: isWindowShare ? 'none' : '3px solid #22c55e',
+                outlineOffset: isWindowShare ? '0' : '-3px',
             }}>
-                {hideRecursivePreview ? (
+                {isWindowShare ? (
+                    <div style={{
+                        width: '100%',
+                        height: '100%',
+                        background: 'linear-gradient(180deg, #020617 0%, #0f172a 100%)',
+                    }} />
+                ) : hideRecursivePreview ? (
                     <div style={{
                         width: '100%',
                         height: '100%',
@@ -837,9 +854,10 @@ export default function VideoGrid() {
     const { participants, hostId } = useRoom();
     const { activeSpeakerId, layout } = useUI();
     const { socket } = useSocket();
+    const isElectronWindowShare = platform.isElectron && screenShareMeta?.displaySurface === 'window';
 
     // Screen share mode
-    if (screenStream) {
+    if (screenStream && !isElectronWindowShare) {
         return (
             <ScreenShareFullscreen
                 screenStream={screenStream}

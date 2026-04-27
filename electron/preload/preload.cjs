@@ -22,6 +22,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.on('presenter:state', handler);
         return () => ipcRenderer.removeListener('presenter:state', handler);
     },
+    onReaction: (listener) => {
+        const handler = (_event, payload) => listener(payload);
+        ipcRenderer.on('reaction:show', handler);
+        return () => ipcRenderer.removeListener('reaction:show', handler);
+    },
     notify: (payload) => ipcRenderer.invoke('system:notify', payload),
     openExternal: (url) => ipcRenderer.invoke('shell:open-external', url),
+    showReaction: (payload) => ipcRenderer.invoke('reaction:show', payload),
+    minimizeMainWindow: () => ipcRenderer.invoke('window:minimize-main'),
+    restoreMainWindow: () => ipcRenderer.invoke('window:restore-main'),
 });

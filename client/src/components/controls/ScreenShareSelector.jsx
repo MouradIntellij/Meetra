@@ -182,13 +182,13 @@ function OptionToggle({ checked, onChange, label, description }) {
 }
 
 function MiniNativeHint({ sourceId }) {
-    if (platform.isElectron && sourceId !== 'browser') {
+    if (platform.isElectron && sourceId === 'monitor') {
         return <p className="text-xs leading-5 text-slate-400">Mode desktop: vraies miniatures disponibles. Choisissez directement une source ci-dessous.</p>;
     }
 
     const label =
         sourceId === 'window'
-            ? 'Le navigateur va ouvrir la boite native pour choisir une application.'
+            ? 'Le sélecteur natif Windows va s’ouvrir pour choisir une application.'
             : sourceId === 'browser'
                 ? 'Le navigateur va ouvrir la boite native pour choisir un onglet.'
                 : 'Le navigateur va ouvrir la boite native pour choisir un ecran.';
@@ -378,6 +378,15 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
 
     const buildDisplayMediaOptions = () => {
         const wantsBrowser = selectedSource === 'browser';
+        const wantsWindowOnElectron = platform.isElectron && selectedSource === 'window';
+
+        if (wantsWindowOnElectron) {
+            return {
+                video: true,
+                audio: false,
+            };
+        }
+
         return {
             video: {
                 displaySurface: selectedSource,
@@ -430,7 +439,7 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
             let track;
             let settings;
 
-            if (platform.isElectron && selectedSource !== 'browser') {
+            if (platform.isElectron && selectedSource === 'monitor') {
                 const selectedElectronSource = electronSources.find((item) => item.id === selectedElectronSourceId);
                 if (!selectedElectronSource) {
                     setError('Choisissez une source desktop.');
@@ -447,6 +456,28 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
                 settings = {
                     displaySurface: selectedSource === 'monitor' ? 'monitor' : 'window',
                 };
+            } else if (platform.isElectron && selectedSource === 'window') {
+                const selectedElectronSource = electronSources.find((item) => item.id === selectedElectronSourceId);
+
+                try {
+                    stream = previewStreamRef.current || await navigator.mediaDevices.getDisplayMedia(buildDisplayMediaOptions());
+                    track = stream.getVideoTracks()[0];
+                    settings = track?.getSettings?.() ?? {};
+                } catch (nativeError) {
+                    if (!selectedElectronSource) {
+                        throw nativeError;
+                    }
+
+                    stream = await platform.getShareStream({
+                        sourceId: selectedElectronSource.id,
+                        withAudio: false,
+                        optimize: options.optimize,
+                    });
+                    track = stream.getVideoTracks()[0];
+                    settings = {
+                        displaySurface: 'window',
+                    };
+                }
             } else {
                 stream = previewStreamRef.current || await navigator.mediaDevices.getDisplayMedia(buildDisplayMediaOptions());
                 track = stream.getVideoTracks()[0];
@@ -460,14 +491,15 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
                 ...options,
                 displaySurface: settings.displaySurface || selectedSource,
                 sourceLabel:
-                    (platform.isElectron && selectedSource !== 'browser'
+                    ((platform.isElectron && selectedSource !== 'browser')
                         ? electronSources.find((item) => item.id === selectedElectronSourceId)?.name
-                        : track?.label) || activeSource.title,
+                        : '') || track?.label || activeSource.title,
                 presenterMode: options.presenter,
             });
         } catch (err) {
             if (err?.name !== 'NotAllowedError') {
-                setError('Le partage a echoue.');
+                const detail = [err?.name, err?.message].filter(Boolean).join(' - ');
+                setError(detail ? `Le partage a échoué. ${detail}` : 'Le partage a échoué.');
             }
         } finally {
             setLoading(false);
@@ -484,12 +516,16 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
                             <h2 className="mt-3 text-2xl font-semibold text-slate-50">Choisir une source a partager</h2>
                             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
                                 {platform.isElectron
-                                    ? 'Choisissez un type de source puis sélectionnez directement une fenêtre ou un écran dans la galerie desktop.'
+                                    ? selectedSource === 'window'
+                                        ? 'Pour une application, le sélecteur natif Windows va s’ouvrir. Si Windows refuse, Meetra retombera sur la galerie desktop.'
+                                        : 'Choisissez un type de source puis sélectionnez directement une fenêtre ou un écran dans la galerie desktop.'
                                     : 'Pour une experience proche de Zoom ou Teams, choisissez le type de source ici, puis le navigateur ouvrira la fenetre native de selection de votre systeme.'}
                             </p>
                             <p className="mt-2 max-w-2xl text-xs leading-6 text-slate-500">
                                 {platform.isElectron
-                                    ? 'Mode Electron actif: les miniatures desktop réelles sont disponibles pour les fenêtres et écrans.'
+                                    ? selectedSource === 'window'
+                                        ? 'Le mode application essaie d’abord le picker système, puis utilise la galerie desktop en secours si nécessaire.'
+                                        : 'Mode Electron actif: les miniatures desktop réelles sont disponibles pour les écrans.'
                                     : 'Limite du web: le navigateur ne fournit pas la vraie galerie de miniatures de toutes vos applications avant selection. En revanche, vous pouvez maintenant capturer un aperçu réel de la source choisie puis partager cette même source sans rouvrir la boite.'}
                             </p>
                         </div>
@@ -551,17 +587,23 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
                             <div className="mt-5 flex items-start justify-between gap-6 rounded-[22px] border border-emerald-500/20 bg-emerald-500/10 px-5 py-4">
                                 <div>
                                     <div className="text-sm font-semibold text-emerald-300">
-                                        {platform.isElectron ? 'Selection desktop directe' : platform.isElectron && selectedSource !== 'browser' ? 'Galerie desktop' : 'Aperçu et selection systeme'}
+                                        {platform.isElectron
+                                            ? selectedSource === 'window'
+                                                ? 'Sélecteur natif Windows'
+                                                : 'Selection desktop directe'
+                                            : 'Aperçu et selection systeme'}
                                     </div>
                                     <div className="mt-1 text-sm leading-6 text-emerald-50/80">
                                         {platform.isElectron
-                                            ? selectedElectronSource
+                                            ? selectedSource === 'window'
+                                                ? activeSource.tip
+                                                : selectedElectronSource
                                                 ? `Source choisie: ${selectedElectronSource.name}`
                                                 : activeSource.tip
                                             : activeSource.tip}
                                     </div>
                                 </div>
-                                {!platform.isElectron && (
+                                {(!platform.isElectron || selectedSource === 'window') && (
                                     <button
                                         type="button"
                                         onClick={handleGeneratePreview}
@@ -691,7 +733,9 @@ export default function ScreenShareSelector({ onSelect, onCancel, activeShare })
                                     ) : (
                                         <div className="flex aspect-video items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 px-6 text-center text-sm leading-6 text-slate-500">
                                             {platform.isElectron
-                                                ? 'Choisissez une source dans la galerie pour afficher sa miniature ici.'
+                                                ? selectedSource === 'window'
+                                                    ? 'Le sélecteur Windows sera tenté en priorité. En cas d’échec, la source choisie ici servira de secours.'
+                                                    : 'Choisissez une source dans la galerie pour afficher sa miniature ici.'
                                                 : 'L’aperçu réel apparait ici après choix dans la fenêtre native.'}
                                         </div>
                                     )}

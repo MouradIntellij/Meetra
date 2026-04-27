@@ -95,12 +95,25 @@ function drawImageCover(ctx, img, W, H) {
 // ══════════════════════════════════════════════════════════════
 function ZoomBtn({ onClick, active, danger, highlight, title, icon, label, pulse }) {
     return (
-        <button onClick={onClick} title={title} className={`relative flex flex-col items-center justify-center gap-1.5 min-w-[68px] px-3 py-3 rounded-[20px] text-[9px] font-bold tracking-[0.18em] uppercase transition-all duration-200 select-none group backdrop-blur-xl ${danger?'bg-red-600/90 hover:bg-red-500 text-white shadow-[0_16px_35px_rgba(127,29,29,0.45)] border border-red-400/30':highlight?'bg-emerald-500/18 hover:bg-emerald-500/24 text-emerald-100 shadow-[0_18px_40px_rgba(34,197,94,0.2)] border border-emerald-400/25':active?'bg-slate-700/90 text-white ring-2 ring-white/20 border border-white/10':'bg-slate-900/82 hover:bg-slate-800/92 text-slate-300 hover:text-white border border-white/10 shadow-[0_12px_30px_rgba(2,6,23,0.3)]'} ${pulse?'ring-2 ring-offset-2 ring-offset-slate-950 ring-emerald-400/60':''}`}>
+        <button onClick={onClick} title={title} className={`relative flex flex-col items-center justify-center gap-1.5 min-w-[56px] px-2 py-2.5 rounded-[18px] text-[9px] font-bold tracking-[0.18em] uppercase transition-all duration-200 select-none group backdrop-blur-xl ${danger?'bg-red-600/90 hover:bg-red-500 text-white shadow-[0_16px_35px_rgba(127,29,29,0.45)] border border-red-400/30':highlight?'bg-emerald-500/18 hover:bg-emerald-500/24 text-emerald-100 shadow-[0_18px_40px_rgba(34,197,94,0.2)] border border-emerald-400/25':active?'bg-slate-700/90 text-white ring-2 ring-white/20 border border-white/10':'bg-slate-900/82 hover:bg-slate-800/92 text-slate-300 hover:text-white border border-white/10 shadow-[0_12px_30px_rgba(2,6,23,0.3)]'} ${pulse?'ring-2 ring-offset-2 ring-offset-slate-950 ring-emerald-400/60':''}`}>
             <span className="transition-transform duration-150 group-hover:scale-110 group-active:scale-95">{icon}</span>
             <span className="leading-none whitespace-nowrap">{label}</span>
         </button>
     );
 }
+
+function MiniLeaveBtn({ onClick }) {
+    return (
+        <button
+            onClick={onClick}
+            title="Quitter la réunion"
+            className="flex h-12 w-12 items-center justify-center rounded-2xl border border-red-400/35 bg-red-600/90 text-white shadow-[0_18px_38px_rgba(127,29,29,0.45)] transition hover:bg-red-500"
+        >
+            <I.Phone />
+        </button>
+    );
+}
+
 function PanelBtn({ onClick, active, title, icon, label, badge = 0 }) {
     return (
         <button onClick={onClick} title={title} className={`relative flex flex-col items-center justify-center gap-1 min-w-[54px] px-2 py-2.5 rounded-2xl text-[9px] font-bold tracking-[0.2em] uppercase transition-all duration-200 backdrop-blur-xl ${active?'bg-blue-500/20 text-blue-100 border border-blue-400/25 shadow-[0_14px_30px_rgba(59,130,246,0.2)]':'bg-slate-900/72 hover:bg-slate-800/90 text-slate-400 hover:text-white border border-white/10'}`}>
@@ -202,17 +215,21 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
         startTranscription();
     };
 
+    const handleLeaveMeeting = () => {
+        const confirmed = window.confirm('Voulez-vous quitter la vidéoconférence Meetra ?');
+        if (!confirmed) return;
+        onLeave();
+    };
+
     return (
         <>
             <div className="border-t border-white/10 bg-[linear-gradient(180deg,rgba(2,6,23,0.88)_0%,rgba(15,23,42,0.96)_100%)] px-4 py-3 shadow-[0_-18px_50px_rgba(2,6,23,0.45)] backdrop-blur-2xl" style={{ minHeight:'94px' }}>
-                <div className="grid items-center gap-3" style={{ gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)' }}>
-                {/* Gauche */}
-                <div className="hidden min-w-0 md:flex items-center gap-3">
-                    {locked && (<span className="flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1.5 text-[11px] font-semibold text-amber-200"><svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Réunion verrouillée</span>)}
-                    {isSharing && (<button onClick={stopScreenShare} className="flex items-center gap-2 rounded-full border border-red-400/25 bg-red-500/15 px-3.5 py-2 text-[11px] font-bold text-red-100 shadow-[0_12px_25px_rgba(127,29,29,0.28)] backdrop-blur-xl transition hover:bg-red-500/22"><svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>Arrêter le partage</button>)}
+                <div className="flex items-center justify-between gap-4">
+                <div className="flex w-[52px] shrink-0 items-center justify-start">
+                        <MiniLeaveBtn onClick={handleLeaveMeeting} />
                 </div>
 
-                {/* Centre — tous les boutons */}
+                <div className="flex min-w-0 flex-1 justify-center">
                 <div className="mx-auto flex min-w-0 max-w-full items-center gap-2 overflow-x-auto rounded-[28px] border border-white/10 bg-white/[0.03] px-3 py-2 shadow-[0_20px_50px_rgba(2,6,23,0.25)]">
                     <ZoomBtn onClick={toggleAudio} active={!audioEnabled} icon={audioEnabled?<I.MicOn/>:<I.MicOff/>} label={audioEnabled?'Micro':'Muet'} title={audioEnabled?'Couper le micro':'Activer le micro'}/>
                     <ZoomBtn onClick={toggleVideo} active={!videoEnabled} icon={videoEnabled?<I.CamOn/>:<I.CamOff/>} label={videoEnabled?'Vidéo':'Arrêtée'} title={videoEnabled?'Couper la caméra':'Activer la caméra'}/>
@@ -259,20 +276,24 @@ export default function ControlBar({ roomId, onLeave, toggleHand, handRaised, us
                     />
                     <ReactionBar roomId={roomId} userName={userName} toggleHand={toggleHand} handRaised={handRaised}/>
                     <ZoomBtn onClick={toggleLayout} icon={layout==='grid'?<I.Grid/>:<I.Focus/>} label={layout==='grid'?'Grille':'Focus'} title="Changer la disposition"/>
-                    <div className="mx-1 h-12 w-px self-center bg-white/10"/>
-                    <ZoomBtn onClick={onLeave} danger icon={<I.Phone/>} label="Quitter" title="Quitter la réunion"/>
+                </div>
                 </div>
 
-                {/* Droite */}
-                <div className="flex min-w-0 items-center justify-end gap-2">
+                <div className="flex w-[340px] shrink-0 items-center justify-end gap-2">
+                    {locked && (<span className="hidden 2xl:flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1.5 text-[11px] font-semibold text-amber-200"><svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Réunion verrouillée</span>)}
+                    {isSharing && (<button onClick={stopScreenShare} className="hidden 2xl:flex items-center gap-2 rounded-full border border-red-400/25 bg-red-500/15 px-3.5 py-2 text-[11px] font-bold text-red-100 shadow-[0_12px_25px_rgba(127,29,29,0.28)] backdrop-blur-xl transition hover:bg-red-500/22"><svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>Arrêter le partage</button>)}
                     {!isSharing && (
                         <button
                             onClick={() => setShowScreenShareSelector(true)}
-                            className="hidden xl:flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
+                            className="hidden 2xl:flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
                             title="Choix avance de la source"
                         >
-                            <I.Share/>
-                            Sources
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                                <rect x="2" y="3" width="20" height="14" rx="2" />
+                                <path d="M8 21h8M12 17v4" />
+                                <path d="M9 10l3-3 3 3M12 7v6" />
+                            </svg>
+                            Source
                         </button>
                     )}
                     <PanelBtn onClick={()=>setParticipantsOpen(o=>!o)} active={participantsOpen} icon={<I.People/>} label="Participants"/>
