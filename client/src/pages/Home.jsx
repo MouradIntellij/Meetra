@@ -63,6 +63,30 @@ function formatScheduledMeeting(dateIso, timezone) {
   }
 }
 
+function getMeetingApiErrorMessage(errorCode, action = 'create') {
+  switch (errorCode) {
+    case 'UNAUTHENTICATED':
+      return action === 'update'
+        ? 'Connectez-vous avec le compte propriétaire pour modifier cette réunion.'
+        : action === 'schedule'
+          ? 'Connectez-vous dans Campus Hub avant de planifier une réunion.'
+          : 'Connectez-vous dans Campus Hub avant de créer une réunion.';
+    case 'MEETING_ACCESS_DENIED':
+      return 'Connectez-vous avec le compte propriétaire pour modifier cette réunion.';
+    case 'MEETING_DATABASE_REQUIRED':
+      return 'Configuration serveur incomplète: Postgres est requis en production pour stocker les réunions.';
+    case 'ROOM_CREATE_FAILED_500':
+    case 'ROOM_UPDATE_FAILED_500':
+      return "Le serveur n'a pas pu enregistrer la réunion.";
+    default:
+      return action === 'update'
+        ? 'Impossible de modifier cette réunion planifiée.'
+        : action === 'schedule'
+          ? 'Impossible de planifier la réunion sur le serveur.'
+          : 'Impossible de créer la réunion sur le serveur.';
+  }
+}
+
 function FeatureCard({ icon, title, body }) {
   return (
     <div className="meetra-surface-soft rounded-[22px] p-4">
@@ -579,11 +603,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       }
       setEditingRoomId('');
     } catch (error) {
-      setError(
-        error?.message === 'UNAUTHENTICATED' || error?.message === 'MEETING_ACCESS_DENIED'
-          ? 'Connectez-vous avec le compte propriétaire pour modifier cette réunion.'
-          : 'Impossible de modifier cette réunion planifiée.'
-      );
+      setError(getMeetingApiErrorMessage(error?.message, 'update'));
     } finally {
       setLoading(false);
     }
@@ -607,11 +627,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       loadRecentMeetings();
       onJoin(meeting.roomId, userName.trim());
     } catch (error) {
-      setError(
-        error?.message === 'UNAUTHENTICATED'
-          ? 'Connectez-vous dans Campus Hub avant de créer une réunion.'
-          : 'Impossible de créer la réunion sur le serveur.'
-      );
+      setError(getMeetingApiErrorMessage(error?.message, 'create'));
     } finally {
       setLoading(false);
     }
@@ -646,11 +662,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       setCreatedMeeting(meeting);
       loadRecentMeetings();
     } catch (error) {
-      setError(
-        error?.message === 'UNAUTHENTICATED'
-          ? 'Connectez-vous dans Campus Hub avant de planifier une réunion.'
-          : 'Impossible de planifier la réunion sur le serveur.'
-      );
+      setError(getMeetingApiErrorMessage(error?.message, 'schedule'));
     } finally {
       setLoading(false);
     }

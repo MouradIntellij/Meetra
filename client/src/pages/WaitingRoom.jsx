@@ -253,6 +253,7 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
   const videoRef  = useRef(null);
   const streamRef = useRef(null);
   const timerRef  = useRef(null);
+  const preserveStreamOnUnmountRef = useRef(false);
 
   // ── Ouvrir la caméra locale ───────────────────────────────
   useEffect(() => {
@@ -290,7 +291,9 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
     })();
     return () => {
       alive = false;
-      streamRef.current?.getTracks().forEach(t => t.stop());
+      if (!preserveStreamOnUnmountRef.current) {
+        streamRef.current?.getTracks().forEach(t => t.stop());
+      }
     };
   }, []);
 
@@ -344,9 +347,9 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
     // 🟢 L'hôte nous admet → entrer dans Room
     const onAdmitted = ({ roomId: rid }) => {
       clearInterval(timerRef.current);
-      streamRef.current?.getTracks().forEach(t => t.stop());
+      preserveStreamOnUnmountRef.current = true;
       setAdmitted(true);
-      setTimeout(() => onJoin(null), 400); // légère pause pour l'animation
+      setTimeout(() => onJoin(streamRef.current), 400); // légère pause pour l'animation
     };
 
     // 🔴 L'hôte nous refuse
@@ -415,9 +418,8 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
 
     setJoining(true);
     clearInterval(timerRef.current);
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    streamRef.current = null;
-    onJoin(null);
+    preserveStreamOnUnmountRef.current = true;
+    onJoin(streamRef.current);
   }, [joining, participants.length, isHost, onJoin]);
 
   // ── Retour ────────────────────────────────────────────────

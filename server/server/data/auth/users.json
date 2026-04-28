@@ -1,0 +1,12 @@
+[
+  {
+    "id": "977a4dcc-900f-48a9-9e4f-b4c23e7a5ed5",
+    "email": "mouradmaths17@gmail.com",
+    "name": "Moor",
+    "role": "member",
+    "passwordHash": "d36ecb0cfd29d83d1bcce23660753a16:ac30421f691c644a45b1b74933e67ed70b6b79bb5b11498235016e1822a839ea69ac69881b7b093ff03135ee439c7ede7324188f85d8c417c0fce2cc0757639b",
+    "createdAt": 1777386633819,
+    "updatedAt": 1777391652172,
+    "lastLoginAt": 1777391652172
+  }
+]

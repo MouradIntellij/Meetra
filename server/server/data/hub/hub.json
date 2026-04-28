@@ -1,0 +1,58 @@
+{
+  "profiles": [
+    {
+      "email": "mouradmaths17@gmail.com",
+      "name": "Moor",
+      "role": "member",
+      "presenceStatus": "available",
+      "createdAt": 1777386633907,
+      "updatedAt": 1777391659617,
+      "lastSeenAt": 1777391659617
+    }
+  ],
+  "messages": [],
+  "activities": [
+    {
+      "id": "act-1777386647714-il7hud",
+      "type": "meeting",
+      "title": "Réunion créée",
+      "body": "\"Réunion Meetra\" est prête à démarrer.",
+      "targetEmail": "mouradmaths17@gmail.com",
+      "actorEmail": "mouradmaths17@gmail.com",
+      "actorName": "Moor",
+      "meta": {
+        "roomId": "2878703b-8536-431b-94ce-814e41e80263",
+        "joinUrl": "http://localhost:5173/room/2878703b-8536-431b-94ce-814e41e80263"
+      },
+      "createdAt": 1777386647714
+    },
+    {
+      "id": "act-1777386939352-3upxqa",
+      "type": "meeting",
+      "title": "Réunion créée",
+      "body": "\"Réunion Meetra\" est prête à démarrer.",
+      "targetEmail": "mouradmaths17@gmail.com",
+      "actorEmail": "mouradmaths17@gmail.com",
+      "actorName": "Moor",
+      "meta": {
+        "roomId": "fcfc7eab-ef22-4d9e-9252-2d828e583ded",
+        "joinUrl": "http://localhost:5173/room/fcfc7eab-ef22-4d9e-9252-2d828e583ded"
+      },
+      "createdAt": 1777386939352
+    },
+    {
+      "id": "act-1777391659619-8b2ax3",
+      "type": "meeting",
+      "title": "Réunion créée",
+      "body": "\"Réunion Meetra\" est prête à démarrer.",
+      "targetEmail": "mouradmaths17@gmail.com",
+      "actorEmail": "mouradmaths17@gmail.com",
+      "actorName": "Moor",
+      "meta": {
+        "roomId": "338903a2-f2a0-493a-bc30-6e1b277c32d6",
+        "joinUrl": "http://localhost:5173/room/338903a2-f2a0-493a-bc30-6e1b277c32d6"
+      },
+      "createdAt": 1777391659619
+    }
+  ]
+}

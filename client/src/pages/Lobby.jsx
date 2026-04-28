@@ -36,6 +36,36 @@ function persistBool(key, value) {
   window.localStorage.setItem(key, String(value));
 }
 
+function isRecoverableDeviceError(error) {
+  const name = String(error?.name || '');
+  return (
+    name === 'NotFoundError'
+    || name === 'OverconstrainedError'
+    || name === 'NotReadableError'
+    || name === 'AbortError'
+  );
+}
+
+function buildPreviewConstraints({ audioDeviceId = '', videoDeviceId = '', nextAudioEnabled = true, nextVideoEnabled = true }) {
+  const wantsAudio = Boolean(audioDeviceId) || nextAudioEnabled;
+  const wantsVideo = Boolean(videoDeviceId) || nextVideoEnabled;
+
+  return {
+    video: wantsVideo ? {
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+      facingMode: 'user',
+      ...(videoDeviceId ? { deviceId: { exact: videoDeviceId } } : {}),
+    } : false,
+    audio: wantsAudio ? {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      ...(audioDeviceId ? { deviceId: { exact: audioDeviceId } } : {}),
+    } : false,
+  };
+}
+
 // ─── Icônes SVG ───────────────────────────────────────────────
 const MicOnIcon = () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -288,6 +318,7 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
   const timerRef  = useRef(null);
   const cleanupAudioRef = useRef(null);
   const speakerTestTimerRef = useRef(null);
+  const preserveStreamOnUnmountRef = useRef(false);
 
   const persistPreviewPreferences = useCallback((nextAudioEnabled, nextVideoEnabled, audioDeviceId, videoDeviceId) => {
     persistBool(AUDIO_ENABLED_STORAGE_KEY, nextAudioEnabled);
@@ -340,30 +371,44 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
     nextAudioEnabled = audioEnabled,
     nextVideoEnabled = videoEnabled,
   } = {}) => {
-    const wantsAudio = Boolean(audioDeviceId) || nextAudioEnabled;
-    const wantsVideo = Boolean(videoDeviceId) || nextVideoEnabled;
-
     try {
-      const nextStream = await navigator.mediaDevices.getUserMedia({
-        video: wantsVideo ? {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: 'user',
-          ...(videoDeviceId ? { deviceId: { exact: videoDeviceId } } : {}),
-        } : false,
-        audio: wantsAudio ? {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          ...(audioDeviceId ? { deviceId: { exact: audioDeviceId } } : {}),
-        } : false,
-      });
+      let nextStream;
+
+      try {
+        nextStream = await navigator.mediaDevices.getUserMedia(
+          buildPreviewConstraints({ audioDeviceId, videoDeviceId, nextAudioEnabled, nextVideoEnabled })
+        );
+      } catch (error) {
+        // Stored device ids can become stale after unplug/reboot; retry with default devices.
+        if (!isRecoverableDeviceError(error) || (!audioDeviceId && !videoDeviceId)) {
+          throw error;
+        }
+
+        persistValue(AUDIO_DEVICE_STORAGE_KEY, '');
+        persistValue(VIDEO_DEVICE_STORAGE_KEY, '');
+        setSelectedAudioInputId('');
+        setSelectedVideoInputId('');
+
+        nextStream = await navigator.mediaDevices.getUserMedia(
+          buildPreviewConstraints({
+            audioDeviceId: '',
+            videoDeviceId: '',
+            nextAudioEnabled,
+            nextVideoEnabled,
+          })
+        );
+      }
 
       attachPreviewStream(nextStream, nextAudioEnabled, nextVideoEnabled);
       await syncDeviceInventory();
-      persistPreviewPreferences(nextAudioEnabled, nextVideoEnabled, audioDeviceId, videoDeviceId);
+      const resolvedAudioId = nextStream.getAudioTracks?.()[0]?.getSettings?.().deviceId || '';
+      const resolvedVideoId = nextStream.getVideoTracks?.()[0]?.getSettings?.().deviceId || '';
+      if (resolvedAudioId) setSelectedAudioInputId(resolvedAudioId);
+      if (resolvedVideoId) setSelectedVideoInputId(resolvedVideoId);
+      persistPreviewPreferences(nextAudioEnabled, nextVideoEnabled, resolvedAudioId, resolvedVideoId);
       return true;
     } catch {
+      await syncDeviceInventory().catch(() => {});
       streamRef.current = null;
       cleanupAudioRef.current?.();
       cleanupAudioRef.current = null;
@@ -381,6 +426,7 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
   useEffect(() => {
     let alive = true;
     (async () => {
+      await syncDeviceInventory().catch(() => {});
       const ok = await openPreviewStream({
         audioDeviceId: selectedAudioInputId,
         videoDeviceId: selectedVideoInputId,
@@ -394,7 +440,9 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
     return () => {
       alive = false;
       cleanupAudioRef.current?.();
-      streamRef.current?.getTracks().forEach(t => t.stop());
+      if (!preserveStreamOnUnmountRef.current) {
+        streamRef.current?.getTracks().forEach(t => t.stop());
+      }
     };
   }, [openPreviewStream, selectedAudioInputId, selectedVideoInputId]);
 
@@ -531,12 +579,15 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
     return m > 0 ? `${m}m ${String(sec).padStart(2, '0')}s` : `${sec}s`;
   };
 
-  const cleanup = useCallback(() => {
+  const cleanup = useCallback((preserveStream = false) => {
     clearInterval(timerRef.current);
     clearTimeout(speakerTestTimerRef.current);
     cleanupAudioRef.current?.();
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    streamRef.current = null;
+    preserveStreamOnUnmountRef.current = preserveStream;
+    if (!preserveStream) {
+      streamRef.current?.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
   }, []);
 
   const toggleAudio = useCallback(() => {
@@ -630,8 +681,9 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
 
   // ── Entrer dans la salle ──────────────────────────────────
   const handleEnterRoom = useCallback(() => {
-    cleanup();
-    onJoin(null); // MediaContext ouvrira son propre stream propre
+    const stream = streamRef.current;
+    cleanup(true);
+    onJoin(stream);
   }, [cleanup, onJoin]);
 
   // ── Clic sur Start / Rejoindre ────────────────────────────

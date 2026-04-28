@@ -10,54 +10,96 @@ import {
   searchHubProfilesFromDb,
   upsertHubProfileInDb,
 } from './postgresHubStore.js';
+import {
+  addHubMessageInLocal,
+  appendHubActivityInLocal,
+  getHubProfileFromLocal,
+  listHubActivityFromLocal,
+  listHubConversationsFromLocal,
+  listHubMessagesFromLocal,
+  markHubConversationReadInLocal,
+  searchHubProfilesFromLocal,
+  upsertHubProfileInLocal,
+} from './localHubStore.js';
+import { ENV } from '../../config/env.js';
 
-function assertHubDatabase() {
-  if (!isPostgresHubStoreEnabled()) {
-    throw new Error('HUB_DATABASE_REQUIRED');
-  }
+function shouldUseLocalHubStore() {
+  return ENV.isDev && !isPostgresHubStoreEnabled();
+}
+
+function assertHubStoreAvailable() {
+  if (isPostgresHubStoreEnabled() || shouldUseLocalHubStore()) return;
+  throw new Error('HUB_DATABASE_REQUIRED');
 }
 
 export async function upsertHubProfile(payload) {
-  assertHubDatabase();
-  return upsertHubProfileInDb(payload);
+  assertHubStoreAvailable();
+  if (isPostgresHubStoreEnabled()) {
+    return upsertHubProfileInDb(payload);
+  }
+  return upsertHubProfileInLocal(payload);
 }
 
 export async function getHubProfile(email) {
-  assertHubDatabase();
-  return getHubProfileFromDb(email);
+  assertHubStoreAvailable();
+  if (isPostgresHubStoreEnabled()) {
+    return getHubProfileFromDb(email);
+  }
+  return getHubProfileFromLocal(email);
 }
 
 export async function searchHubProfiles(payload) {
-  assertHubDatabase();
-  return searchHubProfilesFromDb(payload);
+  assertHubStoreAvailable();
+  if (isPostgresHubStoreEnabled()) {
+    return searchHubProfilesFromDb(payload);
+  }
+  return searchHubProfilesFromLocal(payload);
 }
 
 export async function appendHubActivity(payload) {
-  assertHubDatabase();
-  return appendHubActivityInDb(payload);
+  assertHubStoreAvailable();
+  if (isPostgresHubStoreEnabled()) {
+    return appendHubActivityInDb(payload);
+  }
+  return appendHubActivityInLocal(payload);
 }
 
 export async function listHubActivity(email, limit = 20) {
-  assertHubDatabase();
-  return listHubActivityFromDb(email, limit);
+  assertHubStoreAvailable();
+  if (isPostgresHubStoreEnabled()) {
+    return listHubActivityFromDb(email, limit);
+  }
+  return listHubActivityFromLocal(email, limit);
 }
 
 export async function addHubMessage(payload) {
-  assertHubDatabase();
-  return addHubMessageInDb(payload);
+  assertHubStoreAvailable();
+  if (isPostgresHubStoreEnabled()) {
+    return addHubMessageInDb(payload);
+  }
+  return addHubMessageInLocal(payload);
 }
 
 export async function listHubMessages(payload) {
-  assertHubDatabase();
-  return listHubMessagesFromDb(payload);
+  assertHubStoreAvailable();
+  if (isPostgresHubStoreEnabled()) {
+    return listHubMessagesFromDb(payload);
+  }
+  return listHubMessagesFromLocal(payload);
 }
 
 export async function listHubConversations(email) {
-  assertHubDatabase();
-  return listHubConversationsFromDb(email);
+  assertHubStoreAvailable();
+  if (isPostgresHubStoreEnabled()) {
+    return listHubConversationsFromDb(email);
+  }
+  return listHubConversationsFromLocal(email);
 }
 
 export async function markHubConversationRead(payload) {
-  assertHubDatabase();
-  return markHubConversationReadInDb(payload);
+  assertHubStoreAvailable();
+  if (isPostgresHubStoreEnabled()) {
+    return markHubConversationReadInDb(payload);
+  }
+  return markHubConversationReadInLocal(payload);
 }

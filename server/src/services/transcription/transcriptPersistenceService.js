@@ -10,6 +10,16 @@ import {
 
 const baseDir = path.resolve(process.cwd(), ENV.TRANSCRIPT_STORE_DIR);
 
+function shouldUsePostgresTranscripts() {
+    return ENV.TRANSCRIPT_STORE_BACKEND === 'postgres';
+}
+
+function assertTranscriptStoreAvailable() {
+    if (shouldUsePostgresTranscripts()) return;
+    if (ENV.isDev) return;
+    throw new Error('TRANSCRIPT_DATABASE_REQUIRED');
+}
+
 function ensureBaseDir() {
     if (!fs.existsSync(baseDir)) {
         fs.mkdirSync(baseDir, { recursive: true });
@@ -36,7 +46,8 @@ function deleteRoomFile(roomId) {
 }
 
 export async function loadTranscriptRoom(roomId) {
-    if (ENV.TRANSCRIPT_STORE_BACKEND === 'postgres') {
+    assertTranscriptStoreAvailable();
+    if (shouldUsePostgresTranscripts()) {
         return loadTranscriptRoomFromDb(roomId);
     }
 
@@ -59,7 +70,8 @@ export async function loadTranscriptRoom(roomId) {
 }
 
 export async function saveTranscriptRoom(roomId, payload) {
-    if (ENV.TRANSCRIPT_STORE_BACKEND === 'postgres') {
+    assertTranscriptStoreAvailable();
+    if (shouldUsePostgresTranscripts()) {
         return saveTranscriptRoomToDb(roomId, payload);
     }
 
@@ -79,7 +91,8 @@ export async function saveTranscriptRoom(roomId, payload) {
 }
 
 export async function purgeExpiredTranscriptFiles() {
-    if (ENV.TRANSCRIPT_STORE_BACKEND === 'postgres') {
+    assertTranscriptStoreAvailable();
+    if (shouldUsePostgresTranscripts()) {
         return purgeExpiredTranscriptRows(ENV.TRANSCRIPT_RETENTION_DAYS);
     }
 

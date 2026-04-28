@@ -86,6 +86,36 @@ function formatInviteMessage(meeting) {
   ].join('\n');
 }
 
+function getAuthErrorMessage(errorCode) {
+  switch (errorCode) {
+    case 'AUTH_DATABASE_REQUIRED':
+      return 'Configuration serveur incomplète: la base Postgres est requise pour l’authentification.';
+    case 'EMAIL_ALREADY_EXISTS':
+      return 'Cet email possède déjà un compte.';
+    case 'INVALID_CREDENTIALS':
+      return 'Email ou mot de passe invalide.';
+    case 'INVALID_REGISTRATION_PAYLOAD':
+      return 'Inscription invalide: nom, email valide et mot de passe de 6 caractères minimum requis.';
+    case 'AUTH_REQUEST_FAILED':
+      return "Le serveur n'a pas pu traiter la demande d'authentification.";
+    default:
+      return "Impossible d'ouvrir la session Meetra.";
+  }
+}
+
+function getHubErrorMessage(errorCode, fallback) {
+  switch (errorCode) {
+    case 'HUB_DATABASE_REQUIRED':
+      return 'Configuration serveur incomplète: la base Postgres est requise pour le Campus Hub en production.';
+    case 'UNAUTHENTICATED':
+      return 'Votre session Meetra n’est plus valide. Reconnectez-vous.';
+    case 'HUB_REQUEST_FAILED':
+      return "Le serveur n'a pas pu traiter la demande Campus Hub.";
+    default:
+      return fallback;
+  }
+}
+
 function TeamsRailButton({ active, label, Icon, onClick, badge = 0 }) {
   return (
     <button
@@ -139,7 +169,7 @@ export default function CampusHub() {
   const [auth, setAuth] = useState(() => readStoredAuth());
   const [activeTab, setActiveTab] = useState('activity');
   const [access, setAccess] = useState(() => readStoredAccess());
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState(() => readStoredAuth().profile || null);
   const [password, setPassword] = useState('');
   const [directoryQuery, setDirectoryQuery] = useState('');
   const [directory, setDirectory] = useState([]);
@@ -169,6 +199,16 @@ export default function CampusHub() {
     });
   };
 
+  const refreshHubData = async (tokenOverride) => {
+    await Promise.all([
+      loadDirectory('', tokenOverride),
+      loadPresence(tokenOverride),
+      loadActivity(tokenOverride),
+      loadConversations(tokenOverride),
+      loadMyMeetings(tokenOverride),
+    ]);
+  };
+
   const unreadTotal = useMemo(
     () => conversations.reduce((total, item) => total + (item.unreadCount || 0), 0),
     [conversations]
@@ -191,47 +231,47 @@ export default function CampusHub() {
     return `Connecté comme ${profile.name} · ${profile.email}`;
   }, [profile]);
 
-  const loadDirectory = async (query = directoryQuery) => {
+  const loadDirectory = async (query = directoryQuery, tokenOverride) => {
     const params = new URLSearchParams();
     if (query) params.set('q', query);
-    const res = await authFetch(`/api/hub/directory?${params.toString()}`);
+    const res = await authFetch(`/api/hub/directory?${params.toString()}`, { tokenOverride });
     if (!res.ok) return;
     const data = await res.json();
     setDirectory(data.profiles || []);
   };
 
-  const loadPresence = async () => {
-    const res = await authFetch('/api/hub/presence');
+  const loadPresence = async (tokenOverride) => {
+    const res = await authFetch('/api/hub/presence', { tokenOverride });
     if (!res.ok) return;
     const data = await res.json();
     setPresence(data.items || []);
   };
 
-  const loadActivity = async () => {
-    const res = await authFetch('/api/hub/activity');
+  const loadActivity = async (tokenOverride) => {
+    const res = await authFetch('/api/hub/activity', { tokenOverride });
     if (!res.ok) return;
     const data = await res.json();
     setActivity(data.items || []);
   };
 
-  const loadConversations = async () => {
-    const res = await authFetch('/api/hub/conversations');
+  const loadConversations = async (tokenOverride) => {
+    const res = await authFetch('/api/hub/conversations', { tokenOverride });
     if (!res.ok) return;
     const data = await res.json();
     setConversations(data.items || []);
   };
 
-  const loadMessages = async (peerEmail = selectedPeer?.email) => {
+  const loadMessages = async (peerEmail = selectedPeer?.email, tokenOverride) => {
     if (!peerEmail) return;
     const params = new URLSearchParams({ peerEmail });
-    const res = await authFetch(`/api/hub/messages?${params.toString()}`);
+    const res = await authFetch(`/api/hub/messages?${params.toString()}`, { tokenOverride });
     if (!res.ok) return;
     const data = await res.json();
     setMessages(data.items || []);
   };
 
-  const loadMyMeetings = async () => {
-    const res = await authFetch('/api/meetings?limit=8');
+  const loadMyMeetings = async (tokenOverride) => {
+    const res = await authFetch('/api/meetings?limit=8', { tokenOverride });
     if (!res.ok) return;
     const data = await res.json();
     setMyMeetings(data.meetings || []);
@@ -244,6 +284,11 @@ export default function CampusHub() {
       .then((data) => {
         if (!data?.profile) return;
         setProfile(data.profile);
+        setAuth((current) => {
+          const nextAuth = { ...current, profile: data.profile };
+          persistAuth(nextAuth);
+          return nextAuth;
+        });
         setAccess((current) => ({
           ...current,
           name: data.profile.name,
@@ -252,6 +297,21 @@ export default function CampusHub() {
       })
       .catch(() => {});
   }, [auth.token]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const syncAuth = () => {
+      const stored = readStoredAuth();
+      setAuth(stored);
+      setProfile(stored.profile || null);
+    };
+    window.addEventListener('meetra-auth-changed', syncAuth);
+    window.addEventListener('storage', syncAuth);
+    return () => {
+      window.removeEventListener('meetra-auth-changed', syncAuth);
+      window.removeEventListener('storage', syncAuth);
+    };
+  }, []);
 
   useEffect(() => {
     if (!socket || !connected || !profile?.email) return;
@@ -381,17 +441,13 @@ export default function CampusHub() {
         });
         const data = await res.json();
         if (!res.ok) {
-          setStatus(
-            data.error === 'HUB_DATABASE_REQUIRED'
-              ? 'Le Campus Hub exige Postgres côté serveur.'
-              : "Impossible de rafraîchir l'accès sécurisé Meetra."
-          );
+          setStatus(getHubErrorMessage(data.error, "Impossible de rafraîchir l'accès sécurisé Meetra."));
           return;
         }
 
         setProfile(data.profile || profile);
         setStatus('Session Hub synchronisée.');
-        await Promise.all([loadDirectory(''), loadPresence(), loadActivity(), loadConversations()]);
+        await refreshHubData(auth.token);
         return;
       }
 
@@ -416,15 +472,7 @@ export default function CampusHub() {
       });
       const authResult = await authRes.json();
       if (!authRes.ok) {
-        setStatus(
-          authResult.error === 'AUTH_DATABASE_REQUIRED'
-            ? 'La connexion Meetra exige une base Postgres configurée côté serveur.'
-            : authResult.error === 'EMAIL_ALREADY_EXISTS'
-            ? 'Cet email possède déjà un compte.'
-            : authResult.error === 'INVALID_CREDENTIALS'
-              ? 'Email ou mot de passe invalide.'
-              : "Impossible d'ouvrir la session Meetra."
-        );
+        setStatus(getAuthErrorMessage(authResult.error));
         return;
       }
 
@@ -440,32 +488,32 @@ export default function CampusHub() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setStatus(
-          data.error === 'HUB_DATABASE_REQUIRED'
-            ? 'Le Campus Hub exige Postgres côté serveur.'
-            : "Impossible d'activer l'accès sécurisé Meetra."
-        );
+        setStatus(getHubErrorMessage(data.error, "Impossible d'activer l'accès sécurisé Meetra."));
         return;
       }
 
-      const nextProfile = authResult.profile || data.profile;
+      const nextProfile = data.profile || authResult.profile;
       setProfile(nextProfile);
+      const committedAuth = { token: authResult.token, profile: nextProfile };
+      setAuth(committedAuth);
+      persistAuth(committedAuth);
       persistAccess(payload);
       socket?.emit(EVENTS.HUB_ACCESS, {
+        email: nextProfile?.email,
+        name: nextProfile?.name,
         token: authResult.token,
         role: nextProfile?.role,
         status: nextProfile?.presenceStatus || 'available',
       });
       setPassword('');
       setStatus('Compte Meetra sécurisé et connecté.');
-      await Promise.all([
-        loadDirectory(''),
-        loadPresence(),
-        loadActivity(),
-        loadConversations(),
-      ]);
-    } catch {
-      setStatus("Impossible de joindre le hub Meetra.");
+      await refreshHubData(authResult.token);
+    } catch (error) {
+      setStatus(
+        error instanceof TypeError
+          ? "Impossible de joindre le serveur Meetra. Vérifiez que l'API locale ou distante est démarrée."
+          : "Impossible de joindre le hub Meetra."
+      );
     } finally {
       setLoading(false);
     }

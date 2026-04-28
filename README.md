@@ -104,6 +104,7 @@ const ALLOWED_ORIGINS_PROD = [
 ```
 NODE_ENV=production
 CLIENT_URL=https://videoconference-server-delta.vercel.app
+DATABASE_URL=postgres://...
 ```
 > PORT est injecté automatiquement par Render, ne pas le définir manuellement.
 
@@ -153,6 +154,18 @@ npm run dev
 # → Backend  : http://localhost:4000
 # → Frontend : http://localhost:5173
 ```
+
+### Mode hybride stockage
+
+- En local (`NODE_ENV=development`), le projet peut fonctionner sans Postgres.
+- Dans ce cas, l'auth Campus Hub et les données Hub utilisent des fichiers JSON locaux.
+- Fichiers utilisés en dev :
+  - `server/server/data/auth/users.json`
+  - `server/server/data/hub/hub.json`
+  - `server/server/data/meetings/*.json`
+  - `server/server/data/transcripts/*.json`
+- En production, Postgres est obligatoire pour l'auth, le Hub, les réunions et les transcriptions.
+- Si `NODE_ENV=production` et que `DATABASE_URL` est absent, le serveur refuse ces fonctionnalités au lieu d'écrire sur le disque local.
 
 ---
 

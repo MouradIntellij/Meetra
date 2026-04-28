@@ -11,6 +11,11 @@ import {
 
 const baseDir = path.resolve(process.cwd(), ENV.MEETING_STORE_DIR);
 
+function assertMeetingStoreAvailable() {
+  if (isPostgresMeetingStoreEnabled() || ENV.isDev) return;
+  throw new Error('MEETING_DATABASE_REQUIRED');
+}
+
 function ensureBaseDir() {
   if (!fs.existsSync(baseDir)) {
     fs.mkdirSync(baseDir, { recursive: true });
@@ -23,6 +28,7 @@ function meetingFile(roomId) {
 }
 
 export async function loadMeeting(roomId) {
+  assertMeetingStoreAvailable();
   if (isPostgresMeetingStoreEnabled()) {
     return loadMeetingFromDb(roomId);
   }
@@ -38,6 +44,7 @@ export async function loadMeeting(roomId) {
 }
 
 export async function saveMeeting(roomId, payload) {
+  assertMeetingStoreAvailable();
   if (isPostgresMeetingStoreEnabled()) {
     return saveMeetingToDb(roomId, payload);
   }
@@ -65,6 +72,7 @@ export async function saveMeeting(roomId, payload) {
 }
 
 export async function listRecentMeetings(limit = 8) {
+  assertMeetingStoreAvailable();
   if (isPostgresMeetingStoreEnabled()) {
     return listRecentMeetingsFromDb(limit);
   }

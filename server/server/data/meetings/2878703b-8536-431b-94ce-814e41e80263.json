@@ -1,0 +1,22 @@
+{
+  "roomId": "2878703b-8536-431b-94ce-814e41e80263",
+  "locked": false,
+  "status": "scheduled",
+  "source": "api",
+  "createdAt": 1777386647711,
+  "updatedAt": 1777386647711,
+  "startedAt": null,
+  "endedAt": null,
+  "metadata": {
+    "title": "Réunion Meetra",
+    "scheduledFor": null,
+    "timezone": "America/Toronto",
+    "durationMinutes": 60,
+    "hostName": "Moor",
+    "hostEmail": "mouradmaths17@gmail.com",
+    "hostPhone": null,
+    "createdByUserId": "977a4dcc-900f-48a9-9e4f-b4c23e7a5ed5",
+    "createdByEmail": "mouradmaths17@gmail.com",
+    "createdByName": "Moor"
+  }
+}

@@ -24,6 +24,33 @@ function readStorageBool(key, fallback = true) {
   return value !== 'false';
 }
 
+function isRecoverableDeviceError(error) {
+  const name = String(error?.name || '');
+  return (
+    name === 'NotFoundError'
+    || name === 'OverconstrainedError'
+    || name === 'NotReadableError'
+    || name === 'AbortError'
+  );
+}
+
+function buildMediaConstraints({ audioDeviceId = '', videoDeviceId = '' }) {
+  return {
+    video: {
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+      facingMode: 'user',
+      ...(videoDeviceId ? { deviceId: { exact: videoDeviceId } } : {}),
+    },
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      ...(audioDeviceId ? { deviceId: { exact: audioDeviceId } } : {}),
+    },
+  };
+}
+
 export const useMedia = () => {
   const ctx = useContext(MediaContext);
   if (!ctx) throw new Error('useMedia must be inside MediaProvider');
@@ -247,20 +274,31 @@ export function MediaProvider({ children, initialStream = null }) {
     if (localStreamRef.current) return localStreamRef.current;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: "user",
-          ...(selectedVideoInputId ? { deviceId: { exact: selectedVideoInputId } } : {}),
-        },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          ...(selectedAudioInputId ? { deviceId: { exact: selectedAudioInputId } } : {}),
+      let stream;
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(
+          buildMediaConstraints({
+            audioDeviceId: selectedAudioInputId,
+            videoDeviceId: selectedVideoInputId,
+          })
+        );
+      } catch (error) {
+        if (!isRecoverableDeviceError(error) || (!selectedAudioInputId && !selectedVideoInputId)) {
+          throw error;
         }
-      });
+
+        setSelectedAudioInputId('');
+        setSelectedVideoInputId('');
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(AUDIO_DEVICE_STORAGE_KEY);
+          window.localStorage.removeItem(VIDEO_DEVICE_STORAGE_KEY);
+        }
+
+        stream = await navigator.mediaDevices.getUserMedia(
+          buildMediaConstraints({ audioDeviceId: '', videoDeviceId: '' })
+        );
+      }
 
       localStreamRef.current = stream;
       const audioTrack = stream.getAudioTracks()[0];
@@ -288,6 +326,7 @@ export function MediaProvider({ children, initialStream = null }) {
 
       return stream;
     } catch {
+      refreshAvailableDevices().catch(() => {});
       setMediaAccessError("Caméra ou micro indisponibles. Vous pouvez quand même rejoindre la réunion.");
       setAudioEnabled(false);
       setVideoEnabled(false);
