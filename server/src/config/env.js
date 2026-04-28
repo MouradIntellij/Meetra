@@ -1,3 +1,24 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import dotenv from 'dotenv';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const serverRoot = path.resolve(__dirname, '..', '..');
+const projectRoot = path.resolve(serverRoot, '..');
+
+[
+  path.join(serverRoot, '.env.local'),
+  path.join(projectRoot, '.env.local'),
+  path.join(serverRoot, '.env'),
+  path.join(projectRoot, '.env'),
+].forEach((candidate) => {
+  if (fs.existsSync(candidate)) {
+    dotenv.config({ path: candidate });
+  }
+});
+
 export const ENV = {
   PORT: process.env.PORT || 4000,
   NODE_ENV: process.env.NODE_ENV || 'development',

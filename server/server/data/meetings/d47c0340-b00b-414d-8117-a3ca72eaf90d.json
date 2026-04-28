@@ -1,0 +1,19 @@
+{
+  "roomId": "d47c0340-b00b-414d-8117-a3ca72eaf90d",
+  "locked": false,
+  "status": "active",
+  "source": "api",
+  "createdAt": 1777335341485,
+  "updatedAt": 1777335346085,
+  "startedAt": 1777335346083,
+  "endedAt": null,
+  "metadata": {
+    "title": "Réunion Meetra",
+    "scheduledFor": null,
+    "timezone": "America/Toronto",
+    "durationMinutes": 60,
+    "hostName": "Mourad",
+    "hostEmail": null,
+    "hostPhone": null
+  }
+}

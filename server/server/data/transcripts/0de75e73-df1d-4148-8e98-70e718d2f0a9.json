@@ -1,0 +1,19 @@
+{
+  "active": false,
+  "language": "fr-CA",
+  "startedAt": 1777336413715,
+  "segments": [],
+  "summary": {
+    "roomId": "0de75e73-df1d-4148-8e98-70e718d2f0a9",
+    "generatedAt": 1777336497388,
+    "provider": "heuristic",
+    "overview": "Intervenants principaux: non détectés. Segments transcrits: 0.",
+    "speakers": [],
+    "decisions": [],
+    "actions": [],
+    "risks": [],
+    "keyMoments": []
+  },
+  "createdAt": 1777336412373,
+  "updatedAt": 1777336497388
+}
