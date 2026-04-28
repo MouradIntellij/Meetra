@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { getApiUrl } from '../../utils/appConfig.js';
 import { useSocket } from '../../context/SocketContext.jsx';
 import { EVENTS } from '../../utils/events.js';
-import { CalendarIcon, ChatBubbleIcon, MailCalendarIcon, SearchIcon, SparkIcon, UsersIcon } from '../common/AppIcons.jsx';
+import { ChatBubbleIcon, MailCalendarIcon, SearchIcon, SparkIcon, UsersIcon } from '../common/AppIcons.jsx';
 
 const API_URL = getApiUrl();
 const ACCESS_STORAGE_KEY = 'meetra-hub-access';
@@ -94,13 +94,21 @@ function TeamsRailButton({ active, label, Icon, onClick, badge = 0 }) {
   );
 }
 
+function FieldLabel({ children }) {
+  return (
+    <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-white/88">
+      {children}
+    </label>
+  );
+}
+
 function SectionCard({ title, subtitle, children, toolbar = null }) {
   return (
-    <section className="rounded-[26px] border border-white/10 bg-slate-950/60 p-5">
+    <section className="rounded-[28px] border border-white/10 bg-slate-950/60 p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold text-slate-100">{title}</div>
-          {subtitle && <div className="mt-1 text-sm leading-6 text-slate-400">{subtitle}</div>}
+          <div className="text-base font-semibold text-white">{title}</div>
+          {subtitle && <div className="mt-2 text-sm leading-7 text-slate-300">{subtitle}</div>}
         </div>
         {toolbar}
       </div>
@@ -131,12 +139,14 @@ export default function CampusHub() {
   const signedIn = Boolean(profile?.email);
 
   const authFetch = async (path, options = {}) => {
-    const headers = new Headers(options.headers || {});
-    if (auth.token) {
-      headers.set('authorization', `Bearer ${auth.token}`);
+    const { tokenOverride, ...fetchOptions } = options;
+    const headers = new Headers(fetchOptions.headers || {});
+    const effectiveToken = tokenOverride || auth.token;
+    if (effectiveToken) {
+      headers.set('authorization', `Bearer ${effectiveToken}`);
     }
     return fetch(`${API_URL}${path}`, {
-      ...options,
+      ...fetchOptions,
       headers,
     });
   };
@@ -159,77 +169,64 @@ export default function CampusHub() {
   );
 
   const accessSummary = useMemo(() => {
-    if (!profile) return 'Activez votre accès Meetra pour voir vos activités, membres et messages.';
+    if (!profile) return 'Connexion requise pour accéder au Campus Hub sécurisé.';
     return `Connecté comme ${profile.name} · ${profile.email}`;
   }, [profile]);
 
-  const loadDirectory = async (email = access.email, query = directoryQuery) => {
+  const loadDirectory = async (query = directoryQuery) => {
     const params = new URLSearchParams();
-    if (email) params.set('email', email);
     if (query) params.set('q', query);
     const res = await authFetch(`/api/hub/directory?${params.toString()}`);
+    if (!res.ok) return;
     const data = await res.json();
     setDirectory(data.profiles || []);
   };
 
   const loadPresence = async () => {
     const res = await authFetch('/api/hub/presence');
+    if (!res.ok) return;
     const data = await res.json();
     setPresence(data.items || []);
   };
 
-  const loadActivity = async (email = access.email) => {
-    if (!email) return;
-    const res = await authFetch(`/api/hub/activity?email=${encodeURIComponent(email)}`);
+  const loadActivity = async () => {
+    const res = await authFetch('/api/hub/activity');
+    if (!res.ok) return;
     const data = await res.json();
     setActivity(data.items || []);
   };
 
-  const loadConversations = async (email = access.email) => {
-    if (!email) return;
-    const res = await authFetch(`/api/hub/conversations?email=${encodeURIComponent(email)}`);
+  const loadConversations = async () => {
+    const res = await authFetch('/api/hub/conversations');
+    if (!res.ok) return;
     const data = await res.json();
     setConversations(data.items || []);
   };
 
-  const loadMessages = async (email = access.email, peerEmail = selectedPeer?.email) => {
-    if (!email || !peerEmail) return;
-    const params = new URLSearchParams({ email, peerEmail });
+  const loadMessages = async (peerEmail = selectedPeer?.email) => {
+    if (!peerEmail) return;
+    const params = new URLSearchParams({ peerEmail });
     const res = await authFetch(`/api/hub/messages?${params.toString()}`);
+    if (!res.ok) return;
     const data = await res.json();
     setMessages(data.items || []);
   };
 
   useEffect(() => {
-    if (!access.email) return;
-    if (auth.token) {
-      authFetch('/api/auth/me')
-        .then(async (res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (!data?.profile) return;
-          setProfile(data.profile);
-          setAccess((current) => ({
-            ...current,
-            name: data.profile.name,
-            email: data.profile.email,
-          }));
-        })
-        .catch(() => {});
-      return;
-    }
-
-    fetch(`${API_URL}/api/hub/profile?email=${encodeURIComponent(access.email)}`)
+    if (!auth.token) return;
+    authFetch('/api/auth/me')
       .then(async (res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!data?.profile) return;
         setProfile(data.profile);
+        setAccess((current) => ({
+          ...current,
+          name: data.profile.name,
+          email: data.profile.email,
+        }));
       })
       .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    loadPresence();
-  }, []);
+  }, [auth.token]);
 
   useEffect(() => {
     if (!socket || !connected || !profile?.email) return;
@@ -253,14 +250,14 @@ export default function CampusHub() {
   useEffect(() => {
     if (!signedIn) return;
     const timeoutId = setTimeout(() => {
-      loadDirectory(access.email, directoryQuery);
+      loadDirectory(directoryQuery);
     }, 180);
     return () => clearTimeout(timeoutId);
   }, [directoryQuery, signedIn]);
 
   useEffect(() => {
     if (!signedIn || !selectedPeer?.email) return;
-    loadMessages(access.email, selectedPeer.email);
+    loadMessages(selectedPeer.email);
   }, [signedIn, selectedPeer]);
 
   useEffect(() => {
@@ -350,64 +347,96 @@ export default function CampusHub() {
     setStatus('');
 
     try {
+      if (signedIn && auth.token) {
+        const res = await authFetch('/api/hub/access', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ presenceStatus: profile?.presenceStatus || 'available' }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setStatus(
+            data.error === 'HUB_DATABASE_REQUIRED'
+              ? 'Le Campus Hub exige Postgres côté serveur.'
+              : "Impossible de rafraîchir l'accès sécurisé Meetra."
+          );
+          return;
+        }
+
+        setProfile(data.profile || profile);
+        setStatus('Session Hub synchronisée.');
+        await Promise.all([loadDirectory(''), loadPresence(), loadActivity(), loadConversations()]);
+        return;
+      }
+
       const payload = {
         name: access.name.trim(),
         email: access.email.trim().toLowerCase(),
       };
-      let authResult = null;
-      if (password.trim()) {
-        const endpoint = authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
-        const authRes = await fetch(`${API_URL}${endpoint}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: payload.name,
-            email: payload.email,
-            password: password.trim(),
-          }),
-        });
-        authResult = await authRes.json();
-        if (!authRes.ok) {
-          setStatus(
-            authResult.error === 'EMAIL_ALREADY_EXISTS'
-              ? 'Cet email possède déjà un compte.'
-              : authResult.error === 'INVALID_CREDENTIALS'
-                ? 'Email ou mot de passe invalide.'
-                : "Impossible d'ouvrir la session Meetra."
-          );
-          return;
-        }
-        setAuth({ token: authResult.token, profile: authResult.profile });
-        persistAuth({ token: authResult.token, profile: authResult.profile });
+      if (!payload.email || !password.trim() || (authMode === 'register' && !payload.name)) {
+        setStatus('Nom, email et mot de passe sont requis pour sécuriser le Campus Hub.');
+        return;
       }
+
+      const endpoint = authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
+      const authRes = await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: payload.name,
+          email: payload.email,
+          password: password.trim(),
+        }),
+      });
+      const authResult = await authRes.json();
+      if (!authRes.ok) {
+        setStatus(
+          authResult.error === 'AUTH_DATABASE_REQUIRED'
+            ? 'La connexion Meetra exige une base Postgres configurée côté serveur.'
+            : authResult.error === 'EMAIL_ALREADY_EXISTS'
+            ? 'Cet email possède déjà un compte.'
+            : authResult.error === 'INVALID_CREDENTIALS'
+              ? 'Email ou mot de passe invalide.'
+              : "Impossible d'ouvrir la session Meetra."
+        );
+        return;
+      }
+
+      const nextAuth = { token: authResult.token, profile: authResult.profile };
+      setAuth(nextAuth);
+      persistAuth(nextAuth);
 
       const res = await authFetch(`/api/hub/access`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        tokenOverride: authResult.token,
+        body: JSON.stringify({ presenceStatus: authResult.profile?.presenceStatus || 'available' }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setStatus("Impossible d'activer l'accès Meetra.");
+        setStatus(
+          data.error === 'HUB_DATABASE_REQUIRED'
+            ? 'Le Campus Hub exige Postgres côté serveur.'
+            : "Impossible d'activer l'accès sécurisé Meetra."
+        );
         return;
       }
 
-      const nextProfile = authResult?.profile || data.profile;
+      const nextProfile = authResult.profile || data.profile;
       setProfile(nextProfile);
       persistAccess(payload);
       socket?.emit(EVENTS.HUB_ACCESS, {
-        ...payload,
-        token: authResult?.token || auth.token,
+        token: authResult.token,
         role: nextProfile?.role,
         status: nextProfile?.presenceStatus || 'available',
       });
       setPassword('');
-      setStatus(authResult ? 'Compte Meetra prêt et connecté.' : 'Accès Meetra activé.');
+      setStatus('Compte Meetra sécurisé et connecté.');
       await Promise.all([
-        loadDirectory(payload.email, ''),
+        loadDirectory(''),
         loadPresence(),
-        loadActivity(payload.email),
-        loadConversations(payload.email),
+        loadActivity(),
+        loadConversations(),
       ]);
     } catch {
       setStatus("Impossible de joindre le hub Meetra.");
@@ -420,7 +449,7 @@ export default function CampusHub() {
     setSelectedPeer(peer);
     setActiveTab('chat');
     setMessages([]);
-    await loadMessages(access.email, peer.email);
+    await loadMessages(peer.email);
     setConversations((current) => current.map((item) => (
       item.peer.email === peer.email ? { ...item, unreadCount: 0 } : item
     )));
@@ -484,6 +513,7 @@ export default function CampusHub() {
         </div>
       )}
     >
+      <FieldLabel>Recherche de membres</FieldLabel>
       <div className="relative">
         <div className="pointer-events-none absolute left-3 top-5 text-slate-500">
           <SearchIcon size={16} />
@@ -495,7 +525,7 @@ export default function CampusHub() {
           className="meetra-focus-ring w-full rounded-[18px] border border-white/10 bg-slate-950/60 px-4 py-3 pl-10 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-blue-400"
         />
       </div>
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
+      <div className="mt-5 grid gap-4 xl:grid-cols-2">
         {directory.length === 0 ? (
           <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-slate-400">
             Aucun membre disponible pour le moment.
@@ -505,7 +535,7 @@ export default function CampusHub() {
             key={peer.email}
             type="button"
             onClick={() => handleOpenConversation(peer)}
-            className="rounded-[20px] border border-white/10 bg-white/[0.03] px-4 py-4 text-left transition hover:bg-white/[0.05]"
+            className="rounded-[22px] border border-white/10 bg-white/[0.03] px-5 py-5 text-left transition hover:bg-white/[0.05]"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -532,7 +562,7 @@ export default function CampusHub() {
       toolbar={(
         <button
           type="button"
-          onClick={() => loadActivity(access.email)}
+          onClick={() => loadActivity()}
           className="meetra-button meetra-focus-ring px-3 py-2 text-xs font-semibold text-slate-200"
         >
           Actualiser
@@ -563,7 +593,7 @@ export default function CampusHub() {
   );
 
   const chatView = (
-    <div className="grid gap-5 xl:grid-cols-[0.42fr_0.58fr]">
+    <div className="grid gap-5 2xl:grid-cols-[minmax(320px,0.42fr)_minmax(0,0.58fr)]">
       <SectionCard
         title="Conversations"
         subtitle="Vos fils directs récents, organisés comme une inbox."
@@ -614,7 +644,7 @@ export default function CampusHub() {
       >
         {selectedPeer ? (
           <>
-            <div className="max-h-[380px] space-y-3 overflow-y-auto pr-1">
+            <div className="max-h-[460px] space-y-3 overflow-y-auto pr-1">
               {messages.length === 0 ? (
                 <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-slate-400">
                   Aucun message pour le moment.
@@ -638,7 +668,8 @@ export default function CampusHub() {
               })}
             </div>
 
-            <form onSubmit={handleSendMessage} className="mt-4 space-y-3">
+            <form onSubmit={handleSendMessage} className="mt-5 space-y-3">
+              <FieldLabel>Message direct</FieldLabel>
               <textarea
                 rows={4}
                 value={draft}
@@ -677,7 +708,7 @@ export default function CampusHub() {
         <div>
           <div className="text-2xl font-semibold tracking-tight text-slate-50">Activité, conversations et présence Meetra</div>
           <div className="mt-2 max-w-3xl text-sm leading-7 text-slate-400">
-            Une présentation plus proche d’un hub Teams: rail d’activité, conversations directes et membres connectés visibles en permanence.
+            Une présentation plus proche d’un hub Teams, avec plus d’espace, des libellés lisibles et un accès désormais réservé aux comptes authentifiés.
           </div>
         </div>
         <div className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs text-slate-400">
@@ -685,9 +716,9 @@ export default function CampusHub() {
         </div>
       </div>
 
-      <div className="mt-6 grid gap-5 xl:grid-cols-[220px_minmax(0,1fr)_300px]">
-        <aside className="rounded-[26px] border border-white/10 bg-slate-950/60 p-4">
-          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Navigation</div>
+      <div className="mt-7 grid gap-6 xl:grid-cols-[250px_minmax(0,1fr)] 2xl:grid-cols-[250px_minmax(0,1fr)_340px]">
+        <aside className="rounded-[28px] border border-white/10 bg-slate-950/60 p-5">
+          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">Navigation</div>
           <div className="mt-4 space-y-2">
             {HUB_TABS.map(({ id, label, Icon }) => (
               <TeamsRailButton
@@ -701,7 +732,7 @@ export default function CampusHub() {
             ))}
           </div>
 
-          <div className="mt-6 rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
+          <div className="mt-6 rounded-[24px] border border-white/10 bg-white/[0.03] p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-blue-500/12 text-blue-100">
                 <MailCalendarIcon size={18} />
@@ -712,7 +743,7 @@ export default function CampusHub() {
               </div>
             </div>
 
-            <form onSubmit={handleAccessSubmit} className="mt-4 grid gap-3">
+            <form onSubmit={handleAccessSubmit} className="mt-5 grid gap-4">
               <div className="grid grid-cols-2 gap-2 rounded-[16px] border border-white/10 bg-slate-950/55 p-1">
                 <button
                   type="button"
@@ -729,29 +760,52 @@ export default function CampusHub() {
                   Inscription
                 </button>
               </div>
-              <input
-                value={access.name}
-                onChange={(event) => setAccess((current) => ({ ...current, name: event.target.value }))}
-                placeholder="Votre nom"
-                className="meetra-focus-ring w-full rounded-[16px] border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-blue-400"
-              />
-              <input
-                type="email"
-                value={access.email}
-                onChange={(event) => setAccess((current) => ({ ...current, email: event.target.value }))}
-                placeholder="vous@ecole.com"
-                className="meetra-focus-ring w-full rounded-[16px] border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-blue-400"
-              />
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={authMode === 'register' ? 'Mot de passe (6 caractères min.)' : 'Mot de passe'}
-                className="meetra-focus-ring w-full rounded-[16px] border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-blue-400"
-              />
+              {!signedIn && (
+                <>
+                  {authMode === 'register' && (
+                    <div>
+                      <FieldLabel>Nom complet</FieldLabel>
+                      <input
+                        value={access.name}
+                        onChange={(event) => setAccess((current) => ({ ...current, name: event.target.value }))}
+                        placeholder="Votre nom"
+                        className="meetra-focus-ring w-full rounded-[16px] border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-blue-400"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <FieldLabel>Adresse e-mail</FieldLabel>
+                    <input
+                      type="email"
+                      value={access.email}
+                      onChange={(event) => setAccess((current) => ({ ...current, email: event.target.value }))}
+                      placeholder="vous@ecole.com"
+                      className="meetra-focus-ring w-full rounded-[16px] border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-blue-400"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Mot de passe</FieldLabel>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder={authMode === 'register' ? '6 caractères minimum' : 'Mot de passe'}
+                      className="meetra-focus-ring w-full rounded-[16px] border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-blue-400"
+                    />
+                  </div>
+                </>
+              )}
+              {signedIn && (
+                <div className="rounded-[16px] border border-white/10 bg-slate-950/55 px-4 py-4">
+                  <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/70">Compte sécurisé</div>
+                  <div className="mt-2 text-sm leading-6 text-slate-300">
+                    Le Campus Hub n’accepte plus l’accès simple par email. Votre session active protège désormais les messages et l’annuaire.
+                  </div>
+                </div>
+              )}
               {signedIn && (
                 <div className="rounded-[16px] border border-white/10 bg-slate-950/55 px-4 py-3">
-                  <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Statut Teams-like</div>
+                  <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/70">Statut Teams-like</div>
                   <div className="mt-3 grid gap-2">
                     {PRESENCE_OPTIONS.map((option) => (
                       <button
@@ -778,7 +832,7 @@ export default function CampusHub() {
                 disabled={loading}
                 className="meetra-button meetra-button-primary meetra-focus-ring px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
               >
-                {loading ? 'Traitement...' : signedIn ? 'Mettre à jour' : authMode === 'register' ? 'Créer mon compte' : 'Se connecter'}
+                {loading ? 'Traitement...' : signedIn ? 'Rafraîchir la session' : authMode === 'register' ? 'Créer mon compte' : 'Se connecter'}
               </button>
               {signedIn && (
                 <button
@@ -795,10 +849,19 @@ export default function CampusHub() {
         </aside>
 
         <div className="min-w-0">
-          {mainView}
+          {signedIn ? mainView : (
+            <SectionCard
+              title="Connexion requise"
+              subtitle="Inscrivez-vous ou connectez-vous dans la colonne de gauche pour ouvrir l’activité, l’annuaire et les messages directs."
+            >
+              <div className="rounded-[22px] border border-dashed border-white/10 bg-white/[0.02] px-6 py-8 text-sm leading-7 text-slate-300">
+                Le Hub Meetra est maintenant strictement protégé. Les échanges et l’activité ne sont plus accessibles à partir d’un simple email saisi localement.
+              </div>
+            </SectionCard>
+          )}
         </div>
 
-        <aside className="space-y-5">
+        <aside className="space-y-5 xl:col-span-2 2xl:col-span-1">
           <SectionCard
             title="Membres connectés"
             subtitle="Les personnes actuellement présentes dans le Hub apparaissent ici."
@@ -836,17 +899,17 @@ export default function CampusHub() {
           >
             <div className="grid gap-3">
               <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
-                <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Activité</div>
+                <div className="text-xs font-bold uppercase tracking-[0.16em] text-white/70">Activité</div>
                 <div className="mt-2 text-2xl font-semibold text-slate-50">{activity.length}</div>
                 <div className="mt-1 text-sm text-slate-400">éléments visibles dans votre fil</div>
               </div>
               <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
-                <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Messages</div>
+                <div className="text-xs font-bold uppercase tracking-[0.16em] text-white/70">Messages</div>
                 <div className="mt-2 text-2xl font-semibold text-slate-50">{conversations.length}</div>
                 <div className="mt-1 text-sm text-slate-400">conversations directes actives</div>
               </div>
               <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
-                <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Présence</div>
+                <div className="text-xs font-bold uppercase tracking-[0.16em] text-white/70">Présence</div>
                 <div className="mt-2 text-2xl font-semibold text-slate-50">{onlineMembers.length}</div>
                 <div className="mt-1 text-sm text-slate-400">membres connectés en ce moment</div>
               </div>

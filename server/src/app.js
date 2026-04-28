@@ -96,16 +96,20 @@ export function createApp() {
 
       logger.info('Room created:', room.roomId);
       if (hostEmail) {
-        upsertHubProfile({ email: hostEmail, name: hostName || hostEmail });
-        appendHubActivity({
-          type: 'meeting',
-          title: 'Réunion créée',
-          body: `"${title}" est prête${scheduledFor ? ` pour ${new Intl.DateTimeFormat('fr-CA', { dateStyle: 'medium', timeStyle: 'short', timeZone: timezone || undefined }).format(new Date(scheduledFor))}` : ' à démarrer'}.`,
-          targetEmail: hostEmail,
-          actorEmail: hostEmail,
-          actorName: hostName || hostEmail,
-          meta: { roomId: room.roomId, joinUrl },
-        });
+        try {
+          await upsertHubProfile({ email: hostEmail, name: hostName || hostEmail });
+          await appendHubActivity({
+            type: 'meeting',
+            title: 'Réunion créée',
+            body: `"${title}" est prête${scheduledFor ? ` pour ${new Intl.DateTimeFormat('fr-CA', { dateStyle: 'medium', timeStyle: 'short', timeZone: timezone || undefined }).format(new Date(scheduledFor))}` : ' à démarrer'}.`,
+            targetEmail: hostEmail,
+            actorEmail: hostEmail,
+            actorName: hostName || hostEmail,
+            meta: { roomId: room.roomId, joinUrl },
+          });
+        } catch (hubError) {
+          logger.warn('Hub activity sync skipped on room create:', hubError?.message);
+        }
       }
       res.json({
         roomId: room.roomId,
@@ -178,16 +182,20 @@ export function createApp() {
       if (hostEmail || updated.metadata?.hostEmail) {
         const targetEmail = hostEmail || updated.metadata?.hostEmail;
         const targetName = hostName || updated.metadata?.hostName || targetEmail;
-        upsertHubProfile({ email: targetEmail, name: targetName });
-        appendHubActivity({
-          type: 'meeting-update',
-          title: 'Réunion mise à jour',
-          body: `"${updated.metadata?.title || title || 'Réunion Meetra'}" a été mise à jour.`,
-          targetEmail,
-          actorEmail: targetEmail,
-          actorName: targetName,
-          meta: { roomId, joinUrl: origin ? `${String(origin).replace(/\/+$/, '')}/room/${roomId}` : null },
-        });
+        try {
+          await upsertHubProfile({ email: targetEmail, name: targetName });
+          await appendHubActivity({
+            type: 'meeting-update',
+            title: 'Réunion mise à jour',
+            body: `"${updated.metadata?.title || title || 'Réunion Meetra'}" a été mise à jour.`,
+            targetEmail,
+            actorEmail: targetEmail,
+            actorName: targetName,
+            meta: { roomId, joinUrl: origin ? `${String(origin).replace(/\/+$/, '')}/room/${roomId}` : null },
+          });
+        } catch (hubError) {
+          logger.warn('Hub activity sync skipped on room update:', hubError?.message);
+        }
       }
       return res.json(serializeMeetingSummary({
         roomId,
