@@ -16,6 +16,9 @@ export async function createScheduledRoom(options = {}) {
     hostName: options.hostName || null,
     hostEmail: options.hostEmail || null,
     hostPhone: options.hostPhone || null,
+    createdByUserId: options.createdByUserId || null,
+    createdByEmail: options.createdByEmail || null,
+    createdByName: options.createdByName || null,
   };
 
   return meetingService.createMeeting({
@@ -212,5 +215,8 @@ export async function getRecentMeetings(limit = 8) {
     hostName: meeting.metadata?.hostName || null,
     hostEmail: meeting.metadata?.hostEmail || null,
     hostPhone: meeting.metadata?.hostPhone || null,
+    createdByUserId: meeting.metadata?.createdByUserId || null,
+    createdByEmail: meeting.metadata?.createdByEmail || null,
+    createdByName: meeting.metadata?.createdByName || null,
   }));
 }

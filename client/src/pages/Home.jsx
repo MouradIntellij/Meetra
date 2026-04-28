@@ -5,14 +5,7 @@ import CampusHub from '../components/hub/CampusHub.jsx';
 
 const API_URL = getApiUrl();
 const DEFAULT_DURATION_MINUTES = 60;
-
-function generateFallbackRoomId() {
-  if (globalThis.crypto?.randomUUID) {
-    return globalThis.crypto.randomUUID();
-  }
-
-  return `room-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
-}
+const AUTH_STORAGE_KEY = 'meetra-auth-session';
 
 function normalizeRoomInput(value) {
   const raw = String(value || '').trim();
@@ -36,6 +29,19 @@ function getDefaultScheduleDate() {
 
 function getDefaultScheduleTime() {
   return '09:00';
+}
+
+function readStoredAuth() {
+  if (typeof window === 'undefined') return { token: '', profile: null };
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(AUTH_STORAGE_KEY) || '{}');
+    return {
+      token: parsed.token || '',
+      profile: parsed.profile || null,
+    };
+  } catch {
+    return { token: '', profile: null };
+  }
 }
 
 function buildScheduledIso(dateValue, timeValue) {
@@ -334,6 +340,7 @@ function TestimonialCard({ quote, author, role }) {
 }
 
 export default function Home({ onJoin, prefillRoomId = '' }) {
+  const [auth, setAuth] = useState(() => readStoredAuth());
   const [userName, setUserName] = useState('');
   const [roomId, setRoomId] = useState(prefillRoomId);
   const [loading, setLoading] = useState(false);
@@ -355,6 +362,17 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const menuRef = useRef(null);
+
+  const authFetch = async (path, options = {}) => {
+    const headers = new Headers(options.headers || {});
+    if (auth.token) {
+      headers.set('authorization', `Bearer ${auth.token}`);
+    }
+    return fetch(`${API_URL}${path}`, {
+      ...options,
+      headers,
+    });
+  };
 
   const navMenus = {
     produits: [
@@ -424,13 +442,51 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [openMenu, searchOpen]);
 
+  useEffect(() => {
+    if (!auth.token) return;
+    authFetch('/api/auth/me')
+      .then(async (res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data?.profile) return;
+        setAuth((current) => ({ ...current, profile: data.profile }));
+        setUserName((current) => current || data.profile.name || '');
+        setHostEmail((current) => current || data.profile.email || '');
+      })
+      .catch(() => {});
+  }, [auth.token]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const syncAuth = () => setAuth(readStoredAuth());
+    window.addEventListener('meetra-auth-changed', syncAuth);
+    window.addEventListener('storage', syncAuth);
+    return () => {
+      window.removeEventListener('meetra-auth-changed', syncAuth);
+      window.removeEventListener('storage', syncAuth);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!auth.token) {
+      setRecentMeetings([]);
+      return;
+    }
+    loadRecentMeetings();
+  }, [auth.token]);
+
   const loadRecentMeetings = async () => {
+    if (!auth.token) {
+      setRecentMeetings([]);
+      return;
+    }
     setLoadingRecent(true);
     try {
-      const res = await fetch(`${API_URL}/api/meetings?limit=6`);
+      const res = await authFetch('/api/meetings?limit=6');
       const data = await res.json().catch(() => ({ meetings: [] }));
       if (res.ok) {
         setRecentMeetings(data.meetings || []);
+      } else {
+        setRecentMeetings([]);
       }
     } catch {
       setRecentMeetings([]);
@@ -440,43 +496,14 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
   };
 
   const createRoomRequest = async ({ includeSchedule = false } = {}) => {
+    if (!auth.token) {
+      throw new Error('UNAUTHENTICATED');
+    }
     const scheduledFor = includeSchedule ? buildScheduledIso(scheduledDate, scheduledTime) : null;
-    try {
-      const res = await fetch(`${API_URL}/api/rooms`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: meetingTitle.trim() || 'Réunion Meetra',
-          scheduledFor,
-          timezone,
-          durationMinutes: DEFAULT_DURATION_MINUTES,
-          hostName: userName.trim() || null,
-          hostEmail: hostEmail.trim() || null,
-          hostPhone: hostPhone.trim() || null,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok || !data.roomId) {
-        throw new Error(data?.error || `ROOM_CREATE_FAILED_${res.status}`);
-      }
-
-      return {
-        roomId: data.roomId,
-        joinUrl: data.joinUrl || `${window.location.origin}/room/${data.roomId}`,
-        title: data.title || meetingTitle.trim() || 'Réunion Meetra',
-        scheduledFor: data.scheduledFor || scheduledFor,
-        timezone: data.timezone || timezone,
-        durationMinutes: data.durationMinutes || DEFAULT_DURATION_MINUTES,
-        hostName: data.hostName || userName.trim() || null,
-        hostEmail: data.hostEmail || hostEmail.trim() || null,
-        hostPhone: data.hostPhone || hostPhone.trim() || null,
-      };
-    } catch {
-      const fallbackRoomId = generateFallbackRoomId();
-      return {
-        roomId: fallbackRoomId,
-        joinUrl: `${window.location.origin}/room/${fallbackRoomId}`,
+    const res = await authFetch('/api/rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         title: meetingTitle.trim() || 'Réunion Meetra',
         scheduledFor,
         timezone,
@@ -484,8 +511,25 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
         hostName: userName.trim() || null,
         hostEmail: hostEmail.trim() || null,
         hostPhone: hostPhone.trim() || null,
-      };
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok || !data.roomId) {
+      throw new Error(data?.error || `ROOM_CREATE_FAILED_${res.status}`);
     }
+
+    return {
+      roomId: data.roomId,
+      joinUrl: data.joinUrl || `${window.location.origin}/room/${data.roomId}`,
+      title: data.title || meetingTitle.trim() || 'Réunion Meetra',
+      scheduledFor: data.scheduledFor || scheduledFor,
+      timezone: data.timezone || timezone,
+      durationMinutes: data.durationMinutes || DEFAULT_DURATION_MINUTES,
+      hostName: data.hostName || userName.trim() || null,
+      hostEmail: data.hostEmail || hostEmail.trim() || null,
+      hostPhone: data.hostPhone || hostPhone.trim() || null,
+    };
   };
 
   const beginEditMeeting = (meeting) => {
@@ -510,7 +554,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_URL}/api/rooms/${roomIdToUpdate}`, {
+      const res = await authFetch(`/api/rooms/${roomIdToUpdate}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -534,8 +578,12 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
         setCreatedMeeting((current) => ({ ...current, ...updated }));
       }
       setEditingRoomId('');
-    } catch {
-      setError('Impossible de modifier cette réunion planifiée.');
+    } catch (error) {
+      setError(
+        error?.message === 'UNAUTHENTICATED' || error?.message === 'MEETING_ACCESS_DENIED'
+          ? 'Connectez-vous avec le compte propriétaire pour modifier cette réunion.'
+          : 'Impossible de modifier cette réunion planifiée.'
+      );
     } finally {
       setLoading(false);
     }
@@ -543,6 +591,10 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
 
   const createRoom = async (event) => {
     event?.preventDefault?.();
+    if (!auth.token) {
+      setError('Connectez-vous dans Campus Hub avant de créer une réunion.');
+      return;
+    }
     if (!userName.trim()) {
       setError('Entrez votre nom.');
       return;
@@ -554,6 +606,12 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       setCreatedMeeting(meeting);
       loadRecentMeetings();
       onJoin(meeting.roomId, userName.trim());
+    } catch (error) {
+      setError(
+        error?.message === 'UNAUTHENTICATED'
+          ? 'Connectez-vous dans Campus Hub avant de créer une réunion.'
+          : 'Impossible de créer la réunion sur le serveur.'
+      );
     } finally {
       setLoading(false);
     }
@@ -561,6 +619,10 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
 
   const scheduleRoom = async (event) => {
     event?.preventDefault?.();
+    if (!auth.token) {
+      setError('Connectez-vous dans Campus Hub avant de planifier une réunion.');
+      return;
+    }
     if (!userName.trim()) {
       setError('Entrez votre nom.');
       return;
@@ -583,6 +645,12 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       const meeting = await createRoomRequest({ includeSchedule: true });
       setCreatedMeeting(meeting);
       loadRecentMeetings();
+    } catch (error) {
+      setError(
+        error?.message === 'UNAUTHENTICATED'
+          ? 'Connectez-vous dans Campus Hub avant de planifier une réunion.'
+          : 'Impossible de planifier la réunion sur le serveur.'
+      );
     } finally {
       setLoading(false);
     }
@@ -1290,6 +1358,15 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                     </div>
                   </div>
                 </div>
+                <div className={`mb-4 rounded-[18px] border px-4 py-3 text-sm leading-6 ${
+                  auth.token
+                    ? 'border-emerald-400/16 bg-emerald-500/8 text-slate-200'
+                    : 'border-amber-400/16 bg-amber-500/8 text-amber-100'
+                }`}>
+                  {auth.token
+                    ? `Planification sécurisée active pour ${auth.profile?.name || userName || 'votre compte'}${auth.profile?.email ? ` · ${auth.profile.email}` : ''}.`
+                    : 'Connectez-vous dans Campus Hub pour créer, planifier et modifier vos réunions.'}
+                </div>
                 <div className="grid gap-3">
                   <div>
                     <label className="meetra-section-label">Titre de la réunion</label>
@@ -1410,8 +1487,8 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
               <div id="meetra-recent" className="rounded-[24px] border border-white/10 bg-slate-950/45 px-4 py-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="meetra-section-label">Réunions planifiées récentes</div>
-                    <div className="mt-1 text-sm text-slate-400">Modifiez rapidement une réunion déjà préparée et récupérez son lien.</div>
+                    <div className="meetra-section-label">Mes réunions</div>
+                    <div className="mt-1 text-sm text-slate-400">Votre espace personnel pour retrouver, modifier et relancer les réunions liées à votre compte.</div>
                   </div>
                   <button
                     type="button"
@@ -1423,7 +1500,30 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                 </div>
 
                 <div className="mt-4 space-y-3">
-                  {recentMeetings.length === 0 ? (
+                  {auth.token && (
+                    <div className="grid gap-3 lg:grid-cols-3">
+                      <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
+                        <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Compte</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-100">{auth.profile?.name || userName || 'Meetra user'}</div>
+                        <div className="mt-1 text-xs text-slate-500">{auth.profile?.email || 'email non disponible'}</div>
+                      </div>
+                      <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
+                        <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Réunions visibles</div>
+                        <div className="mt-2 text-2xl font-semibold text-slate-50">{recentMeetings.length}</div>
+                        <div className="mt-1 text-xs text-slate-500">planifications rattachées à votre compte</div>
+                      </div>
+                      <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
+                        <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Propriété</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-100">Gestion privée</div>
+                        <div className="mt-1 text-xs text-slate-500">seul le compte propriétaire peut modifier ces réunions</div>
+                      </div>
+                    </div>
+                  )}
+                  {!auth.token ? (
+                    <div className="rounded-[18px] border border-amber-400/16 bg-amber-500/8 px-4 py-4 text-sm text-amber-100">
+                      Connectez-vous dans Campus Hub pour afficher uniquement vos réunions planifiées.
+                    </div>
+                  ) : recentMeetings.length === 0 ? (
                     <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-slate-400">
                       Aucune réunion récente à afficher pour le moment.
                     </div>
@@ -1432,7 +1532,12 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                       <div key={meeting.roomId} className="rounded-[20px] border border-white/10 bg-white/[0.03] px-4 py-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-slate-100">{meeting.title || 'Réunion Meetra'}</div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="truncate text-sm font-semibold text-slate-100">{meeting.title || 'Réunion Meetra'}</div>
+                              <span className="rounded-full border border-emerald-400/16 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-100">
+                                Mon compte
+                              </span>
+                            </div>
                             <div className="mt-1 text-sm text-slate-400">
                               {formatScheduledMeeting(meeting.scheduledFor, meeting.timezone)}
                             </div>

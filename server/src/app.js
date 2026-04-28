@@ -6,9 +6,10 @@ import * as roomService from './rooms/roomService.js';
 import { logger } from './utils/logger.js';
 import { createTranscriptionRouter } from './routes/transcriptionRoutes.js';
 import { createHubRouter } from './routes/hubRoutes.js';
-import { createAuthRouter } from './routes/authRoutes.js';
+import { createAuthRouter, getBearerToken } from './routes/authRoutes.js';
 import { purgeExpiredTranscriptFiles } from './services/transcription/transcriptPersistenceService.js';
 import { appendHubActivity, upsertHubProfile } from './services/hub/hubStore.js';
+import { resolveAuthenticatedUserFromToken } from './services/auth/authService.js';
 
 export function createApp() {
   const app = express();
@@ -48,6 +49,19 @@ export function createApp() {
     }
   }
 
+  async function resolveRequestUser(req) {
+    return resolveAuthenticatedUserFromToken(getBearerToken(req));
+  }
+
+  function canManageMeeting(meeting, user) {
+    if (!meeting?.metadata || !user?.email) return false;
+    return (
+      (meeting.metadata.createdByUserId && meeting.metadata.createdByUserId === user.id)
+      || (meeting.metadata.createdByEmail && meeting.metadata.createdByEmail === user.email)
+      || (meeting.metadata.hostEmail && meeting.metadata.hostEmail === user.email)
+    );
+  }
+
   Promise.resolve(purgeExpiredTranscriptFiles()).catch((error) => {
     logger.warn('Transcript retention startup purge failed:', error?.message);
   });
@@ -64,6 +78,11 @@ export function createApp() {
   // ── POST /api/rooms — créer une salle ─────────────────────
   app.post('/api/rooms', async (req, res) => {
     try {
+      const authenticated = await resolveRequestUser(req);
+      if (!authenticated) {
+        return res.status(401).json({ error: 'UNAUTHENTICATED' });
+      }
+
       const {
         title = 'Réunion Meetra',
         scheduledFor = null,
@@ -86,25 +105,28 @@ export function createApp() {
         scheduledFor,
         timezone,
         durationMinutes,
-        hostName,
-        hostEmail,
+        hostName: authenticated.name || hostName,
+        hostEmail: authenticated.email || hostEmail,
         hostPhone,
         source: 'api',
+        createdByUserId: authenticated.id,
+        createdByEmail: authenticated.email,
+        createdByName: authenticated.name,
       });
       const origin = resolveClientOrigin(req);
       const joinUrl = origin ? `${String(origin).replace(/\/+$/, '')}/room/${room.roomId}` : null;
 
       logger.info('Room created:', room.roomId);
-      if (hostEmail) {
+      if (authenticated.email) {
         try {
-          await upsertHubProfile({ email: hostEmail, name: hostName || hostEmail });
+          await upsertHubProfile({ email: authenticated.email, name: authenticated.name || authenticated.email });
           await appendHubActivity({
             type: 'meeting',
             title: 'Réunion créée',
             body: `"${title}" est prête${scheduledFor ? ` pour ${new Intl.DateTimeFormat('fr-CA', { dateStyle: 'medium', timeStyle: 'short', timeZone: timezone || undefined }).format(new Date(scheduledFor))}` : ' à démarrer'}.`,
-            targetEmail: hostEmail,
-            actorEmail: hostEmail,
-            actorName: hostName || hostEmail,
+            targetEmail: authenticated.email,
+            actorEmail: authenticated.email,
+            actorName: authenticated.name || authenticated.email,
             meta: { roomId: room.roomId, joinUrl },
           });
         } catch (hubError) {
@@ -118,8 +140,8 @@ export function createApp() {
         scheduledFor: room.metadata?.scheduledFor || null,
         timezone: room.metadata?.timezone || null,
         durationMinutes: room.metadata?.durationMinutes || durationMinutes,
-        hostName: room.metadata?.hostName || hostName || null,
-        hostEmail: room.metadata?.hostEmail || hostEmail || null,
+        hostName: room.metadata?.hostName || authenticated.name || hostName || null,
+        hostEmail: room.metadata?.hostEmail || authenticated.email || hostEmail || null,
         hostPhone: room.metadata?.hostPhone || hostPhone || null,
       });
     } catch (err) {
@@ -145,10 +167,18 @@ export function createApp() {
 
   app.patch('/api/rooms/:roomId', async (req, res) => {
     try {
+      const authenticated = await resolveRequestUser(req);
+      if (!authenticated) {
+        return res.status(401).json({ error: 'UNAUTHENTICATED' });
+      }
+
       const { roomId } = req.params;
       const existing = await roomService.getMeetingRoomInfo(roomId);
       if (!existing) {
         return res.status(404).json({ error: 'ROOM_NOT_FOUND' });
+      }
+      if (!canManageMeeting(existing, authenticated)) {
+        return res.status(403).json({ error: 'MEETING_ACCESS_DENIED' });
       }
 
       const {
@@ -173,15 +203,15 @@ export function createApp() {
         scheduledFor,
         timezone,
         durationMinutes,
-        hostName,
-        hostEmail,
+        hostName: authenticated.name || hostName,
+        hostEmail: authenticated.email || hostEmail,
         hostPhone,
       });
 
       const origin = resolveClientOrigin(req);
-      if (hostEmail || updated.metadata?.hostEmail) {
-        const targetEmail = hostEmail || updated.metadata?.hostEmail;
-        const targetName = hostName || updated.metadata?.hostName || targetEmail;
+      if (authenticated.email || updated.metadata?.hostEmail) {
+        const targetEmail = authenticated.email || updated.metadata?.hostEmail;
+        const targetName = authenticated.name || updated.metadata?.hostName || targetEmail;
         try {
           await upsertHubProfile({ email: targetEmail, name: targetName });
           await appendHubActivity({
@@ -216,8 +246,15 @@ export function createApp() {
 
   app.get('/api/meetings', async (req, res) => {
     try {
+      const authenticated = await resolveRequestUser(req);
+      if (!authenticated) {
+        return res.status(401).json({ error: 'UNAUTHENTICATED' });
+      }
+
       const limit = Math.min(Math.max(Number(req.query.limit) || 8, 1), 20);
-      const meetings = await roomService.getRecentMeetings(limit);
+      const meetings = (await roomService.getRecentMeetings(limit * 3)).filter((meeting) =>
+        canManageMeeting({ metadata: meeting.metadata || meeting }, authenticated)
+      ).slice(0, limit);
       const origin = resolveClientOrigin(req);
       res.json({
         meetings: meetings.map((meeting) => serializeMeetingSummary(meeting, origin)),

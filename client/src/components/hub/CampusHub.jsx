@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { getApiUrl } from '../../utils/appConfig.js';
 import { useSocket } from '../../context/SocketContext.jsx';
 import { EVENTS } from '../../utils/events.js';
-import { ChatBubbleIcon, MailCalendarIcon, SearchIcon, SparkIcon, UsersIcon } from '../common/AppIcons.jsx';
+import { CalendarIcon, ChatBubbleIcon, LinkIcon, MailCalendarIcon, SearchIcon, SparkIcon, UsersIcon, VideoAppIcon } from '../common/AppIcons.jsx';
 
 const API_URL = getApiUrl();
 const ACCESS_STORAGE_KEY = 'meetra-hub-access';
@@ -51,11 +51,13 @@ function readStoredAuth() {
 function persistAuth(session) {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  window.dispatchEvent(new CustomEvent('meetra-auth-changed', { detail: session }));
 }
 
 function clearStoredAuth() {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  window.dispatchEvent(new CustomEvent('meetra-auth-changed', { detail: { token: '', profile: null } }));
 }
 
 function formatTime(value) {
@@ -68,6 +70,20 @@ function formatTime(value) {
   } catch {
     return String(value);
   }
+}
+
+function getMessageLink(content) {
+  const match = String(content || '').match(/https?:\/\/\S+/i);
+  return match ? match[0] : '';
+}
+
+function formatInviteMessage(meeting) {
+  const when = meeting?.scheduledFor ? formatTime(meeting.scheduledFor) : 'Dès maintenant';
+  return [
+    `Invitation Meetra: ${meeting.title || 'Réunion Meetra'}`,
+    `Horaire: ${when}`,
+    `Lien: ${meeting.joinUrl}`,
+  ].join('\n');
 }
 
 function TeamsRailButton({ active, label, Icon, onClick, badge = 0 }) {
@@ -133,6 +149,8 @@ export default function CampusHub() {
   const [selectedPeer, setSelectedPeer] = useState(null);
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
+  const [myMeetings, setMyMeetings] = useState([]);
+  const [showInvitePicker, setShowInvitePicker] = useState(false);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -212,6 +230,13 @@ export default function CampusHub() {
     setMessages(data.items || []);
   };
 
+  const loadMyMeetings = async () => {
+    const res = await authFetch('/api/meetings?limit=8');
+    if (!res.ok) return;
+    const data = await res.json();
+    setMyMeetings(data.meetings || []);
+  };
+
   useEffect(() => {
     if (!auth.token) return;
     authFetch('/api/auth/me')
@@ -245,6 +270,7 @@ export default function CampusHub() {
     loadPresence();
     loadActivity();
     loadConversations();
+    loadMyMeetings();
   }, [signedIn]);
 
   useEffect(() => {
@@ -449,6 +475,7 @@ export default function CampusHub() {
     setSelectedPeer(peer);
     setActiveTab('chat');
     setMessages([]);
+    setShowInvitePicker(false);
     await loadMessages(peer.email);
     setConversations((current) => current.map((item) => (
       item.peer.email === peer.email ? { ...item, unreadCount: 0 } : item
@@ -501,6 +528,21 @@ export default function CampusHub() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleInviteMeeting = (meeting) => {
+    if (!profile?.email || !selectedPeer?.email || !meeting?.joinUrl || !socket || !connected) return;
+
+    socket.emit(EVENTS.HUB_MESSAGE_SEND, {
+      fromEmail: profile.email,
+      fromName: profile.name,
+      toEmail: selectedPeer.email,
+      content: formatInviteMessage(meeting),
+      token: auth.token,
+    });
+
+    setShowInvitePicker(false);
+    setStatus(`Invitation envoyée à ${selectedPeer.name}.`);
   };
 
   const peopleView = (
@@ -641,9 +683,57 @@ export default function CampusHub() {
       <SectionCard
         title={selectedPeer ? selectedPeer.name : 'Conversation directe'}
         subtitle={selectedConversationSummary}
+        toolbar={selectedPeer ? (
+          <button
+            type="button"
+            onClick={() => setShowInvitePicker((current) => !current)}
+            className="meetra-button meetra-focus-ring flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-200"
+          >
+            <CalendarIcon size={14} />
+            Inviter à une réunion
+          </button>
+        ) : null}
       >
         {selectedPeer ? (
           <>
+            {showInvitePicker && (
+              <div className="mb-4 rounded-[20px] border border-blue-400/16 bg-blue-500/8 p-4">
+                <div className="text-sm font-semibold text-white">Partager une réunion Meetra</div>
+                <div className="mt-1 text-sm leading-6 text-slate-300">
+                  Choisissez l’une de vos réunions récentes pour l’envoyer directement dans cette conversation.
+                </div>
+                <div className="mt-4 space-y-3">
+                  {myMeetings.length === 0 ? (
+                    <div className="rounded-[16px] border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
+                      Aucune réunion disponible. Créez ou planifiez d’abord une réunion depuis l’accueil.
+                    </div>
+                  ) : myMeetings.map((meeting) => (
+                    <button
+                      key={meeting.roomId}
+                      type="button"
+                      onClick={() => handleInviteMeeting(meeting)}
+                      className="flex w-full items-start justify-between gap-3 rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4 text-left transition hover:bg-white/[0.05]"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                          <VideoAppIcon size={15} />
+                          <span className="truncate">{meeting.title || 'Réunion Meetra'}</span>
+                        </div>
+                        <div className="mt-1 text-sm text-slate-300">
+                          {meeting.scheduledFor ? formatTime(meeting.scheduledFor) : 'Démarrage immédiat'}
+                        </div>
+                        <div className="mt-1 truncate text-xs text-slate-500">
+                          {meeting.joinUrl}
+                        </div>
+                      </div>
+                      <span className="rounded-full border border-blue-400/20 bg-blue-500/12 px-3 py-1 text-[11px] font-semibold text-blue-100">
+                        Envoyer
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="max-h-[460px] space-y-3 overflow-y-auto pr-1">
               {messages.length === 0 ? (
                 <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-slate-400">
@@ -661,7 +751,20 @@ export default function CampusHub() {
                     }`}
                   >
                     <div className="font-semibold">{isMine ? 'Vous' : message.fromName}</div>
-                    <div className="mt-1 leading-6">{message.content}</div>
+                    <div className="mt-1 whitespace-pre-line leading-6">{message.content}</div>
+                    {getMessageLink(message.content) && (
+                      <a
+                        href={getMessageLink(message.content)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={`mt-3 inline-flex items-center gap-2 text-xs font-semibold underline underline-offset-4 ${
+                          isMine ? 'text-blue-100' : 'text-slate-200'
+                        }`}
+                      >
+                        <LinkIcon size={12} />
+                        Ouvrir la réunion
+                      </a>
+                    )}
                     <div className="mt-2 text-[11px] opacity-70">{formatTime(message.createdAt)}</div>
                   </div>
                 );
