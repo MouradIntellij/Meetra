@@ -480,6 +480,12 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
   }, [auth.token]);
 
   useEffect(() => {
+    if (!auth.profile) return;
+    setUserName((current) => current || auth.profile?.name || '');
+    setHostEmail((current) => current || auth.profile?.email || '');
+  }, [auth.profile]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return undefined;
     const syncAuth = () => setAuth(readStoredAuth());
     window.addEventListener('meetra-auth-changed', syncAuth);
