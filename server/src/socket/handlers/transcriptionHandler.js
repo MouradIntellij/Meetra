@@ -13,13 +13,25 @@ import { translateTranscriptSegment } from '../../services/transcription/transla
 
 export function registerTranscriptionHandlers(io, socket) {
     socket.on(EVENTS.TRANSCRIPTION_START, async ({ roomId, language }) => {
-        const state = await startTranscript(roomId, { language });
-        logger.socket(EVENTS.TRANSCRIPTION_START, { roomId, language: state.language, by: socket.id });
-        io.to(roomId).emit(EVENTS.TRANSCRIPTION_STATE, {
-            active: true,
-            language: state.language,
-            startedAt: state.startedAt,
-        });
+        try {
+            const state = await startTranscript(roomId, { language });
+            logger.socket(EVENTS.TRANSCRIPTION_START, { roomId, language: state.language, by: socket.id });
+            io.to(roomId).emit(EVENTS.TRANSCRIPTION_STATE, {
+                active: true,
+                language: state.language,
+                startedAt: state.startedAt,
+            });
+        } catch (error) {
+            logger.warn('Transcription start failed', {
+                roomId,
+                language,
+                by: socket.id,
+                message: error?.message || 'échec de démarrage',
+            });
+            socket.emit(EVENTS.TRANSCRIPTION_ERROR, {
+                message: `Démarrage transcription: ${error?.message || 'échec de démarrage'}`,
+            });
+        }
     });
 
     socket.on(EVENTS.TRANSCRIPTION_STOP, async ({ roomId }) => {

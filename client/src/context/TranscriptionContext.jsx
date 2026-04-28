@@ -34,6 +34,7 @@ export function TranscriptionProvider({ roomId, userName, children }) {
     const [summary, setSummary] = useState(null);
     const [summaryLoading, setSummaryLoading] = useState(false);
     const [error, setError] = useState('');
+    const [startPending, setStartPending] = useState(false);
     const [serverChunkCount, setServerChunkCount] = useState(0);
     const [serverChunkEmitCount, setServerChunkEmitCount] = useState(0);
     const [serverRecorderState, setServerRecorderState] = useState('idle');
@@ -41,6 +42,7 @@ export function TranscriptionProvider({ roomId, userName, children }) {
     const [serverRecorderError, setServerRecorderError] = useState('');
     const recognitionRef = useRef(null);
     const recorderRef = useRef(null);
+    const startTimeoutRef = useRef(null);
     const SpeechRecognition = typeof window !== 'undefined'
         ? window.SpeechRecognition || window.webkitSpeechRecognition
         : null;
@@ -101,6 +103,11 @@ export function TranscriptionProvider({ roomId, userName, children }) {
         if (!socket) return;
 
         const onState = (payload) => {
+            if (startTimeoutRef.current) {
+                clearTimeout(startTimeoutRef.current);
+                startTimeoutRef.current = null;
+            }
+            setStartPending(false);
             setTranscriptionActive(Boolean(payload.active));
             if (payload.language) setLanguage(payload.language);
             if (payload.cleared) {
@@ -120,6 +127,11 @@ export function TranscriptionProvider({ roomId, userName, children }) {
         };
 
         const onError = (payload) => {
+            if (startTimeoutRef.current) {
+                clearTimeout(startTimeoutRef.current);
+                startTimeoutRef.current = null;
+            }
+            setStartPending(false);
             setError(payload?.message || 'Erreur de transcription');
         };
         const onSummaryReady = (payload) => {
@@ -295,11 +307,24 @@ export function TranscriptionProvider({ roomId, userName, children }) {
             return;
         }
 
+        setStartPending(true);
         socket.emit(EVENTS.TRANSCRIPTION_START, { roomId, language });
+        if (startTimeoutRef.current) {
+            clearTimeout(startTimeoutRef.current);
+        }
+        startTimeoutRef.current = setTimeout(() => {
+            setStartPending(false);
+            setError('Le serveur n’a pas confirmé le démarrage de la transcription.');
+        }, 5000);
     };
 
     const stopTranscription = () => {
         if (!socket) return;
+        if (startTimeoutRef.current) {
+            clearTimeout(startTimeoutRef.current);
+            startTimeoutRef.current = null;
+        }
+        setStartPending(false);
         socket.emit(EVENTS.TRANSCRIPTION_STOP, { roomId });
     };
 
@@ -393,6 +418,7 @@ export function TranscriptionProvider({ roomId, userName, children }) {
             segmentCount: segments.length,
             hasLiveSegment: Boolean(liveSegment),
             transcriptionActive: Boolean(transcriptionActive),
+            startPending: Boolean(startPending),
             transcriptionMode,
             transcriptionProvider,
             speechRecognitionSupported: Boolean(SpeechRecognition),
@@ -410,6 +436,7 @@ export function TranscriptionProvider({ roomId, userName, children }) {
         segments,
         liveSegment,
         transcriptionActive,
+        startPending,
         transcriptionMode,
         transcriptionProvider,
         SpeechRecognition,
@@ -474,6 +501,7 @@ export function TranscriptionProvider({ roomId, userName, children }) {
             resolveSegmentText,
             speechRecognitionSupported: Boolean(SpeechRecognition),
             diagnostics,
+            startPending,
         }}>
             {children}
         </TranscriptionContext.Provider>

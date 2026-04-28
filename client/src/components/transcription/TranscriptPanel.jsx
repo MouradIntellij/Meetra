@@ -10,6 +10,7 @@ export default function TranscriptPanel() {
     segments,
     exportTranscript,
     transcriptionActive,
+    startPending,
     startTranscription,
     stopTranscription,
     language,
@@ -106,7 +107,7 @@ export default function TranscriptPanel() {
             disabled={transcriptionMode === 'browser' && !speechRecognitionSupported}
             className="meetra-button meetra-button-primary meetra-focus-ring px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {transcriptionActive ? 'Arrêter' : 'Démarrer'}
+            {transcriptionActive ? 'Arrêter' : startPending ? 'Démarrage...' : 'Démarrer'}
           </button>
           <button
             type="button"
@@ -185,6 +186,7 @@ export default function TranscriptPanel() {
             <div>Socket: {diagnostics.connected ? 'connecté' : 'déconnecté'} {diagnostics.socketId ? `(${diagnostics.socketId})` : ''}</div>
             <div>Mode: {diagnostics.transcriptionMode} · Provider: {diagnostics.transcriptionProvider}</div>
             <div>Transcription active: {diagnostics.transcriptionActive ? 'oui' : 'non'}</div>
+            <div>Démarrage en attente: {diagnostics.startPending ? 'oui' : 'non'}</div>
             <div>Local stream: {diagnostics.localStreamReady ? 'oui' : 'non'}</div>
             <div>Pistes audio: {diagnostics.audioTrackCount} · vidéo: {diagnostics.videoTrackCount}</div>
             <div>Micro enabled: {diagnostics.audioTrackEnabled === null ? 'absent' : diagnostics.audioTrackEnabled ? 'oui' : 'non'}</div>
