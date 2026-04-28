@@ -59,9 +59,9 @@ export default function TranscriptPanel() {
         isCompact
           ? 'fixed inset-y-0 right-0 z-[95] w-full max-w-[380px]'
           : 'h-full w-[360px]'
-      }`}
+      } min-h-0 overflow-hidden`}
     >
-      <div className="border-b border-white/10 px-4 py-4">
+      <div className="shrink-0 overflow-y-auto border-b border-white/10 px-4 py-4 max-h-[52vh]">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="meetra-section-label">Sous-titres</div>
@@ -177,24 +177,28 @@ export default function TranscriptPanel() {
           </div>
         )}
 
-        <div className="mt-3 rounded-[16px] border border-white/10 bg-slate-950/55 px-4 py-3 text-xs leading-6 text-slate-300">
-          <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Diagnostic transcription</div>
-          <div>Socket: {diagnostics.connected ? 'connecté' : 'déconnecté'} {diagnostics.socketId ? `(${diagnostics.socketId})` : ''}</div>
-          <div>Mode: {diagnostics.transcriptionMode} · Provider: {diagnostics.transcriptionProvider}</div>
-          <div>Transcription active: {diagnostics.transcriptionActive ? 'oui' : 'non'}</div>
-          <div>Local stream: {diagnostics.localStreamReady ? 'oui' : 'non'}</div>
-          <div>Pistes audio: {diagnostics.audioTrackCount} · vidéo: {diagnostics.videoTrackCount}</div>
-          <div>Micro enabled: {diagnostics.audioTrackEnabled === null ? 'absent' : diagnostics.audioTrackEnabled ? 'oui' : 'non'}</div>
-          <div>Micro muted: {diagnostics.audioTrackMuted === null ? 'absent' : diagnostics.audioTrackMuted ? 'oui' : 'non'}</div>
-          <div>Micro readyState: {diagnostics.audioTrackReadyState}</div>
-          <div>Segments finaux reçus: {diagnostics.segmentCount}</div>
-          <div>Segment live en cours: {diagnostics.hasLiveSegment ? 'oui' : 'non'}</div>
-          <div>SpeechRecognition local: {diagnostics.speechRecognitionSupported ? 'oui' : 'non'}</div>
-          {diagnostics.lastError && <div className="text-red-200">Dernière erreur: {diagnostics.lastError}</div>}
-        </div>
+        <details className="mt-3 rounded-[16px] border border-white/10 bg-slate-950/55 px-4 py-3 text-xs leading-6 text-slate-300">
+          <summary className="cursor-pointer select-none text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+            Diagnostic transcription
+          </summary>
+          <div className="mt-2">
+            <div>Socket: {diagnostics.connected ? 'connecté' : 'déconnecté'} {diagnostics.socketId ? `(${diagnostics.socketId})` : ''}</div>
+            <div>Mode: {diagnostics.transcriptionMode} · Provider: {diagnostics.transcriptionProvider}</div>
+            <div>Transcription active: {diagnostics.transcriptionActive ? 'oui' : 'non'}</div>
+            <div>Local stream: {diagnostics.localStreamReady ? 'oui' : 'non'}</div>
+            <div>Pistes audio: {diagnostics.audioTrackCount} · vidéo: {diagnostics.videoTrackCount}</div>
+            <div>Micro enabled: {diagnostics.audioTrackEnabled === null ? 'absent' : diagnostics.audioTrackEnabled ? 'oui' : 'non'}</div>
+            <div>Micro muted: {diagnostics.audioTrackMuted === null ? 'absent' : diagnostics.audioTrackMuted ? 'oui' : 'non'}</div>
+            <div>Micro readyState: {diagnostics.audioTrackReadyState}</div>
+            <div>Segments finaux reçus: {diagnostics.segmentCount}</div>
+            <div>Segment live en cours: {diagnostics.hasLiveSegment ? 'oui' : 'non'}</div>
+            <div>SpeechRecognition local: {diagnostics.speechRecognitionSupported ? 'oui' : 'non'}</div>
+            {diagnostics.lastError && <div className="text-red-200">Dernière erreur: {diagnostics.lastError}</div>}
+          </div>
+        </details>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {filteredSegments.length === 0 ? (
           <div className="meetra-empty-state">
             <h4>Transcription vide</h4>
