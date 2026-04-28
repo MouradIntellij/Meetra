@@ -25,6 +25,7 @@ export default function TranscriptPanel() {
     setTranslationTarget,
     translationLabel,
     resolveSegmentText,
+    diagnostics,
   } = useTranscription();
   const [query, setQuery] = useState('');
   const [isCompact, setIsCompact] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 1180 : false));
@@ -175,6 +176,22 @@ export default function TranscriptPanel() {
             {error}
           </div>
         )}
+
+        <div className="mt-3 rounded-[16px] border border-white/10 bg-slate-950/55 px-4 py-3 text-xs leading-6 text-slate-300">
+          <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Diagnostic transcription</div>
+          <div>Socket: {diagnostics.connected ? 'connecté' : 'déconnecté'} {diagnostics.socketId ? `(${diagnostics.socketId})` : ''}</div>
+          <div>Mode: {diagnostics.transcriptionMode} · Provider: {diagnostics.transcriptionProvider}</div>
+          <div>Transcription active: {diagnostics.transcriptionActive ? 'oui' : 'non'}</div>
+          <div>Local stream: {diagnostics.localStreamReady ? 'oui' : 'non'}</div>
+          <div>Pistes audio: {diagnostics.audioTrackCount} · vidéo: {diagnostics.videoTrackCount}</div>
+          <div>Micro enabled: {diagnostics.audioTrackEnabled === null ? 'absent' : diagnostics.audioTrackEnabled ? 'oui' : 'non'}</div>
+          <div>Micro muted: {diagnostics.audioTrackMuted === null ? 'absent' : diagnostics.audioTrackMuted ? 'oui' : 'non'}</div>
+          <div>Micro readyState: {diagnostics.audioTrackReadyState}</div>
+          <div>Segments finaux reçus: {diagnostics.segmentCount}</div>
+          <div>Segment live en cours: {diagnostics.hasLiveSegment ? 'oui' : 'non'}</div>
+          <div>SpeechRecognition local: {diagnostics.speechRecognitionSupported ? 'oui' : 'non'}</div>
+          {diagnostics.lastError && <div className="text-red-200">Dernière erreur: {diagnostics.lastError}</div>}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">

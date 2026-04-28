@@ -350,6 +350,41 @@ export function TranscriptionProvider({ roomId, userName, children }) {
         return liveSegment || segments[segments.length - 1] || null;
     }, [captionsEnabled, liveSegment, segments]);
 
+    const diagnostics = useMemo(() => {
+        const audioTracks = localStream?.getAudioTracks?.() || [];
+        const videoTracks = localStream?.getVideoTracks?.() || [];
+        const primaryAudioTrack = audioTracks[0] || null;
+
+        return {
+            connected: Boolean(connected),
+            socketId: socket?.id || '',
+            localStreamReady: Boolean(localStream),
+            audioTrackCount: audioTracks.length,
+            videoTrackCount: videoTracks.length,
+            audioTrackEnabled: primaryAudioTrack ? Boolean(primaryAudioTrack.enabled) : null,
+            audioTrackMuted: primaryAudioTrack ? Boolean(primaryAudioTrack.muted) : null,
+            audioTrackReadyState: primaryAudioTrack?.readyState || 'missing',
+            segmentCount: segments.length,
+            hasLiveSegment: Boolean(liveSegment),
+            transcriptionActive: Boolean(transcriptionActive),
+            transcriptionMode,
+            transcriptionProvider,
+            speechRecognitionSupported: Boolean(SpeechRecognition),
+            lastError: error || '',
+        };
+    }, [
+        connected,
+        socket,
+        localStream,
+        segments,
+        liveSegment,
+        transcriptionActive,
+        transcriptionMode,
+        transcriptionProvider,
+        SpeechRecognition,
+        error,
+    ]);
+
     const resolveSegmentText = (segment) => {
         if (!segment) return '';
         if (translationTarget === 'original') return segment.text || '';
@@ -402,6 +437,7 @@ export function TranscriptionProvider({ roomId, userName, children }) {
             cycleTranslationTarget,
             resolveSegmentText,
             speechRecognitionSupported: Boolean(SpeechRecognition),
+            diagnostics,
         }}>
             {children}
         </TranscriptionContext.Provider>
