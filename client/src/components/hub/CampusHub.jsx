@@ -857,9 +857,9 @@ export default function CampusHub() {
       <div className="meetra-section-label">Campus Hub</div>
       <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="text-2xl font-semibold tracking-tight text-slate-50">Activité, conversations et présence Meetra</div>
+          <div className="text-2xl font-semibold tracking-tight text-slate-50">Campus Hub Meetra</div>
           <div className="mt-2 max-w-3xl text-sm leading-7 text-slate-400">
-            Une présentation plus proche d’un hub Teams, avec plus d’espace, des libellés lisibles et un accès désormais réservé aux comptes authentifiés.
+            Connectez-vous, voyez les membres en ligne et ouvrez un message direct.
           </div>
         </div>
         <div className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs text-slate-400">
@@ -867,7 +867,7 @@ export default function CampusHub() {
         </div>
       </div>
 
-      <div className="mt-7 grid gap-6 xl:grid-cols-[250px_minmax(0,1fr)] 2xl:grid-cols-[250px_minmax(0,1fr)_340px]">
+      <div className="mt-7 grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="rounded-[28px] border border-white/10 bg-slate-950/60 p-5">
           <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">Navigation</div>
           <div className="mt-4 space-y-2">
@@ -1003,19 +1003,21 @@ export default function CampusHub() {
           {signedIn ? mainView : (
             <SectionCard
               title="Connexion requise"
-              subtitle="Inscrivez-vous ou connectez-vous dans la colonne de gauche pour ouvrir l’activité, l’annuaire et les messages directs."
+              subtitle="Connectez-vous à gauche pour accéder au Hub."
             >
               <div className="rounded-[22px] border border-dashed border-white/10 bg-white/[0.02] px-6 py-8 text-sm leading-7 text-slate-300">
-                Le Hub Meetra est maintenant strictement protégé. Les échanges et l’activité ne sont plus accessibles à partir d’un simple email saisi localement.
+                Le Hub est réservé aux comptes authentifiés.
               </div>
             </SectionCard>
           )}
         </div>
+      </div>
 
-        <aside className="space-y-5 xl:col-span-2 2xl:col-span-1">
+      <div className="mt-6 grid gap-5 xl:grid-cols-2">
+        <div className="space-y-5">
           <SectionCard
             title="Membres connectés"
-            subtitle="Les personnes actuellement présentes dans le Hub apparaissent ici."
+            subtitle="Présence active en ce moment."
           >
             <div className="space-y-3">
               {onlineMembers.length === 0 ? (
@@ -1043,10 +1045,12 @@ export default function CampusHub() {
               ))}
             </div>
           </SectionCard>
+        </div>
 
+        <div className="space-y-5">
           <SectionCard
             title="Vue rapide"
-            subtitle="Résumé de votre espace collaboratif Meetra."
+            subtitle="Résumé compact du Hub."
           >
             <div className="grid gap-3">
               <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
@@ -1066,7 +1070,7 @@ export default function CampusHub() {
               </div>
             </div>
           </SectionCard>
-        </aside>
+        </div>
       </div>
     </section>
   );
