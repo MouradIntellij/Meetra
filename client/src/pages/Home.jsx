@@ -386,6 +386,8 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const menuRef = useRef(null);
+  const effectiveUserName = userName.trim() || auth.profile?.name || '';
+  const effectiveHostEmail = hostEmail.trim() || auth.profile?.email || '';
 
   const authFetch = async (path, options = {}) => {
     const headers = new Headers(options.headers || {});
@@ -538,8 +540,8 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
         scheduledFor,
         timezone,
         durationMinutes: DEFAULT_DURATION_MINUTES,
-        hostName: userName.trim() || null,
-        hostEmail: hostEmail.trim() || null,
+        hostName: effectiveUserName || null,
+        hostEmail: effectiveHostEmail || null,
         hostPhone: hostPhone.trim() || null,
       }),
     });
@@ -556,8 +558,8 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       scheduledFor: data.scheduledFor || scheduledFor,
       timezone: data.timezone || timezone,
       durationMinutes: data.durationMinutes || DEFAULT_DURATION_MINUTES,
-      hostName: data.hostName || userName.trim() || null,
-      hostEmail: data.hostEmail || hostEmail.trim() || null,
+      hostName: data.hostName || effectiveUserName || null,
+      hostEmail: data.hostEmail || effectiveHostEmail || null,
       hostPhone: data.hostPhone || hostPhone.trim() || null,
     };
   };
@@ -621,7 +623,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       setError('Connectez-vous dans Campus Hub avant de créer une réunion.');
       return;
     }
-    if (!userName.trim()) {
+    if (!effectiveUserName) {
       setError('Entrez votre nom.');
       return;
     }
@@ -631,7 +633,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       const meeting = await createRoomRequest({ includeSchedule: false });
       setCreatedMeeting(meeting);
       loadRecentMeetings();
-      onJoin(meeting.roomId, userName.trim());
+      onJoin(meeting.roomId, effectiveUserName);
     } catch (error) {
       setError(getMeetingApiErrorMessage(error?.message, 'create'));
     } finally {
@@ -645,7 +647,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       setError('Connectez-vous dans Campus Hub avant de planifier une réunion.');
       return;
     }
-    if (!userName.trim()) {
+    if (!effectiveUserName) {
       setError('Entrez votre nom.');
       return;
     }
@@ -676,7 +678,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
 
   const joinRoom = async (e) => {
     e.preventDefault();
-    if (!userName.trim()) {
+    if (!effectiveUserName) {
       setError('Entrez votre nom.');
       return;
     }
@@ -696,12 +698,12 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       }
 
       if (data.exists) {
-        onJoin(normalizedRoomId, userName.trim());
+        onJoin(normalizedRoomId, effectiveUserName);
       } else {
         setError("Cette salle n'existe pas ou a expiré.");
       }
     } catch {
-      onJoin(normalizedRoomId, userName.trim());
+      onJoin(normalizedRoomId, effectiveUserName);
     } finally {
       setLoading(false);
     }
@@ -724,12 +726,12 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
 
   const enterCreatedRoom = (event) => {
     event?.preventDefault?.();
-    if (!userName.trim()) {
+    if (!effectiveUserName) {
       setError('Entrez votre nom pour entrer comme hôte.');
       return;
     }
 
-    onJoin(createdMeeting.roomId, userName.trim());
+    onJoin(createdMeeting.roomId, effectiveUserName);
   };
 
   useEffect(() => {
