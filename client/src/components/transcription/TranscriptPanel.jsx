@@ -190,9 +190,14 @@ export default function TranscriptPanel() {
             <div>Micro enabled: {diagnostics.audioTrackEnabled === null ? 'absent' : diagnostics.audioTrackEnabled ? 'oui' : 'non'}</div>
             <div>Micro muted: {diagnostics.audioTrackMuted === null ? 'absent' : diagnostics.audioTrackMuted ? 'oui' : 'non'}</div>
             <div>Micro readyState: {diagnostics.audioTrackReadyState}</div>
+            <div>Recorder state: {diagnostics.serverRecorderState}</div>
+            <div>Recorder MIME: {diagnostics.serverRecorderMimeType || 'n/a'}</div>
+            <div>Chunks capturés: {diagnostics.serverChunkCount}</div>
+            <div>Chunks émis serveur: {diagnostics.serverChunkEmitCount}</div>
             <div>Segments finaux reçus: {diagnostics.segmentCount}</div>
             <div>Segment live en cours: {diagnostics.hasLiveSegment ? 'oui' : 'non'}</div>
             <div>SpeechRecognition local: {diagnostics.speechRecognitionSupported ? 'oui' : 'non'}</div>
+            {diagnostics.serverRecorderError && <div className="text-red-200">Erreur recorder: {diagnostics.serverRecorderError}</div>}
             {diagnostics.lastError && <div className="text-red-200">Dernière erreur: {diagnostics.lastError}</div>}
           </div>
         </details>

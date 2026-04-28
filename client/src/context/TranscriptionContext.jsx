@@ -34,6 +34,11 @@ export function TranscriptionProvider({ roomId, userName, children }) {
     const [summary, setSummary] = useState(null);
     const [summaryLoading, setSummaryLoading] = useState(false);
     const [error, setError] = useState('');
+    const [serverChunkCount, setServerChunkCount] = useState(0);
+    const [serverChunkEmitCount, setServerChunkEmitCount] = useState(0);
+    const [serverRecorderState, setServerRecorderState] = useState('idle');
+    const [serverRecorderMimeType, setServerRecorderMimeType] = useState('');
+    const [serverRecorderError, setServerRecorderError] = useState('');
     const recognitionRef = useRef(null);
     const recorderRef = useRef(null);
     const SpeechRecognition = typeof window !== 'undefined'
@@ -220,9 +225,29 @@ export function TranscriptionProvider({ roomId, userName, children }) {
             ? 'audio/webm;codecs=opus'
             : 'audio/webm';
         const recorder = new MediaRecorder(audioStream, { mimeType });
+        setServerChunkCount(0);
+        setServerChunkEmitCount(0);
+        setServerRecorderState('starting');
+        setServerRecorderMimeType(mimeType);
+        setServerRecorderError('');
+
+        recorder.onerror = (event) => {
+            const nextMessage = event?.error?.message || 'MediaRecorder error';
+            setServerRecorderError(nextMessage);
+            setError(`Enregistrement audio: ${nextMessage}`);
+        };
+
+        recorder.onstart = () => {
+            setServerRecorderState('recording');
+        };
+
+        recorder.onstop = () => {
+            setServerRecorderState('stopped');
+        };
 
         recorder.ondataavailable = async (event) => {
             if (!event.data || event.data.size === 0) return;
+            setServerChunkCount((current) => current + 1);
 
             const base64Audio = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -247,6 +272,7 @@ export function TranscriptionProvider({ roomId, userName, children }) {
                     endMs: Date.now(),
                 },
             });
+            setServerChunkEmitCount((current) => current + 1);
         };
 
         recorderRef.current = recorder;
@@ -371,6 +397,11 @@ export function TranscriptionProvider({ roomId, userName, children }) {
             transcriptionProvider,
             speechRecognitionSupported: Boolean(SpeechRecognition),
             lastError: error || '',
+            serverChunkCount,
+            serverChunkEmitCount,
+            serverRecorderState,
+            serverRecorderMimeType,
+            serverRecorderError,
         };
     }, [
         connected,
@@ -383,6 +414,11 @@ export function TranscriptionProvider({ roomId, userName, children }) {
         transcriptionProvider,
         SpeechRecognition,
         error,
+        serverChunkCount,
+        serverChunkEmitCount,
+        serverRecorderState,
+        serverRecorderMimeType,
+        serverRecorderError,
     ]);
 
     const resolveSegmentText = (segment) => {
