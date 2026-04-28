@@ -101,4 +101,10 @@ export const EVENTS = {
   TRANSCRIPTION_ERROR:    "transcription-error",
   TRANSCRIPTION_SUMMARY_READY: "transcription-summary-ready",
   TRANSCRIPTION_AUDIO_CHUNK: "transcription-audio-chunk",
+
+  // Hub / direct messaging
+  HUB_ACCESS: "hub-access",
+  HUB_MESSAGE_SEND: "hub-message-send",
+  HUB_MESSAGE_RECEIVED: "hub-message-received",
+  HUB_ACTIVITY_RECEIVED: "hub-activity-received",
 };

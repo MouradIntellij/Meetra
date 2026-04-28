@@ -5,7 +5,9 @@ import { ENV } from './config/env.js';
 import * as roomService from './rooms/roomService.js';
 import { logger } from './utils/logger.js';
 import { createTranscriptionRouter } from './routes/transcriptionRoutes.js';
+import { createHubRouter } from './routes/hubRoutes.js';
 import { purgeExpiredTranscriptFiles } from './services/transcription/transcriptPersistenceService.js';
+import { appendHubActivity, upsertHubProfile } from './services/hub/hubStore.js';
 
 export function createApp() {
   const app = express();
@@ -52,6 +54,7 @@ export function createApp() {
   app.use(cors(corsOptions));
   app.use(express.json());
   app.use('/api', createTranscriptionRouter());
+  app.use('/api', createHubRouter());
 
   // ── Health check ──────────────────────────────────────────
   app.get('/health', (_, res) => res.json({ status: 'ok', ts: Date.now() }));
@@ -90,6 +93,18 @@ export function createApp() {
       const joinUrl = origin ? `${String(origin).replace(/\/+$/, '')}/room/${room.roomId}` : null;
 
       logger.info('Room created:', room.roomId);
+      if (hostEmail) {
+        upsertHubProfile({ email: hostEmail, name: hostName || hostEmail });
+        appendHubActivity({
+          type: 'meeting',
+          title: 'Réunion créée',
+          body: `"${title}" est prête${scheduledFor ? ` pour ${new Intl.DateTimeFormat('fr-CA', { dateStyle: 'medium', timeStyle: 'short', timeZone: timezone || undefined }).format(new Date(scheduledFor))}` : ' à démarrer'}.`,
+          targetEmail: hostEmail,
+          actorEmail: hostEmail,
+          actorName: hostName || hostEmail,
+          meta: { roomId: room.roomId, joinUrl },
+        });
+      }
       res.json({
         roomId: room.roomId,
         joinUrl,
@@ -158,6 +173,20 @@ export function createApp() {
       });
 
       const origin = resolveClientOrigin(req);
+      if (hostEmail || updated.metadata?.hostEmail) {
+        const targetEmail = hostEmail || updated.metadata?.hostEmail;
+        const targetName = hostName || updated.metadata?.hostName || targetEmail;
+        upsertHubProfile({ email: targetEmail, name: targetName });
+        appendHubActivity({
+          type: 'meeting-update',
+          title: 'Réunion mise à jour',
+          body: `"${updated.metadata?.title || title || 'Réunion Meetra'}" a été mise à jour.`,
+          targetEmail,
+          actorEmail: targetEmail,
+          actorName: targetName,
+          meta: { roomId, joinUrl: origin ? `${String(origin).replace(/\/+$/, '')}/room/${roomId}` : null },
+        });
+      }
       return res.json(serializeMeetingSummary({
         roomId,
         ...updated,

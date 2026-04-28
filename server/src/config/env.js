@@ -42,4 +42,5 @@ export const ENV = {
   HOST_ALERT_EMAIL_WEBHOOK_URL: process.env.HOST_ALERT_EMAIL_WEBHOOK_URL || '',
   HOST_ALERT_SMS_WEBHOOK_URL: process.env.HOST_ALERT_SMS_WEBHOOK_URL || '',
   HOST_ALERT_WEBHOOK_SECRET: process.env.HOST_ALERT_WEBHOOK_SECRET || '',
+  HUB_STORE_DIR: process.env.HUB_STORE_DIR || 'server/data/hub',
 };

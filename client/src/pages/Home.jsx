@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getApiUrl } from '../utils/appConfig.js';
 import { ArrowRightIcon, BuildingIcon, CalendarIcon, CalendarPlusIcon, CheckCircleIcon, ChatBubbleIcon, DoorExitIcon, GlobeIcon, LinkIcon, MailCalendarIcon, PhoneIcon, SearchIcon, SettingsIcon, ShieldLockIcon, SparkIcon, TranscriptIcon, UsersIcon, VideoAppIcon, WhiteboardIcon } from '../components/common/AppIcons.jsx';
+import CampusHub from '../components/hub/CampusHub.jsx';
 
 const API_URL = getApiUrl();
 const DEFAULT_DURATION_MINUTES = 60;
@@ -1565,6 +1566,10 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
             </div>
           )}
           </section>
+
+          {!prefillRoomId && (
+            <CampusHub />
+          )}
 
           {!prefillRoomId && (
             <section className="meetra-surface rounded-[32px] px-6 py-8 md:px-8">
