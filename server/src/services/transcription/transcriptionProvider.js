@@ -27,7 +27,7 @@ export async function transcribeAudioChunk(payload) {
     try {
         return await transcribeWithOpenAI(payload);
     } catch (error) {
-        logger.warn('Server-side transcription fallback to noop:', error?.message);
-        return transcribeWithNoopProvider(payload);
+        logger.warn('Server-side transcription failed:', error?.message);
+        throw error;
     }
 }

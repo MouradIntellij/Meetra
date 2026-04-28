@@ -79,6 +79,13 @@ export function registerTranscriptionHandlers(io, socket) {
 
             io.to(roomId).emit(EVENTS.TRANSCRIPTION_SEGMENT, normalized);
         } catch (error) {
+            logger.warn('Transcription audio chunk failed', {
+                roomId,
+                speakerId: chunk.speakerId || socket.id,
+                mimeType: chunk.mimeType,
+                language: chunk.language,
+                message: error?.message || 'échec de transcription',
+            });
             socket.emit(EVENTS.TRANSCRIPTION_ERROR, {
                 message: `STT serveur: ${error?.message || 'échec de transcription'}`,
             });
