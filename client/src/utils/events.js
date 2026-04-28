@@ -107,4 +107,6 @@ export const EVENTS = {
   HUB_MESSAGE_SEND: "hub-message-send",
   HUB_MESSAGE_RECEIVED: "hub-message-received",
   HUB_ACTIVITY_RECEIVED: "hub-activity-received",
+  HUB_PRESENCE_UPDATED: "hub-presence-updated",
+  HUB_STATUS_SET: "hub-status-set",
 };

@@ -46,7 +46,7 @@ function buildConversationKey(a, b) {
   return [normalizeEmail(a), normalizeEmail(b)].sort().join('::');
 }
 
-export function upsertHubProfile({ email, name, role = 'member' }) {
+export function upsertHubProfile({ email, name, role = 'member', presenceStatus = 'available' }) {
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) return null;
 
@@ -57,6 +57,7 @@ export function upsertHubProfile({ email, name, role = 'member' }) {
     email: normalizedEmail,
     name: String(name || existing?.name || normalizedEmail.split('@')[0] || 'Membre').trim(),
     role: String(role || existing?.role || 'member').trim(),
+    presenceStatus: String(presenceStatus || existing?.presenceStatus || 'available').trim(),
     createdAt: existing?.createdAt || now,
     updatedAt: now,
     lastSeenAt: now,
