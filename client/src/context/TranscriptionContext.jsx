@@ -277,15 +277,53 @@ export function TranscriptionProvider({ roomId, userName, children }) {
         socket.emit(EVENTS.TRANSCRIPTION_STOP, { roomId });
     };
 
+    const downloadTextFile = (filename, contents) => {
+        const blob = new Blob([contents], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(url);
+    };
+
     const exportTranscript = (mode = 'default') => {
-        const requesterId = socket?.id ? `?requesterId=${encodeURIComponent(socket.id)}` : '';
+        if (segments.length > 0) {
+            const text = segments
+                .map((segment) => {
+                    const baseLine = `[${new Date(segment.createdAt).toLocaleTimeString()}] ${segment.speakerName}: ${segment.text}`;
+                    if (mode !== 'bilingual') return baseLine;
+
+                    const extraLines = [
+                        segment.translations?.fr && segment.translations.fr !== segment.text
+                            ? `  FR: ${segment.translations.fr}`
+                            : null,
+                        segment.translations?.en && segment.translations.en !== segment.text
+                            ? `  EN: ${segment.translations.en}`
+                            : null,
+                    ].filter(Boolean);
+
+                    return [baseLine, ...extraLines].join('\n');
+                })
+                .join('\n');
+
+            downloadTextFile(
+                mode === 'bilingual' ? `transcript-bilingual-${roomId}.txt` : `transcript-${roomId}.txt`,
+                text
+            );
+            return;
+        }
+
+        if (!socket?.id) {
+            setError('Aucun segment disponible à exporter pour le moment.');
+            return;
+        }
+
         const params = new URLSearchParams();
-        if (socket?.id) {
-            params.set('requesterId', socket.id);
-        }
-        if (mode === 'bilingual') {
-            params.set('mode', 'bilingual');
-        }
+        if (socket?.id) params.set('requesterId', socket.id);
+        if (mode === 'bilingual') params.set('mode', 'bilingual');
         const query = params.toString();
         window.open(`${apiUrl}/api/rooms/${roomId}/transcript.txt${query ? `?${query}` : ''}`, '_blank', 'noopener,noreferrer');
     };
