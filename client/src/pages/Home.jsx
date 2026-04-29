@@ -619,6 +619,14 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
     setSearchOpen(false);
   };
 
+  const returnToHome = () => {
+    setActiveProductPage('');
+    closePanels();
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   const productPages = {
     meetings: {
       title: 'Meetings',
@@ -935,20 +943,24 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
             <header className="relative">
               <div className="flex flex-col gap-4 rounded-[24px] border border-white/10 bg-slate-950/45 px-4 py-4 shadow-[0_22px_44px_rgba(2,6,23,0.18)] sm:px-5 2xl:px-6">
                 <div className="flex items-center justify-between gap-4">
-                  <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-[20px] border border-blue-300/15 bg-gradient-to-br from-blue-500/18 to-emerald-400/12 text-blue-50 shadow-[0_22px_50px_rgba(37,99,235,0.22)]">
-                    <VideoAppIcon size={24} />
-                  </div>
-                  <div>
-                    <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Workspace vidéo</div>
-                    <div className="text-2xl font-semibold tracking-tight text-slate-50 sm:text-[28px]">Meetra</div>
-                    {activeProductPage && productPages[activeProductPage] && (
-                      <div className="mt-1 text-sm font-semibold text-blue-100">
-                        Page actuelle: {productPages[activeProductPage].title}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                  <button
+                    type="button"
+                    onClick={returnToHome}
+                    className="meetra-focus-ring flex min-w-0 items-center gap-3 rounded-[20px] text-left transition hover:bg-white/[0.04]"
+                  >
+                    <div className="flex h-14 w-14 items-center justify-center rounded-[20px] border border-blue-300/15 bg-gradient-to-br from-blue-500/18 to-emerald-400/12 text-blue-50 shadow-[0_22px_50px_rgba(37,99,235,0.22)]">
+                      <VideoAppIcon size={24} />
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Workspace vidéo</div>
+                      <div className="text-2xl font-semibold tracking-tight text-slate-50 sm:text-[28px]">Meetra</div>
+                      {activeProductPage && productPages[activeProductPage] && (
+                        <div className="mt-1 text-sm font-semibold text-blue-100">
+                          Page actuelle: {productPages[activeProductPage].title}
+                        </div>
+                      )}
+                    </div>
+                  </button>
                   <button
                     type="button"
                     aria-label="Rechercher"
