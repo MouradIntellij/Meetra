@@ -157,7 +157,7 @@ function NavMenuButton({ label, active, onClick }) {
   );
 }
 
-function NavDropdown({ title, items }) {
+function NavDropdown({ title, items, actions = [] }) {
   const iconMap = {
     meetings: VideoAppIcon,
     hub: UsersIcon,
@@ -210,6 +210,32 @@ function NavDropdown({ title, items }) {
           </div>
         ))}
       </div>
+      {actions.length > 0 && (
+        <div className="xl:col-span-2">
+          <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+            <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Actions utiles</div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              {actions.map((action) => (
+                <button
+                  key={action.label}
+                  type="button"
+                  onClick={action.onClick}
+                  className={`rounded-[18px] border px-4 py-4 text-left transition hover:-translate-y-[1px] ${
+                    action.tone === 'emerald'
+                      ? 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100/80'
+                      : action.tone === 'amber'
+                        ? 'border-amber-200 bg-amber-50 hover:bg-amber-100/80'
+                        : 'border-blue-200 bg-blue-50 hover:bg-blue-100/80'
+                  }`}
+                >
+                  <div className="text-sm font-semibold text-slate-900">{action.label}</div>
+                  <div className="mt-1 text-sm leading-6 text-slate-600">{action.body}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -245,6 +271,146 @@ function LaunchMeetingDropdown({ onJoinMeeting, onHostMeeting }) {
             Ouvrir la zone de planification pour créer ou planifier une réunion.
           </div>
         </button>
+      </div>
+    </div>
+  );
+}
+
+function PlatformOverviewModal({ onOpenHub, onOpenPlanner, onOpenJoin, isSignedIn, recentCount, hubSnapshot }) {
+  return (
+    <div className="grid gap-5 rounded-[26px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.98))] p-4 text-slate-900 shadow-[0_34px_90px_rgba(2,6,23,0.28)] sm:p-6 xl:grid-cols-[0.9fr_1.1fr]">
+      <div>
+        <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">plateforme</div>
+        <div className="mt-3 text-lg font-semibold text-slate-900">Vue rapide de Meetra</div>
+        <div className="mt-3 text-sm leading-6 text-slate-600">
+          Les actions essentielles restent au premier plan, et cette fenêtre vous donne un résumé plus compact de la plateforme.
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-4">
+            <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Hub</div>
+            <div className="mt-2 text-2xl font-semibold text-slate-900">{isSignedIn ? 'Actif' : 'Invité'}</div>
+            <div className="mt-1 text-sm text-slate-600">accès et présence</div>
+          </div>
+          <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-4">
+            <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Réunions</div>
+            <div className="mt-2 text-2xl font-semibold text-slate-900">{recentCount}</div>
+            <div className="mt-1 text-sm text-slate-600">liées à votre compte</div>
+          </div>
+          <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-4">
+            <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Entrée</div>
+            <div className="mt-2 text-2xl font-semibold text-slate-900">3</div>
+            <div className="mt-1 text-sm text-slate-600">actions principales</div>
+          </div>
+        </div>
+        <div className="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Synthèse Hub</div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-[18px] border border-slate-200 bg-white px-4 py-4">
+              <div className="text-sm font-semibold text-slate-900">{hubSnapshot.onlineCount}</div>
+              <div className="mt-1 text-sm text-slate-600">membres en ligne</div>
+            </div>
+            <div className="rounded-[18px] border border-slate-200 bg-white px-4 py-4">
+              <div className="text-sm font-semibold text-slate-900">{hubSnapshot.conversationCount}</div>
+              <div className="mt-1 text-sm text-slate-600">conversations directes</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <button type="button" onClick={onOpenHub} className="rounded-[22px] border border-slate-200 bg-blue-50 p-4 text-left transition hover:bg-blue-100/80">
+          <div className="text-sm font-semibold text-slate-900">Ouvrir Campus Hub</div>
+          <div className="mt-1 text-sm leading-6 text-slate-600">Connexion, présence, messages et membres connectés.</div>
+        </button>
+        <button type="button" onClick={onOpenPlanner} className="rounded-[22px] border border-slate-200 bg-emerald-50 p-4 text-left transition hover:bg-emerald-100/80">
+          <div className="text-sm font-semibold text-slate-900">Créer ou planifier</div>
+          <div className="mt-1 text-sm leading-6 text-slate-600">Créer une salle immédiatement ou préparer une réunion planifiée.</div>
+        </button>
+        <button type="button" onClick={onOpenJoin} className="rounded-[22px] border border-slate-200 bg-amber-50 p-4 text-left transition hover:bg-amber-100/80">
+          <div className="text-sm font-semibold text-slate-900">Rejoindre une salle</div>
+          <div className="mt-1 text-sm leading-6 text-slate-600">Accéder rapidement à une réunion avec un lien ou un identifiant.</div>
+        </button>
+        <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+          <div className="text-sm font-semibold text-slate-900">Parcours conseillé</div>
+          <div className="mt-1 text-sm leading-6 text-slate-600">Hub, création de salle, partage du lien, entrée comme hôte.</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ResourcesModal({
+  auth,
+  recentMeetings,
+  loadingRecent,
+  onRefresh,
+  onJoinMeeting,
+  onCopyMeetingLink,
+  onOpenPlanner,
+}) {
+  return (
+    <div className="grid gap-5 rounded-[26px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.98))] p-4 text-slate-900 shadow-[0_34px_90px_rgba(2,6,23,0.28)] sm:p-6 xl:grid-cols-[0.85fr_1.15fr]">
+      <div>
+        <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">ressources</div>
+        <div className="mt-3 text-lg font-semibold text-slate-900">Mes réunions et accès rapides</div>
+        <div className="mt-3 text-sm leading-6 text-slate-600">
+          Retrouvez vos réunions, rechargez la liste et relancez une salle directement depuis cette fenêtre.
+        </div>
+        <div className="mt-5 grid gap-3">
+          <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-4">
+            <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Compte</div>
+            <div className="mt-2 text-sm font-semibold text-slate-900">{auth.profile?.name || 'Compte non connecté'}</div>
+            <div className="mt-1 text-xs text-slate-500">{auth.profile?.email || 'Connectez-vous dans Campus Hub'}</div>
+          </div>
+          <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-4">
+            <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Réunions visibles</div>
+            <div className="mt-2 text-2xl font-semibold text-slate-900">{recentMeetings.length}</div>
+            <div className="mt-1 text-sm text-slate-600">planifications rattachées à votre compte</div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={onRefresh} className="rounded-[16px] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50">
+              {loadingRecent ? 'Actualisation...' : 'Actualiser'}
+            </button>
+            <button type="button" onClick={onOpenPlanner} className="rounded-[16px] border border-slate-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-blue-100/80">
+              Ouvrir la zone réunions
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        {!auth.token ? (
+          <div className="rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+            Connectez-vous dans Campus Hub pour afficher vos réunions planifiées.
+          </div>
+        ) : recentMeetings.length === 0 ? (
+          <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
+            Aucune réunion récente à afficher pour le moment.
+          </div>
+        ) : (
+          recentMeetings.map((meeting) => (
+            <div key={meeting.roomId} className="rounded-[20px] border border-slate-200 bg-white px-4 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-slate-900">{meeting.title || 'Réunion Meetra'}</div>
+                  <div className="mt-1 text-sm text-slate-600">{formatScheduledMeeting(meeting.scheduledFor, meeting.timezone)}</div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    {meeting.hostName ? `Hôte prévu: ${meeting.hostName}` : 'Hôte non renseigné'} · {meeting.durationMinutes || DEFAULT_DURATION_MINUTES} min
+                  </div>
+                </div>
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+                  Mon compte
+                </span>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button type="button" onClick={() => onCopyMeetingLink(meeting)} className="rounded-[14px] border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-900 transition hover:bg-slate-100">
+                  Copier le lien
+                </button>
+                <button type="button" onClick={() => onJoinMeeting(meeting)} className="rounded-[14px] border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-900 transition hover:bg-blue-100/80">
+                  Rejoindre
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -396,7 +562,6 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
   const [error, setError] = useState('');
   const [createdMeeting, setCreatedMeeting] = useState(null);
   const [copied, setCopied] = useState(false);
-  const [copiedMeetingId, setCopiedMeetingId] = useState('');
   const [meetingTitle, setMeetingTitle] = useState('Réunion Meetra');
   const [scheduledDate, setScheduledDate] = useState(getDefaultScheduleDate);
   const [scheduledTime, setScheduledTime] = useState(getDefaultScheduleTime);
@@ -405,8 +570,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
   const [hostPhone, setHostPhone] = useState('');
   const [recentMeetings, setRecentMeetings] = useState([]);
   const [loadingRecent, setLoadingRecent] = useState(false);
-  const [editingRoomId, setEditingRoomId] = useState('');
-  const [editForm, setEditForm] = useState({ title: '', date: '', time: '' });
+  const [hubSnapshot, setHubSnapshot] = useState({ onlineCount: 0, conversationCount: 0 });
   const [openMenu, setOpenMenu] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -465,11 +629,22 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
     scrollToSection('meetra-planner');
   };
 
+  const joinRecentMeeting = (meeting) => {
+    if (!effectiveUserName) {
+      setError('Entrez votre nom pour rejoindre la réunion planifiée.');
+      closePanels();
+      scrollToSection('meetra-planner');
+      return;
+    }
+    closePanels();
+    onJoin(meeting.roomId, effectiveUserName);
+  };
+
   const searchItems = [
     { id: 'campus', label: 'Campus Hub', sectionId: 'meetra-campus-hub' },
     { id: 'organiser', label: 'Créer ou planifier une réunion', sectionId: 'meetra-planner' },
     { id: 'participer', label: 'Participer à une réunion', sectionId: 'meetra-join' },
-    { id: 'recent', label: 'Réunions récentes', sectionId: 'meetra-recent' },
+    { id: 'recent', label: 'Mes réunions', menu: 'ressources' },
   ];
 
   const filteredSearchItems = searchItems.filter((item) =>
@@ -509,9 +684,35 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
   useEffect(() => {
     if (!auth.token) {
       setRecentMeetings([]);
+      setHubSnapshot({ onlineCount: 0, conversationCount: 0 });
       return;
     }
     loadRecentMeetings();
+  }, [auth.token]);
+
+  useEffect(() => {
+    if (!auth.token) return;
+
+    const loadHubSnapshot = async () => {
+      try {
+        const [presenceRes, conversationsRes] = await Promise.all([
+          authFetch('/api/hub/presence'),
+          authFetch('/api/hub/conversations'),
+        ]);
+
+        const presenceData = await presenceRes.json().catch(() => ({ items: [] }));
+        const conversationData = await conversationsRes.json().catch(() => ({ items: [] }));
+
+        setHubSnapshot({
+          onlineCount: Array.isArray(presenceData.items) ? presenceData.items.length : 0,
+          conversationCount: Array.isArray(conversationData.items) ? conversationData.items.length : 0,
+        });
+      } catch {
+        setHubSnapshot({ onlineCount: 0, conversationCount: 0 });
+      }
+    };
+
+    loadHubSnapshot();
   }, [auth.token]);
 
   const loadRecentMeetings = async () => {
@@ -570,59 +771,6 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       hostEmail: data.hostEmail || effectiveHostEmail || null,
       hostPhone: data.hostPhone || hostPhone.trim() || null,
     };
-  };
-
-  const beginEditMeeting = (meeting) => {
-    const nextDate = meeting?.scheduledFor ? new Date(meeting.scheduledFor) : null;
-    setEditingRoomId(meeting.roomId);
-    setEditForm({
-      title: meeting.title || 'Réunion Meetra',
-      date: nextDate ? nextDate.toISOString().slice(0, 10) : getDefaultScheduleDate(),
-      time: nextDate ? nextDate.toISOString().slice(11, 16) : getDefaultScheduleTime(),
-      hostEmail: meeting.hostEmail || '',
-      hostPhone: meeting.hostPhone || '',
-    });
-  };
-
-  const saveMeetingEdit = async (roomIdToUpdate) => {
-    const scheduledFor = buildScheduledIso(editForm.date, editForm.time);
-    if (!scheduledFor || new Date(`${editForm.date}T${editForm.time}:00`).getTime() <= Date.now()) {
-      setError('Choisissez une nouvelle date/heure future pour la réunion.');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    try {
-      const res = await authFetch(`/api/rooms/${roomIdToUpdate}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: editForm.title.trim() || 'Réunion Meetra',
-          scheduledFor,
-          timezone,
-          durationMinutes: DEFAULT_DURATION_MINUTES,
-          hostEmail: editForm.hostEmail?.trim() || null,
-          hostPhone: editForm.hostPhone?.trim() || null,
-        }),
-      });
-      const updated = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(updated?.error || `ROOM_UPDATE_FAILED_${res.status}`);
-      }
-
-      setRecentMeetings((current) => current.map((meeting) => (
-        meeting.roomId === roomIdToUpdate ? { ...meeting, ...updated } : meeting
-      )));
-      if (createdMeeting?.roomId === roomIdToUpdate) {
-        setCreatedMeeting((current) => ({ ...current, ...updated }));
-      }
-      setEditingRoomId('');
-    } catch (error) {
-      setError(getMeetingApiErrorMessage(error?.message, 'update'));
-    } finally {
-      setLoading(false);
-    }
   };
 
   const createRoom = async (event) => {
@@ -728,8 +876,6 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
   const copyRecentMeetingLink = async (meeting) => {
     if (!meeting?.joinUrl) return;
     await navigator.clipboard.writeText(meeting.joinUrl);
-    setCopiedMeetingId(meeting.roomId);
-    setTimeout(() => setCopiedMeetingId(''), 2000);
   };
 
   const enterCreatedRoom = (event) => {
@@ -904,8 +1050,8 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
         {!prefillRoomId && (
           <section className="mt-6">
             <div className="meetra-divider-label">Chemins principaux</div>
-            <div className="meetra-card-grid mt-4 grid gap-4 lg:grid-cols-3 lg:gap-6">
-            <div className="meetra-surface meetra-subtle-card meetra-shortcut-card rounded-[24px] p-4 sm:p-5 md:rounded-[28px]">
+            <div className="meetra-card-grid mt-3 grid gap-3 lg:grid-cols-3 lg:gap-4">
+            <div className="meetra-surface meetra-subtle-card meetra-shortcut-card rounded-[24px] border-blue-400/20 bg-[linear-gradient(180deg,rgba(37,99,235,0.17),rgba(255,255,255,0.04))] p-4 sm:p-5 md:rounded-[28px]">
               <span className="meetra-shortcut-index">01</span>
               <div className="meetra-section-label mt-4">Campus Hub</div>
               <div className="mt-3 text-xl font-semibold text-slate-50">Connexion et présence</div>
@@ -920,7 +1066,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                 Aller au Campus Hub
               </button>
             </div>
-            <div className="meetra-surface meetra-subtle-card meetra-shortcut-card rounded-[24px] p-4 sm:p-5 md:rounded-[28px]">
+            <div className="meetra-surface meetra-subtle-card meetra-shortcut-card rounded-[24px] border-emerald-400/20 bg-[linear-gradient(180deg,rgba(16,185,129,0.15),rgba(255,255,255,0.04))] p-4 sm:p-5 md:rounded-[28px]">
               <span className="meetra-shortcut-index">02</span>
               <div className="meetra-section-label mt-4">Créer</div>
               <div className="mt-3 text-xl font-semibold text-slate-50">Réunion immédiate</div>
@@ -935,7 +1081,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                 Ouvrir le planificateur
               </button>
             </div>
-            <div className="meetra-surface meetra-subtle-card meetra-shortcut-card rounded-[24px] p-4 sm:p-5 md:rounded-[28px]">
+            <div className="meetra-surface meetra-subtle-card meetra-shortcut-card rounded-[24px] border-amber-400/20 bg-[linear-gradient(180deg,rgba(245,158,11,0.14),rgba(255,255,255,0.04))] p-4 sm:p-5 md:rounded-[28px]">
               <span className="meetra-shortcut-index">03</span>
               <div className="meetra-section-label mt-4">Rejoindre</div>
               <div className="mt-3 text-xl font-semibold text-slate-50">Salle existante</div>
@@ -958,8 +1104,50 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
           <MenuModal onClose={closePanels}>
             {openMenu === 'lancer' ? (
               <LaunchMeetingDropdown onJoinMeeting={openJoinMeeting} onHostMeeting={openHostMeeting} />
+            ) : openMenu === 'plateforme' ? (
+              <PlatformOverviewModal
+                onOpenHub={() => scrollToSection('meetra-campus-hub')}
+                onOpenPlanner={() => scrollToSection('meetra-planner')}
+                onOpenJoin={() => scrollToSection('meetra-join')}
+                isSignedIn={Boolean(auth.token)}
+                recentCount={recentMeetings.length}
+                hubSnapshot={hubSnapshot}
+              />
+            ) : openMenu === 'ressources' ? (
+              <ResourcesModal
+                auth={auth}
+                recentMeetings={recentMeetings}
+                loadingRecent={loadingRecent}
+                onRefresh={loadRecentMeetings}
+                onJoinMeeting={joinRecentMeeting}
+                onCopyMeetingLink={copyRecentMeetingLink}
+                onOpenPlanner={() => scrollToSection('meetra-planner')}
+              />
             ) : (
-              <NavDropdown title={openMenu} items={navMenus[openMenu] || []} />
+              <NavDropdown
+                title={openMenu}
+                items={navMenus[openMenu] || []}
+                actions={openMenu === 'produits' ? [
+                  {
+                    label: 'Ouvrir le Hub',
+                    body: 'Accéder directement à Campus Hub pour la connexion et les échanges.',
+                    tone: 'blue',
+                    onClick: () => scrollToSection('meetra-campus-hub'),
+                  },
+                  {
+                    label: 'Créer une réunion',
+                    body: 'Aller immédiatement à la zone de création et de planification.',
+                    tone: 'emerald',
+                    onClick: () => scrollToSection('meetra-planner'),
+                  },
+                  {
+                    label: 'Rejoindre une salle',
+                    body: 'Accéder au formulaire de participation avec un lien ou un ID.',
+                    tone: 'amber',
+                    onClick: () => scrollToSection('meetra-join'),
+                  },
+                ] : []}
+              />
             )}
           </MenuModal>
         )}
@@ -986,7 +1174,14 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => scrollToSection(item.sectionId)}
+                      onClick={() => {
+                        if (item.menu) {
+                          setSearchOpen(false);
+                          setOpenMenu(item.menu);
+                          return;
+                        }
+                        scrollToSection(item.sectionId);
+                      }}
                       className="rounded-[18px] border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-800 transition hover:border-blue-300 hover:bg-blue-50/60"
                     >
                       {item.label}
@@ -1251,172 +1446,6 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                 </button>
               </form>
 
-              <div id="meetra-recent" className="rounded-[24px] border border-white/10 bg-slate-950/45 px-4 py-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="meetra-section-label">Mes réunions</div>
-                    <div className="mt-1 max-w-lg text-sm text-slate-400">Retrouvez, modifiez et relancez les réunions liées à votre compte.</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={loadRecentMeetings}
-                    className="meetra-button meetra-focus-ring px-3 py-2 text-xs font-semibold text-slate-200"
-                  >
-                    {loadingRecent ? 'Actualisation...' : 'Actualiser'}
-                  </button>
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  {auth.token && (
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                      <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
-                        <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Compte</div>
-                        <div className="mt-2 text-sm font-semibold text-slate-100">{auth.profile?.name || userName || 'Meetra user'}</div>
-                        <div className="mt-1 text-xs text-slate-500">{auth.profile?.email || 'email non disponible'}</div>
-                      </div>
-                      <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
-                        <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Réunions visibles</div>
-                        <div className="mt-2 text-2xl font-semibold text-slate-50">{recentMeetings.length}</div>
-                        <div className="mt-1 text-xs text-slate-500">planifications rattachées à votre compte</div>
-                      </div>
-                      <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
-                        <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Propriété</div>
-                        <div className="mt-2 text-sm font-semibold text-slate-100">Gestion privée</div>
-                        <div className="mt-1 text-xs text-slate-500">seul le compte propriétaire peut modifier ces réunions</div>
-                      </div>
-                    </div>
-                  )}
-                  {!auth.token ? (
-                    <div className="rounded-[18px] border border-amber-400/16 bg-amber-500/8 px-4 py-4 text-sm text-amber-100">
-                      Connectez-vous dans Campus Hub pour afficher uniquement vos réunions planifiées.
-                    </div>
-                  ) : recentMeetings.length === 0 ? (
-                    <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-slate-400">
-                      Aucune réunion récente à afficher pour le moment.
-                    </div>
-                  ) : (
-                    recentMeetings.map((meeting) => (
-                      <div key={meeting.roomId} className="rounded-[20px] border border-white/10 bg-white/[0.03] px-4 py-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <div className="truncate text-sm font-semibold text-slate-100">{meeting.title || 'Réunion Meetra'}</div>
-                              <span className="rounded-full border border-emerald-400/16 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-100">
-                                Mon compte
-                              </span>
-                            </div>
-                            <div className="mt-1 text-sm text-slate-400">
-                              {formatScheduledMeeting(meeting.scheduledFor, meeting.timezone)}
-                            </div>
-                            <div className="mt-1 text-xs text-slate-500">
-                              {meeting.hostName ? `Hôte prévu: ${meeting.hostName}` : 'Hôte non renseigné'} · {meeting.durationMinutes || DEFAULT_DURATION_MINUTES} min
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => beginEditMeeting(meeting)}
-                            className="meetra-button meetra-focus-ring px-3 py-2 text-xs font-semibold text-slate-200"
-                          >
-                            Modifier
-                          </button>
-                        </div>
-
-                        {editingRoomId === meeting.roomId && (
-                          <div className="mt-4 grid gap-3 rounded-[18px] border border-blue-400/14 bg-blue-500/8 p-4">
-                            <div>
-                              <label className="meetra-section-label">Titre</label>
-                              <input
-                                value={editForm.title}
-                                onChange={(e) => setEditForm((current) => ({ ...current, title: e.target.value }))}
-                                className="meetra-focus-ring mt-2 w-full rounded-[16px] border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
-                              />
-                            </div>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                              <div>
-                                <label className="meetra-section-label">Date</label>
-                                <input
-                                  type="date"
-                                  value={editForm.date}
-                                  onChange={(e) => setEditForm((current) => ({ ...current, date: e.target.value }))}
-                                  className="meetra-focus-ring mt-2 w-full rounded-[16px] border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
-                                />
-                              </div>
-                              <div>
-                                <label className="meetra-section-label">Heure</label>
-                                <input
-                                  type="time"
-                                  value={editForm.time}
-                                  onChange={(e) => setEditForm((current) => ({ ...current, time: e.target.value }))}
-                                  className="meetra-focus-ring mt-2 w-full rounded-[16px] border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
-                                />
-                              </div>
-                            </div>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                              <div>
-                                <label className="meetra-section-label">Email hôte</label>
-                                <input
-                                  type="email"
-                                  value={editForm.hostEmail || ''}
-                                  onChange={(e) => setEditForm((current) => ({ ...current, hostEmail: e.target.value }))}
-                                  className="meetra-focus-ring mt-2 w-full rounded-[16px] border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
-                                />
-                              </div>
-                              <div>
-                                <label className="meetra-section-label">Téléphone hôte</label>
-                                <input
-                                  type="tel"
-                                  value={editForm.hostPhone || ''}
-                                  onChange={(e) => setEditForm((current) => ({ ...current, hostPhone: e.target.value }))}
-                                  className="meetra-focus-ring mt-2 w-full rounded-[16px] border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
-                                />
-                              </div>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={() => saveMeetingEdit(meeting.roomId)}
-                                className="meetra-button meetra-button-primary meetra-focus-ring px-4 py-3 text-sm font-semibold text-white"
-                              >
-                                Enregistrer
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setEditingRoomId('')}
-                                className="meetra-button meetra-focus-ring px-4 py-3 text-sm font-semibold text-slate-200"
-                              >
-                                Annuler
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => copyRecentMeetingLink(meeting)}
-                            className="meetra-button meetra-focus-ring px-3 py-2 text-xs font-semibold text-slate-200"
-                          >
-                            {copiedMeetingId === meeting.roomId ? 'Lien copié' : 'Copier le lien'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (!userName.trim()) {
-                                setError('Entrez votre nom pour rejoindre la réunion planifiée.');
-                                return;
-                              }
-                              onJoin(meeting.roomId, userName.trim());
-                            }}
-                            className="meetra-button meetra-focus-ring px-3 py-2 text-xs font-semibold text-slate-200"
-                          >
-                            Rejoindre
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
             </div>
           )}
 
