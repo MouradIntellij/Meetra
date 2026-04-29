@@ -74,15 +74,17 @@ export default function App() {
   const [roomId,   setRoomId]   = useState(urlRoomId || '');
   const [userName, setUserName] = useState('');
   const [isHost,   setIsHost]   = useState(false);
+  const [requestedHostJoin, setRequestedHostJoin] = useState(false);
   const existingStream = useRef(null);
 
   useEffect(() => {
     document.body.dataset.platform = platform.isElectron ? 'electron' : 'browser';
   }, []);
 
-  const handleJoin = (rid, uname) => {
+  const handleJoin = (rid, uname, options = {}) => {
     setRoomId(rid);
     setUserName(uname);
+    setRequestedHostJoin(Boolean(options.asHost));
     setScreen('lobby');
     window.history.replaceState(null, '', `/room/${rid}`);
   };
@@ -97,13 +99,13 @@ export default function App() {
       const res  = await fetch(`${API_URL}/api/rooms/${roomId}`, { headers });
       const data = await res.json();
 
-      const willBeHost = !data.exists || Boolean(data.canJoinAsHost);
+      const willBeHost = Boolean(requestedHostJoin) || Boolean(data.canJoinAsHost);
 
       setIsHost(willBeHost);
       setScreen(willBeHost ? 'room' : 'waiting');
     } catch {
-      setIsHost(false);
-      setScreen('waiting');
+      setIsHost(Boolean(requestedHostJoin));
+      setScreen(requestedHostJoin ? 'room' : 'waiting');
     }
   };
 
@@ -117,6 +119,7 @@ export default function App() {
     setRoomId('');
     setUserName('');
     setIsHost(false);
+    setRequestedHostJoin(false);
     setScreen('home');
     window.history.replaceState(null, '', '/');
   };

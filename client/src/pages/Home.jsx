@@ -689,7 +689,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       return;
     }
     closePanels();
-    onJoin(meeting.roomId, effectiveUserName);
+    onJoin(meeting.roomId, effectiveUserName, { asHost: true });
   };
 
   const searchItems = [
@@ -906,12 +906,12 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       }
 
       if (data.exists) {
-        onJoin(normalizedRoomId, effectiveUserName);
+        onJoin(normalizedRoomId, effectiveUserName, { asHost: false });
       } else {
         setError("Cette salle n'existe pas ou a expiré.");
       }
     } catch {
-      onJoin(normalizedRoomId, effectiveUserName);
+      onJoin(normalizedRoomId, effectiveUserName, { asHost: false });
     } finally {
       setLoading(false);
     }
@@ -937,7 +937,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       return;
     }
 
-    onJoin(createdMeeting.roomId, effectiveUserName);
+    onJoin(createdMeeting.roomId, effectiveUserName, { asHost: true });
   };
 
   useEffect(() => {
