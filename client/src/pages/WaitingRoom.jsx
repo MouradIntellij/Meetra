@@ -410,8 +410,7 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
   // ── Entrer dans la salle (hôte ou premier arrivant) ───────
   const handleJoin = useCallback(() => {
     if (joining) return;
-    const hostPresent = participants.length > 0;
-    if (!isHost && hostPresent) {
+    if (!isHost) {
       setJoining(true);
       return;
     }
@@ -437,7 +436,7 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
 
   const isFirst = participants.length === 0;
   const hostPresent = participants.length > 0;
-  const needsAdmission = !isHost && hostPresent;
+  const needsAdmission = !isHost;
 
   // ─────────────────────────────────────────────────────────
   return (
@@ -696,10 +695,10 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
                 textAlign: 'center', padding: '22px 0',
                 color: 'rgba(255,255,255,0.2)', fontSize: 13, lineHeight: 1.7,
               }}>
-                <div style={{ fontSize: 26, marginBottom: 8 }}>🏁</div>
-                Vous serez le premier.<br/>
+                <div style={{ fontSize: 26, marginBottom: 8 }}>{isHost ? '🏁' : '🛎'}</div>
+                {isHost ? 'Vous serez le premier.' : "L'hôte n'a pas encore rejoint la salle."}<br/>
                 <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.13)' }}>
-                  Démarrez la réunion pour inviter.
+                  {isHost ? 'Démarrez la réunion pour inviter.' : "Votre demande restera en attente jusqu'à son arrivée."}
                 </span>
               </div>
             ) : (
@@ -738,13 +737,13 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
               fontSize: 14, fontWeight: 700, letterSpacing: '0.02em',
               background: (joining || admitted || needsAdmission)
                 ? 'rgba(255,255,255,0.06)'
-                : isHost || isFirst
+                : isHost
                   ? 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)'
                   : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
               color: (joining || admitted || needsAdmission)
                 ? 'rgba(255,255,255,0.3)' : '#fff',
               boxShadow: (joining || admitted || needsAdmission) ? 'none'
-                : (isHost || isFirst)
+                : isHost
                   ? '0 6px 22px rgba(245,158,11,0.35)'
                   : '0 6px 22px rgba(59,130,246,0.35)',
               transition: 'all 0.2s', fontFamily: 'inherit',
@@ -760,7 +759,7 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
             {admitted  ? '✓ Admis — redirection…'
              : needsAdmission ? '🛎 En attente d’admission par l’hôte'
              : joining ? '⏳ Connexion…'
-             : (isHost || isFirst)
+             : isHost
                ? '🚀 Démarrer la réunion'
                : `✓ Rejoindre (${participants.length} présent${participants.length > 1 ? 's' : ''})`}
           </button>
@@ -773,7 +772,7 @@ export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, 
               ? (requestSent
                 ? "Votre demande a été envoyée. L'hôte recevra une alerte dès maintenant."
                 : "Préparation de votre demande d'accès.")
-              : (isHost || isFirst)
+              : isHost
               ? "Vous démarrez en tant qu'hôte. Partagez le lien pour inviter."
               : 'Votre statut micro/cam est préservé à l\'entrée dans la salle.'}
           </p>

@@ -12,9 +12,21 @@ import Lobby       from './pages/Lobby.jsx';
 import WaitingRoom from './pages/WaitingRoom.jsx';
 import Room        from './pages/Room.jsx';
 
+const AUTH_STORAGE_KEY = 'meetra-auth-session';
+
 function getRouteRoomId() {
   const match = window.location.pathname.match(/\/room\/([^/?#]+)/);
   return match ? match[1] : null;
+}
+
+function readStoredAuthToken() {
+  if (typeof window === 'undefined') return '';
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(AUTH_STORAGE_KEY) || '{}');
+    return parsed.token || '';
+  } catch {
+    return '';
+  }
 }
 
 function ConnectionBanner() {
@@ -80,16 +92,18 @@ export default function App() {
 
     try {
       const API_URL = getApiUrl();
-      const res  = await fetch(`${API_URL}/api/rooms/${roomId}`);
+      const token = readStoredAuthToken();
+      const headers = token ? { authorization: `Bearer ${token}` } : {};
+      const res  = await fetch(`${API_URL}/api/rooms/${roomId}`, { headers });
       const data = await res.json();
 
-      const willBeHost = !data.exists || (data.participantCount ?? 0) === 0;
+      const willBeHost = !data.exists || Boolean(data.canJoinAsHost);
 
       setIsHost(willBeHost);
       setScreen(willBeHost ? 'room' : 'waiting');
     } catch {
-      setIsHost(true);
-      setScreen('room');
+      setIsHost(false);
+      setScreen('waiting');
     }
   };
 
@@ -146,7 +160,7 @@ export default function App() {
           <WaitingRoom
               roomId={roomId}
               userName={userName}
-              isHost={false}
+              isHost={isHost}
               onJoin={handleEnterRoom}
               onBack={() => setScreen('lobby')}
           />

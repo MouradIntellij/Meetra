@@ -163,9 +163,14 @@ export function createApp() {
   // ── GET /api/rooms/:roomId — vérifier si une salle existe ─
   app.get('/api/rooms/:roomId', async (req, res) => {
     try {
+      const authenticated = await resolveRequestUser(req);
       const info = await roomService.getMeetingRoomInfo(req.params.roomId);
       if (info) {
-        res.json({ exists: true, ...info });
+        res.json({
+          exists: true,
+          ...info,
+          canJoinAsHost: Boolean(authenticated && canManageMeeting(info, authenticated)),
+        });
       } else {
         res.json({ exists: false });
       }
