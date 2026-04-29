@@ -1255,8 +1255,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
           </MenuModal>
         )}
 
-        {!prefillRoomId && (
-          activeProductPage && productPages[activeProductPage] ? (
+        {!prefillRoomId && activeProductPage && productPages[activeProductPage] ? (
             <section className="mt-6">
               <div className="meetra-divider-label">Produit</div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -1599,7 +1598,6 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
           )}
         </div>
         </>
-          )
         )}
       </div>
     </div>
