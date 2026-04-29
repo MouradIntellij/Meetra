@@ -499,74 +499,7 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
         .finally(() => setLoadingPeers(false));
   }, [roomId]);
 
-  // ── 4. Écouter les mises à jour live via socket ───────────
-  useEffect(() => {
-    if (!socket) return;
-
-    // Annoncer la présence en salle d'attente
-    socket.emit(EVENTS.WAITING_JOIN, { roomId, userName });
-
-    // Mise à jour de la liste (gens dans la salle + file d'attente)
-    const onWaitingUpdate = ({ participants: list, hostId: hid }) => {
-      if (list)  setParticipants(list);
-      if (hid)   setHostId(hid);
-    };
-
-    // Quelqu'un entre dans la salle → ajouter à la liste
-    const onUserJoined = (user) => {
-      const name = user.name || user.userName || 'Participant';
-      setParticipants(prev => {
-        if (prev.find(p => p.socketId === user.socketId)) return prev;
-        return [...prev, {
-          socketId:     user.socketId,
-          name,
-          audioEnabled: true,
-          videoEnabled: true,
-          isHost:       user.socketId === user.hostId,
-        }];
-      });
-      if (user.hostId) setHostId(user.hostId);
-    };
-
-    // Quelqu'un quitte la salle
-    const onUserLeft = ({ socketId }) => {
-      setParticipants(prev => prev.filter(p => p.socketId !== socketId));
-    };
-
-    // Hôte change (ex : l'hôte quitte, nouveau hôte désigné)
-    const onHostChanged = ({ newHostId }) => setHostId(newHostId);
-
-    // L'hôte nous admet → entrer dans la salle
-    const onAdmitted = () => {
-      cleanup();
-      handleEnterRoom();
-    };
-
-    // L'hôte nous refuse
-    const onRejected = ({ message }) => {
-      setRejected(message || "L'hôte a refusé votre entrée.");
-      setJoining(false);
-    };
-
-    socket.on(EVENTS.WAITING_UPDATE,   onWaitingUpdate);
-    socket.on(EVENTS.USER_JOINED,      onUserJoined);
-    socket.on(EVENTS.USER_LEFT,        onUserLeft);
-    socket.on(EVENTS.HOST_CHANGED,     onHostChanged);
-    socket.on(EVENTS.WAITING_ADMITTED, onAdmitted);
-    socket.on(EVENTS.WAITING_REJECTED, onRejected);
-
-    return () => {
-      socket.off(EVENTS.WAITING_UPDATE,   onWaitingUpdate);
-      socket.off(EVENTS.USER_JOINED,      onUserJoined);
-      socket.off(EVENTS.USER_LEFT,        onUserLeft);
-      socket.off(EVENTS.HOST_CHANGED,     onHostChanged);
-      socket.off(EVENTS.WAITING_ADMITTED, onAdmitted);
-      socket.off(EVENTS.WAITING_REJECTED, onRejected);
-      socket.emit(EVENTS.WAITING_LEAVE, { roomId });
-    };
-  }, [socket, roomId, userName]);
-
-  // ── 5. Timer d'attente ────────────────────────────────────
+  // ── 4. Timer d'attente ────────────────────────────────────
   useEffect(() => {
     timerRef.current = setInterval(() => setWaitSecs(s => s + 1), 1000);
     return () => clearInterval(timerRef.current);
@@ -679,30 +612,14 @@ export default function Lobby({ roomId, userName, onJoin, onBack }) {
     }
   }, []);
 
-  // ── Entrer dans la salle ──────────────────────────────────
-  const handleEnterRoom = useCallback(() => {
-    const stream = streamRef.current;
-    cleanup(true);
-    onJoin(stream);
-  }, [cleanup, onJoin]);
-
   // ── Clic sur Start / Rejoindre ────────────────────────────
   const handleJoin = useCallback(() => {
     if (joining) return;
     setJoining(true);
-
-    // Premier arrivant (salle vide) OU hôte → entre directement
-    const isFirst = participants.length === 0;
-    if (isFirst) {
-      handleEnterRoom();
-      return;
-    }
-
-    // Invité → émet JOIN_ROOM immédiatement (pas de système d'admission activé ici)
-    // Si vous voulez activer l'admission manuelle par l'hôte, supprimez la ligne suivante
-    // et laissez le socket WAITING_ADMITTED déclencher handleEnterRoom.
-    handleEnterRoom();
-  }, [joining, mediaError, participants, handleEnterRoom]);
+    const stream = streamRef.current;
+    cleanup(true);
+    onJoin(stream);
+  }, [joining, cleanup, onJoin]);
 
   // ── Retour ────────────────────────────────────────────────
   const handleBack = useCallback(() => {
