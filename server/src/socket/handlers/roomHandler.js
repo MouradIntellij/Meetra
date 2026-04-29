@@ -7,6 +7,7 @@ import { notifyHostWaitingGuest } from '../../services/notifications/hostAlertSe
 // ─── Waiting room store (in-memory, par roomId) ───────────────
 // Structure : Map<roomId, Map<socketId, { socketId, userName, joinedAt }>>
 const waitingRooms = new Map();
+const admittedGuests = new Map();
 
 function getWaiting(roomId) {
   if (!waitingRooms.has(roomId)) waitingRooms.set(roomId, new Map());
@@ -15,6 +16,11 @@ function getWaiting(roomId) {
 
 function waitingList(roomId) {
   return Array.from(getWaiting(roomId).values());
+}
+
+function getAdmitted(roomId) {
+  if (!admittedGuests.has(roomId)) admittedGuests.set(roomId, new Set());
+  return admittedGuests.get(roomId);
 }
 
 function broadcastWaitingUpdate(io, roomId) {
@@ -40,6 +46,28 @@ export function registerRoomHandlers(io, socket) {
   socket.on(EVENTS.JOIN_ROOM, async ({ roomId, userId, userName }) => {
     logger.socket(EVENTS.JOIN_ROOM, { roomId, userName });
 
+    const activeRoom = roomService.getRoomInfo(roomId);
+    const isModerator = roomService.isModerator(roomId, socket.id);
+    const wasAdmitted = getAdmitted(roomId).has(socket.id);
+
+    if (activeRoom && !isModerator && !wasAdmitted) {
+      socket.data.roomId = roomId;
+      socket.data.userName = userName;
+      socket.data.waiting = true;
+      getWaiting(roomId).set(socket.id, {
+        socketId: socket.id,
+        userName,
+        joinedAt: Date.now(),
+      });
+      broadcastWaitingUpdate(io, roomId);
+      socket.emit(EVENTS.WAITING_REQUIRED, {
+        roomId,
+        message: "L'hôte doit vous admettre avant d'entrer dans la réunion.",
+      });
+      logger.warn(`${userName} blocked from direct join in ${roomId}; waiting admission required`);
+      return;
+    }
+
     const result = await roomService.joinRoom(roomId, { socketId: socket.id, userId, userName });
 
     if (result.error === 'ROOM_LOCKED') {
@@ -54,6 +82,7 @@ export function registerRoomHandlers(io, socket) {
 
     // Retirer de la salle d'attente s'il y était
     getWaiting(roomId).delete(socket.id);
+    getAdmitted(roomId).delete(socket.id);
     broadcastWaitingUpdate(io, roomId);
 
     const participants = roomService.getParticipants(roomId);
@@ -128,6 +157,7 @@ export function registerRoomHandlers(io, socket) {
   // ── Quitter la salle d'attente ─────────────────────────────
   socket.on(EVENTS.WAITING_LEAVE, ({ roomId }) => {
     getWaiting(roomId)?.delete(socket.id);
+    getAdmitted(roomId)?.delete(socket.id);
     socket.data.waiting = false;
     broadcastWaitingUpdate(io, roomId);
     logger.socket(EVENTS.WAITING_LEAVE, { roomId, socketId: socket.id });
@@ -150,6 +180,7 @@ export function registerRoomHandlers(io, socket) {
 
     // Supprimer de la salle d'attente
     waiting.delete(targetSocketId);
+    getAdmitted(roomId).add(targetSocketId);
     broadcastWaitingUpdate(io, roomId);
 
     // Notifier l'utilisateur qu'il est admis → il émettra JOIN_ROOM
@@ -167,6 +198,7 @@ export function registerRoomHandlers(io, socket) {
 
     const user = getWaiting(roomId)?.get(targetSocketId);
     getWaiting(roomId)?.delete(targetSocketId);
+    getAdmitted(roomId)?.delete(targetSocketId);
     broadcastWaitingUpdate(io, roomId);
 
     io.to(targetSocketId).emit(EVENTS.WAITING_REJECTED, {
@@ -184,6 +216,8 @@ export function registerRoomHandlers(io, socket) {
     const toAdmit = Array.from(waiting.values());
 
     waiting.clear();
+    const admitted = getAdmitted(roomId);
+    toAdmit.forEach(({ socketId }) => admitted.add(socketId));
     broadcastWaitingUpdate(io, roomId);
 
     toAdmit.forEach(({ socketId }) => {
@@ -210,6 +244,7 @@ export function registerRoomHandlers(io, socket) {
       const mainRoom = roomService.getRoomInfo(roomId);
       if (!mainRoom && getWaiting(roomId)?.size === 0) {
         waitingRooms.delete(roomId);
+        admittedGuests.delete(roomId);
       }
       return; // Pas besoin de traiter le leave de la salle principale
     }
@@ -253,6 +288,7 @@ export function registerRoomHandlers(io, socket) {
         });
       });
       waitingRooms.delete(roomId);
+      admittedGuests.delete(roomId);
     }
   });
 }

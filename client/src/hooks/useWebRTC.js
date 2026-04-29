@@ -26,8 +26,32 @@ export function useWebRTC(roomId, userName) {
     } catch {
       stream = null;
     }
-    socket.emit(EVENTS.JOIN_ROOM, { roomId, userId: socket.id, userName });
-    return stream;
+
+    return new Promise((resolve, reject) => {
+      let settled = false;
+
+      const cleanupJoinListeners = () => {
+        socket.off(EVENTS.ROOM_PARTICIPANTS, handleAccepted);
+        socket.off(EVENTS.WAITING_REQUIRED, handleWaitingRequired);
+        socket.off(EVENTS.ROOM_LOCKED, handleLocked);
+      };
+
+      const finish = (callback) => {
+        if (settled) return;
+        settled = true;
+        cleanupJoinListeners();
+        callback();
+      };
+
+      const handleAccepted = () => finish(() => resolve(stream));
+      const handleWaitingRequired = ({ message }) => finish(() => reject(new Error(message || 'WAITING_REQUIRED')));
+      const handleLocked = ({ message }) => finish(() => reject(new Error(message || 'ROOM_LOCKED')));
+
+      socket.once(EVENTS.ROOM_PARTICIPANTS, handleAccepted);
+      socket.once(EVENTS.WAITING_REQUIRED, handleWaitingRequired);
+      socket.once(EVENTS.ROOM_LOCKED, handleLocked);
+      socket.emit(EVENTS.JOIN_ROOM, { roomId, userId: socket.id, userName });
+    });
   }, [socket, roomId, userName, getMedia]);
 
   // ── toggleHand: alternates RAISE / LOWER each call ───────

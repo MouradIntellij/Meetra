@@ -76,6 +76,7 @@ export const EVENTS = {
   WAITING_LEAVE:    "waiting-leave",     // client → serveur : quitte la salle d'attente
   WAITING_UPDATE:   "waiting-update",    // serveur → clients en attente : liste mise à jour
   WAITING_ADMITTED: "waiting-admitted",  // serveur → un client : l'hôte l'a admis
+  WAITING_REQUIRED: "waiting-required",  // serveur → un client : entrée directe refusée, attendre l'admission
   WAITING_REJECTED: "waiting-rejected",  // serveur → un client : l'hôte l'a refusé
   WAITING_ADMIT:    "waiting-admit",     // hôte → serveur : admettre un utilisateur
   WAITING_REJECT:   "waiting-reject",    // hôte → serveur : refuser un utilisateur

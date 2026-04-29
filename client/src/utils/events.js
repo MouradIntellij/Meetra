@@ -72,6 +72,7 @@ export const EVENTS = {
   WAITING_LEAVE:    "waiting-leave",     // émettre pour quitter la salle d'attente
   WAITING_UPDATE:   "waiting-update",    // écouter : liste des gens en attente
   WAITING_ADMITTED: "waiting-admitted",  // écouter : l'hôte nous a admis → entrer en salle
+  WAITING_REQUIRED: "waiting-required",  // écouter : entrée directe refusée, attendre l'admission
   WAITING_REJECTED: "waiting-rejected",  // écouter : l'hôte nous a refusé
   WAITING_ADMIT:    "waiting-admit",     // hôte émet : admettre un user
   WAITING_REJECT:   "waiting-reject",    // hôte émet : refuser un user
