@@ -853,12 +853,12 @@ export default function CampusHub() {
       : activityView;
 
   return (
-    <section id="meetra-campus-hub" className="meetra-surface rounded-[32px] px-6 py-8 md:px-8">
+    <section id="meetra-campus-hub" className="meetra-surface meetra-accent-panel rounded-[32px] px-6 py-8 md:px-8">
       <div className="meetra-section-label">Campus Hub</div>
       <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="text-2xl font-semibold tracking-tight text-slate-50">Campus Hub Meetra</div>
-          <div className="mt-2 max-w-3xl text-sm leading-7 text-slate-400">
+          <div className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
             Connectez-vous, voyez les membres en ligne et ouvrez un message direct.
           </div>
         </div>
@@ -1056,17 +1056,17 @@ export default function CampusHub() {
               <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
                 <div className="text-xs font-bold uppercase tracking-[0.16em] text-white/70">Activité</div>
                 <div className="mt-2 text-2xl font-semibold text-slate-50">{activity.length}</div>
-                <div className="mt-1 text-sm text-slate-400">éléments visibles dans votre fil</div>
+                <div className="mt-1 text-sm text-slate-400">éléments dans votre fil</div>
               </div>
               <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
                 <div className="text-xs font-bold uppercase tracking-[0.16em] text-white/70">Messages</div>
                 <div className="mt-2 text-2xl font-semibold text-slate-50">{conversations.length}</div>
-                <div className="mt-1 text-sm text-slate-400">conversations directes actives</div>
+                <div className="mt-1 text-sm text-slate-400">conversations actives</div>
               </div>
               <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
                 <div className="text-xs font-bold uppercase tracking-[0.16em] text-white/70">Présence</div>
                 <div className="mt-2 text-2xl font-semibold text-slate-50">{onlineMembers.length}</div>
-                <div className="mt-1 text-sm text-slate-400">membres connectés en ce moment</div>
+                <div className="mt-1 text-sm text-slate-400">membres en ligne</div>
               </div>
             </div>
           </SectionCard>

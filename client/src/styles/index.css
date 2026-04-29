@@ -30,6 +30,9 @@ html, body {
   --meetra-warning: #f59e0b;
   --meetra-danger: #ef4444;
   --meetra-shadow: 0 28px 60px rgba(2, 6, 23, 0.38);
+  --meetra-radius-panel: 32px;
+  --meetra-radius-card: 24px;
+  --meetra-radius-control: 16px;
 }
 
 #root {
@@ -96,6 +99,17 @@ video {
   border: 1px solid var(--meetra-border);
   box-shadow: var(--meetra-shadow);
   backdrop-filter: blur(18px);
+  position: relative;
+  isolation: isolate;
+}
+
+.meetra-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(96, 165, 250, 0.28), rgba(255, 255, 255, 0.08), rgba(16, 185, 129, 0.22));
+  pointer-events: none;
 }
 
 .meetra-surface-soft {
@@ -104,12 +118,171 @@ video {
   backdrop-filter: blur(16px);
 }
 
-.meetra-section-label {
+.meetra-accent-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.meetra-accent-panel::after {
+  content: "";
+  position: absolute;
+  right: -60px;
+  top: -60px;
+  width: 160px;
+  height: 160px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, rgba(59, 130, 246, 0.06) 42%, transparent 72%);
+  pointer-events: none;
+}
+
+.meetra-card-grid > * {
+  min-height: 100%;
+}
+
+.meetra-subtle-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.035) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  box-shadow: 0 16px 34px rgba(2, 6, 23, 0.18);
+}
+
+.meetra-hero-panel {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(2, 6, 23, 0.78) 0%, rgba(15, 23, 42, 0.86) 100%),
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 34%);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: 0 28px 56px rgba(2, 6, 23, 0.3);
+}
+
+.meetra-hero-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(59, 130, 246, 0.08), transparent 34%),
+    radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.08), transparent 30%);
+  pointer-events: none;
+}
+
+.meetra-divider-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--meetra-text-muted);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+}
+
+.meetra-divider-label::before,
+.meetra-divider-label::after {
+  content: "";
+  flex: 1 1 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.04), rgba(148, 163, 184, 0.28), rgba(148, 163, 184, 0.04));
+}
+
+.meetra-shortcut-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.meetra-shortcut-card::after {
+  content: "";
+  position: absolute;
+  inset: auto -22px -34px auto;
+  width: 88px;
+  height: 88px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.16) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.meetra-shortcut-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  background: rgba(37, 99, 235, 0.12);
+  color: rgba(219, 234, 254, 0.96);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.meetra-info-strip {
+  display: grid;
+  gap: 12px;
+}
+
+.meetra-info-chip {
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 14px 16px;
+}
+
+.meetra-info-chip h4 {
+  margin: 0;
+  color: var(--meetra-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.meetra-info-chip p {
+  margin: 6px 0 0;
+  color: var(--meetra-text-soft);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.meetra-step-card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 16px;
+}
+
+.meetra-step-card strong {
+  display: block;
+  color: var(--meetra-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.meetra-step-card span:last-child {
+  display: block;
+  margin-top: 4px;
+  color: var(--meetra-text-soft);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.meetra-sticky-panel {
+  position: sticky;
+  top: 24px;
+}
+
+@media (max-width: 1023px) {
+  .meetra-sticky-panel {
+    position: static;
+  }
+}
+
+.meetra-section-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
   color: var(--meetra-text-muted);
+  margin: 0;
 }
 
 .meetra-empty-state {
@@ -143,22 +316,25 @@ textarea:focus-visible {
 }
 
 .meetra-button {
-  border-radius: 14px;
+  border-radius: var(--meetra-radius-control);
   border: 1px solid rgba(148, 163, 184, 0.16);
   background: rgba(255, 255, 255, 0.05);
   color: var(--meetra-text);
-  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.16);
 }
 
 .meetra-button:hover {
   background: rgba(255, 255, 255, 0.09);
   border-color: rgba(191, 219, 254, 0.22);
   box-shadow: 0 12px 28px rgba(2, 6, 23, 0.24);
+  transform: translateY(-1px);
 }
 
 .meetra-button-primary {
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   border-color: rgba(96, 165, 250, 0.32);
+  box-shadow: 0 18px 38px rgba(37, 99, 235, 0.24);
 }
 
 .meetra-button-primary:hover {
@@ -188,10 +364,11 @@ textarea:focus-visible {
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.14);
   background: rgba(255, 255, 255, 0.05);
-  padding: 6px 10px;
+  padding: 6px 11px;
   font-size: 11px;
   font-weight: 700;
-  color: rgba(226, 232, 240, 0.82);
+  letter-spacing: 0.02em;
+  color: rgba(226, 232, 240, 0.86);
 }
 
 ::selection {
