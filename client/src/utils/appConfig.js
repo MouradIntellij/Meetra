@@ -2,6 +2,10 @@ function isLocalHostname(hostname) {
   return /^(localhost|127(?:\.\d{1,3}){3})$/i.test(String(hostname || ''));
 }
 
+function normalizeBaseUrl(value) {
+  return String(value || '').trim().replace(/\/+$/, '');
+}
+
 function getElectronRuntimeConfig() {
   if (typeof window === 'undefined') return {};
   return window.electronAPI?.config || {};
@@ -26,12 +30,26 @@ export function getApiUrl() {
 
 export function getPublicJoinBaseUrl() {
   const electronJoinBaseUrl = getElectronRuntimeConfig().publicJoinBaseUrl;
-  if (electronJoinBaseUrl) return electronJoinBaseUrl;
+  if (electronJoinBaseUrl) return normalizeBaseUrl(electronJoinBaseUrl);
 
   const explicitJoinBaseUrl = import.meta.env.VITE_PUBLIC_JOIN_BASE_URL;
-  if (explicitJoinBaseUrl) return explicitJoinBaseUrl;
+  if (explicitJoinBaseUrl) return normalizeBaseUrl(explicitJoinBaseUrl);
+
+  if (typeof window !== 'undefined' && /^https?:$/i.test(window.location.protocol)) {
+    return normalizeBaseUrl(window.location.origin);
+  }
 
   return '';
+}
+
+export function buildPublicRoomUrl(roomId) {
+  const normalizedRoomId = String(roomId || '').trim();
+  if (!normalizedRoomId) return '';
+
+  const baseUrl = getPublicJoinBaseUrl();
+  if (!baseUrl) return normalizedRoomId;
+
+  return `${baseUrl}/room/${encodeURIComponent(normalizedRoomId)}`;
 }
 
 export function isLocalHostName(hostname) {

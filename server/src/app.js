@@ -14,12 +14,36 @@ import { resolveAuthenticatedUserFromToken } from './services/auth/authService.j
 export function createApp() {
   const app = express();
 
-  function serializeMeetingSummary(meeting, origin) {
+  function normalizeOrigin(value) {
+    return String(value || '').trim().replace(/\/+$/, '');
+  }
+
+  function resolveMeetingJoinBase(req) {
+    if (!ENV.isDev && ENV.CLIENT_URL) {
+      return normalizeOrigin(ENV.CLIENT_URL);
+    }
+
+    const origin = req.get('origin');
+    if (origin) return normalizeOrigin(origin);
+
+    const referer = req.get('referer');
+    if (referer) {
+      try {
+        return normalizeOrigin(new URL(referer).origin);
+      } catch {
+        // ignore invalid referer
+      }
+    }
+
+    return normalizeOrigin(ENV.CLIENT_URL);
+  }
+
+  function serializeMeetingSummary(meeting, joinBase) {
     const roomId = meeting.roomId || meeting.id;
     return {
       roomId,
       title: meeting.title || meeting.metadata?.title || 'Réunion Meetra',
-      joinUrl: origin ? `${String(origin).replace(/\/+$/, '')}/room/${roomId}` : null,
+      joinUrl: joinBase ? `${joinBase}/room/${roomId}` : null,
       scheduledFor: meeting.scheduledFor || meeting.metadata?.scheduledFor || null,
       timezone: meeting.timezone || meeting.metadata?.timezone || null,
       durationMinutes: meeting.durationMinutes || meeting.metadata?.durationMinutes || 60,
@@ -33,20 +57,6 @@ export function createApp() {
       startedAt: meeting.startedAt || null,
       endedAt: meeting.endedAt || null,
     };
-  }
-
-  function resolveClientOrigin(req) {
-    const origin = req.get('origin');
-    if (origin) return origin;
-
-    const referer = req.get('referer');
-    if (!referer) return ENV.CLIENT_URL;
-
-    try {
-      return new URL(referer).origin;
-    } catch {
-      return ENV.CLIENT_URL;
-    }
   }
 
   async function resolveRequestUser(req) {
@@ -113,8 +123,8 @@ export function createApp() {
         createdByEmail: authenticated.email,
         createdByName: authenticated.name,
       });
-      const origin = resolveClientOrigin(req);
-      const joinUrl = origin ? `${String(origin).replace(/\/+$/, '')}/room/${room.roomId}` : null;
+      const joinBase = resolveMeetingJoinBase(req);
+      const joinUrl = joinBase ? `${joinBase}/room/${room.roomId}` : null;
 
       logger.info('Room created:', room.roomId);
       if (authenticated.email) {
@@ -208,7 +218,7 @@ export function createApp() {
         hostPhone,
       });
 
-      const origin = resolveClientOrigin(req);
+      const joinBase = resolveMeetingJoinBase(req);
       if (authenticated.email || updated.metadata?.hostEmail) {
         const targetEmail = authenticated.email || updated.metadata?.hostEmail;
         const targetName = authenticated.name || updated.metadata?.hostName || targetEmail;
@@ -221,7 +231,7 @@ export function createApp() {
             targetEmail,
             actorEmail: targetEmail,
             actorName: targetName,
-            meta: { roomId, joinUrl: origin ? `${String(origin).replace(/\/+$/, '')}/room/${roomId}` : null },
+            meta: { roomId, joinUrl: joinBase ? `${joinBase}/room/${roomId}` : null },
           });
         } catch (hubError) {
           logger.warn('Hub activity sync skipped on room update:', hubError?.message);
@@ -237,7 +247,7 @@ export function createApp() {
         hostName: updated.metadata?.hostName,
         hostEmail: updated.metadata?.hostEmail,
         hostPhone: updated.metadata?.hostPhone,
-      }, origin));
+      }, joinBase));
     } catch (err) {
       logger.error('updateRoom error:', err);
       res.status(500).json({ error: err.message });
@@ -255,9 +265,9 @@ export function createApp() {
       const meetings = (await roomService.getRecentMeetings(limit * 3)).filter((meeting) =>
         canManageMeeting({ metadata: meeting.metadata || meeting }, authenticated)
       ).slice(0, limit);
-      const origin = resolveClientOrigin(req);
+      const joinBase = resolveMeetingJoinBase(req);
       res.json({
-        meetings: meetings.map((meeting) => serializeMeetingSummary(meeting, origin)),
+        meetings: meetings.map((meeting) => serializeMeetingSummary(meeting, joinBase)),
       });
     } catch (err) {
       logger.error('listMeetings error:', err);

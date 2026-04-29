@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getApiUrl } from '../utils/appConfig.js';
+import { buildPublicRoomUrl, getApiUrl } from '../utils/appConfig.js';
 import { ArrowRightIcon, BuildingIcon, CalendarIcon, CalendarPlusIcon, CheckCircleIcon, ChatBubbleIcon, DoorExitIcon, GlobeIcon, LinkIcon, MailCalendarIcon, PhoneIcon, SearchIcon, SettingsIcon, ShieldLockIcon, SparkIcon, TranscriptIcon, UsersIcon, VideoAppIcon, WhiteboardIcon } from '../components/common/AppIcons.jsx';
 import CampusHub from '../components/hub/CampusHub.jsx';
 
@@ -85,6 +85,16 @@ function getMeetingApiErrorMessage(errorCode, action = 'create') {
           ? 'Impossible de planifier la réunion sur le serveur.'
           : 'Impossible de créer la réunion sur le serveur.';
   }
+}
+
+function normalizeMeetingJoinUrl(meeting) {
+  if (!meeting?.roomId) return meeting;
+
+  const publicJoinUrl = buildPublicRoomUrl(meeting.roomId);
+  return {
+    ...meeting,
+    joinUrl: publicJoinUrl || meeting.joinUrl || '',
+  };
 }
 
 function FeatureCard({ icon, title, body }) {
@@ -767,7 +777,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
       const res = await authFetch('/api/meetings?limit=6');
       const data = await res.json().catch(() => ({ meetings: [] }));
       if (res.ok) {
-        setRecentMeetings(data.meetings || []);
+        setRecentMeetings((data.meetings || []).map(normalizeMeetingJoinUrl));
       } else {
         setRecentMeetings([]);
       }
@@ -804,7 +814,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
 
     return {
       roomId: data.roomId,
-      joinUrl: data.joinUrl || `${window.location.origin}/room/${data.roomId}`,
+      joinUrl: buildPublicRoomUrl(data.roomId) || data.joinUrl || `${window.location.origin}/room/${data.roomId}`,
       title: data.title || meetingTitle.trim() || 'Réunion Meetra',
       scheduledFor: data.scheduledFor || scheduledFor,
       timezone: data.timezone || timezone,
