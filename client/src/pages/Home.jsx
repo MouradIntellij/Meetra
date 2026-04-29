@@ -147,12 +147,12 @@ function NavMenuButton({ label, active, onClick }) {
       onClick={onClick}
       className={`meetra-focus-ring inline-flex items-center gap-2 rounded-full px-5 py-3 text-[15px] font-semibold transition ${
         active
-          ? 'bg-white/10 text-slate-50 shadow-[0_14px_30px_rgba(2,6,23,0.22)]'
-          : 'text-slate-300 hover:bg-white/[0.05] hover:text-slate-100'
+          ? 'border border-white/10 bg-white/10 text-slate-50 shadow-[0_14px_30px_rgba(2,6,23,0.22)]'
+          : 'border border-transparent text-slate-300 hover:border-white/8 hover:bg-white/[0.05] hover:text-slate-100'
       }`}
     >
       <span>{label}</span>
-      <span className={`text-xs transition ${active ? 'rotate-180' : ''}`}>▾</span>
+      <span className={`text-[11px] transition ${active ? 'rotate-180 text-slate-100' : 'text-slate-500'}`}>▾</span>
     </button>
   );
 }
@@ -175,12 +175,12 @@ function NavDropdown({ title, items, onSelect }) {
   };
 
   return (
-    <div className="grid gap-5 rounded-[30px] border border-slate-200 bg-white p-6 text-slate-900 shadow-[0_34px_90px_rgba(2,6,23,0.28)] xl:grid-cols-[0.85fr_1.15fr]">
+    <div className="grid gap-5 rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.98))] p-6 text-slate-900 shadow-[0_34px_90px_rgba(2,6,23,0.28)] xl:grid-cols-[0.85fr_1.15fr]">
       <div>
         <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">{title}</div>
         <div className="mt-3 text-lg font-semibold text-slate-900">Découvrir la plateforme Meetra</div>
         <div className="mt-3 text-sm leading-6 text-slate-600">
-          Explore les principaux espaces Meetra comme une vraie plateforme produit.
+          Accédez directement aux espaces principaux sans descendre dans toute la page.
         </div>
         <div className="mt-5 rounded-[22px] border border-slate-200 bg-slate-50 p-4">
           <div className="text-sm font-semibold text-slate-900">Pensé pour le web public</div>
@@ -195,7 +195,7 @@ function NavDropdown({ title, items, onSelect }) {
             key={item.title}
             type="button"
             onClick={() => onSelect?.(item.sectionId)}
-            className="rounded-[22px] border border-slate-200 bg-white p-4 text-left transition hover:border-blue-300/60 hover:bg-blue-50/60"
+            className="rounded-[22px] border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-[1px] hover:border-blue-300/60 hover:bg-blue-50/60"
           >
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-blue-50 text-blue-700">
@@ -218,19 +218,19 @@ function NavDropdown({ title, items, onSelect }) {
 
 function LaunchMeetingDropdown({ onJoinMeeting, onHostMeeting }) {
   return (
-    <div className="grid gap-5 rounded-[30px] border border-slate-200 bg-white p-6 text-slate-900 shadow-[0_34px_90px_rgba(2,6,23,0.28)] xl:grid-cols-[0.85fr_1.15fr]">
+    <div className="grid gap-5 rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.98))] p-6 text-slate-900 shadow-[0_34px_90px_rgba(2,6,23,0.28)] xl:grid-cols-[0.85fr_1.15fr]">
       <div>
         <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">lancer une réunion</div>
         <div className="mt-3 text-lg font-semibold text-slate-900">Choisir votre point d’entrée</div>
         <div className="mt-3 text-sm leading-6 text-slate-600">
-          Rejoignez rapidement une salle existante ou ouvrez le planificateur pour organiser une nouvelle réunion.
+          Les deux chemins principaux restent accessibles directement depuis le menu supérieur.
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <button
           type="button"
           onClick={onJoinMeeting}
-          className="rounded-[22px] border border-slate-200 bg-white p-4 text-left transition hover:border-blue-300/60 hover:bg-blue-50/60"
+          className="rounded-[22px] border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-[1px] hover:border-blue-300/60 hover:bg-blue-50/60"
         >
           <div className="text-sm font-semibold text-slate-900">Participer à une réunion</div>
           <div className="mt-1 text-sm leading-6 text-slate-600">
@@ -240,7 +240,7 @@ function LaunchMeetingDropdown({ onJoinMeeting, onHostMeeting }) {
         <button
           type="button"
           onClick={onHostMeeting}
-          className="rounded-[22px] border border-slate-200 bg-white p-4 text-left transition hover:border-blue-300/60 hover:bg-blue-50/60"
+          className="rounded-[22px] border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-[1px] hover:border-blue-300/60 hover:bg-blue-50/60"
         >
           <div className="text-sm font-semibold text-slate-900">Organiser une réunion</div>
           <div className="mt-1 text-sm leading-6 text-slate-600">
@@ -805,7 +805,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
               )}
 
               {searchOpen && (
-                <div className="mt-4 rounded-[30px] border border-slate-200 bg-white p-5 text-slate-900 shadow-[0_34px_90px_rgba(2,6,23,0.28)]">
+                <div className="mt-4 rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.98))] p-5 text-slate-900 shadow-[0_34px_90px_rgba(2,6,23,0.28)]">
                   <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Recherche</div>
                   <input
                     value={searchQuery}
@@ -1007,6 +1007,12 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
 
         {!prefillRoomId && (
           <section className="mt-6 grid gap-6">
+            <div>
+              <div className="meetra-divider-label">Produits phares</div>
+              <div className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+                Les blocs ci-dessous prolongent la plateforme sans prendre le dessus sur Campus Hub et les actions de réunion.
+              </div>
+            </div>
             <ProductShowcase
               sectionId="product-meetings"
               icon={<VideoAppIcon size={22} />}
@@ -1082,7 +1088,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                 Une expérience plus professionnelle pour planifier, accueillir et collaborer.
               </div>
               <div className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
-                Meetra prend maintenant la forme d’une vraie homepage produit: plateforme, produits, ressources, planification et parcours de réunion dans un langage plus crédible pour un démonstrateur SaaS.
+                Meetra présente maintenant une lecture plus claire: entrée par Campus Hub, gestion des réunions au centre, puis exploration produit plus bas dans la page.
               </div>
 
               <div className="mt-6 flex flex-wrap gap-3">
@@ -1093,7 +1099,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
 
               <div className="mt-8 grid gap-3 sm:grid-cols-3">
                 {['Équipes projet', 'Support client', 'Présentations', 'Suivis internes', 'Cours virtuels', 'Réunions planifiées'].map((logo) => (
-                  <div key={logo} className="rounded-[18px] border border-white/10 bg-slate-950/45 px-4 py-4 text-center text-sm font-semibold text-slate-300">
+                  <div key={logo} className="rounded-[18px] border border-white/10 bg-slate-950/35 px-4 py-4 text-center text-sm font-semibold text-slate-300">
                     {logo}
                   </div>
                 ))}
@@ -1130,17 +1136,18 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                 author="Responsable démonstration"
                 role="Présentation client et soutenance"
               />
-              <TestimonialCard
-                quote="Le mélange planification, salle d’attente, co-hôte et sous-titres donne une base crédible pour évoluer vers une vraie suite collaborative."
-                author="Architecture Meetra"
-                role="Vision produit"
-              />
             </div>
           </section>
         )}
 
         {!prefillRoomId && (
           <section className="mt-6 grid gap-6">
+            <div>
+              <div className="meetra-divider-label">Plateforme et ressources</div>
+              <div className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+                Cette partie détaille les capacités de la plateforme après les actions principales, pour garder le haut de page plus direct.
+              </div>
+            </div>
             <CapabilityShowcase
               sectionId="platform-experience"
               icon={<GlobeIcon size={22} />}
