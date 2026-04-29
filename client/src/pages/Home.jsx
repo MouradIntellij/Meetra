@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getApiUrl } from '../utils/appConfig.js';
 import { ArrowRightIcon, BuildingIcon, CalendarIcon, CalendarPlusIcon, CheckCircleIcon, ChatBubbleIcon, DoorExitIcon, GlobeIcon, LinkIcon, MailCalendarIcon, PhoneIcon, SearchIcon, SettingsIcon, ShieldLockIcon, SparkIcon, TranscriptIcon, UsersIcon, VideoAppIcon, WhiteboardIcon } from '../components/common/AppIcons.jsx';
 import CampusHub from '../components/hub/CampusHub.jsx';
@@ -175,7 +175,7 @@ function NavDropdown({ title, items }) {
   };
 
   return (
-    <div className="grid gap-5 rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.98))] p-6 text-slate-900 shadow-[0_34px_90px_rgba(2,6,23,0.28)] xl:grid-cols-[0.85fr_1.15fr]">
+    <div className="grid gap-5 rounded-[26px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.98))] p-4 text-slate-900 shadow-[0_34px_90px_rgba(2,6,23,0.28)] sm:p-6 xl:grid-cols-[0.85fr_1.15fr]">
       <div>
         <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">{title}</div>
         <div className="mt-3 text-lg font-semibold text-slate-900">Découvrir la plateforme Meetra</div>
@@ -193,7 +193,7 @@ function NavDropdown({ title, items }) {
         {items.map((item) => (
           <div
             key={item.title}
-            className="rounded-[22px] border border-slate-200 bg-white p-4 text-left"
+            className="rounded-[20px] border border-slate-200 bg-white p-4 text-left"
           >
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-blue-50 text-blue-700">
@@ -216,7 +216,7 @@ function NavDropdown({ title, items }) {
 
 function LaunchMeetingDropdown({ onJoinMeeting, onHostMeeting }) {
   return (
-    <div className="grid gap-5 rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.98))] p-6 text-slate-900 shadow-[0_34px_90px_rgba(2,6,23,0.28)] xl:grid-cols-[0.85fr_1.15fr]">
+    <div className="grid gap-5 rounded-[26px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.98))] p-4 text-slate-900 shadow-[0_34px_90px_rgba(2,6,23,0.28)] sm:p-6 xl:grid-cols-[0.85fr_1.15fr]">
       <div>
         <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">lancer une réunion</div>
         <div className="mt-3 text-lg font-semibold text-slate-900">Choisir votre point d’entrée</div>
@@ -252,7 +252,7 @@ function LaunchMeetingDropdown({ onJoinMeeting, onHostMeeting }) {
 
 function MenuModal({ children, onClose }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/60 px-4 py-12 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm md:py-12">
       <button
         type="button"
         aria-label="Fermer"
@@ -269,7 +269,9 @@ function MenuModal({ children, onClose }) {
             Fermer
           </button>
         </div>
-        {children}
+        <div className="max-h-[calc(100vh-6rem)] overflow-y-auto rounded-[24px] md:rounded-[32px] md:max-h-[calc(100vh-8rem)]">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -408,7 +410,6 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
   const [openMenu, setOpenMenu] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const menuRef = useRef(null);
   const effectiveUserName = userName.trim() || auth.profile?.name || '';
   const effectiveHostEmail = hostEmail.trim() || auth.profile?.email || '';
 
@@ -750,9 +751,9 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
     <div className="meetra-shell h-screen overflow-y-auto px-4 py-6 md:px-8">
       <div className="mx-auto max-w-7xl">
         {!prefillRoomId && (
-          <section className="meetra-surface meetra-accent-panel overflow-hidden rounded-[36px] px-6 py-6 md:px-8 md:py-8">
-            <header ref={menuRef} className="relative">
-              <div className="flex flex-col gap-4 rounded-[30px] border border-white/10 bg-slate-950/45 px-5 py-4 shadow-[0_22px_44px_rgba(2,6,23,0.18)] 2xl:px-6">
+          <section className="meetra-surface meetra-accent-panel overflow-hidden rounded-[28px] px-4 py-5 sm:px-6 md:rounded-[36px] md:px-8 md:py-8">
+            <header className="relative">
+              <div className="flex flex-col gap-4 rounded-[24px] border border-white/10 bg-slate-950/45 px-4 py-4 shadow-[0_22px_44px_rgba(2,6,23,0.18)] sm:px-5 2xl:px-6">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-14 w-14 items-center justify-center rounded-[20px] border border-blue-300/15 bg-gradient-to-br from-blue-500/18 to-emerald-400/12 text-blue-50 shadow-[0_22px_50px_rgba(37,99,235,0.22)]">
@@ -760,7 +761,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                   </div>
                   <div>
                     <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Workspace vidéo</div>
-                    <div className="text-[28px] font-semibold tracking-tight text-slate-50">Meetra</div>
+                    <div className="text-2xl font-semibold tracking-tight text-slate-50 sm:text-[28px]">Meetra</div>
                   </div>
                 </div>
                   <button
@@ -794,11 +795,11 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                   <button type="button" onClick={() => scrollToSection('meetra-campus-hub')} className="meetra-focus-ring whitespace-nowrap rounded-full px-5 py-3 text-[15px] font-semibold text-slate-300 transition hover:bg-white/[0.05] hover:text-slate-100">
                     Campus Hub
                   </button>
-                  <button type="button" onClick={() => scrollToSection('meetra-planner')} className="meetra-button meetra-focus-ring whitespace-nowrap px-5 py-3 text-[15px] font-semibold text-slate-100">
-                    Se connecter
+                  <button type="button" onClick={() => scrollToSection('meetra-campus-hub')} className="meetra-button meetra-focus-ring whitespace-nowrap px-5 py-3 text-[15px] font-semibold text-slate-100">
+                    Accéder au Hub
                   </button>
                   <button type="button" onClick={() => scrollToSection('meetra-planner')} className="meetra-button meetra-button-primary meetra-focus-ring whitespace-nowrap px-5 py-3 text-[15px] font-semibold text-white">
-                    Essayer gratuitement
+                    Réunion immédiate
                   </button>
                 </div>
                 </div>
@@ -810,7 +811,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <SparkIcon size={16} />
-                  <span>Planifiez, admettez et collaborez dans un shell plus professionnel.</span>
+                  <span>Campus Hub, réunion, planification et échanges directs dans une seule interface.</span>
                 </div>
                 <button
                   type="button"
@@ -822,7 +823,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
               </div>
             </div>
 
-            <div className="mt-8 grid gap-8 xl:grid-cols-[1.1fr_0.9fr] xl:items-center">
+            <div className="mt-8 grid gap-6 xl:grid-cols-[1.1fr_0.9fr] xl:items-center">
               <div className="max-w-3xl">
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex h-14 w-14 items-center justify-center rounded-[20px] border border-blue-300/15 bg-gradient-to-br from-blue-500/18 to-emerald-400/12 text-blue-50 shadow-[0_22px_50px_rgba(37,99,235,0.22)]">
@@ -830,7 +831,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                   </div>
                   <div>
                     <div className="text-sm font-bold uppercase tracking-[0.22em] text-slate-500">Meetra platform</div>
-                    <div className="mt-1 text-3xl font-semibold tracking-tight text-slate-50 md:text-4xl">Travail connecté, réunions planifiées, salle d’attente intégrée</div>
+                    <div className="mt-1 text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl md:text-4xl">Travail connecté, réunions planifiées, salle d’attente intégrée</div>
                   </div>
                 </div>
 
@@ -840,8 +841,8 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                   ))}
                 </div>
 
-                <p className="mt-6 max-w-2xl text-base leading-8 text-slate-300 md:text-lg">
-                  Meetra centralise la préparation d’une réunion, l’accueil des invités et la collaboration en direct dans une interface plus vivante. Partagez un lien public, gardez le contrôle des admissions et préparez vos réunions comme un vrai produit SaaS.
+                <p className="mt-6 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base md:text-lg md:leading-8">
+                  Ouvrez le Campus Hub, créez ou planifiez une salle, rejoignez avec un lien public et discutez avec les membres connectés sans traverser une page trop longue.
                 </p>
 
                 <div className="mt-8 flex flex-wrap gap-3">
@@ -850,7 +851,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                     onClick={() => scrollToSection('meetra-campus-hub')}
                     className="meetra-button meetra-button-primary meetra-focus-ring inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold text-white"
                   >
-                    Ouvrir Campus Hub
+                    Ouvrir le Hub
                     <ArrowRightIcon size={15} />
                   </button>
                   <button
@@ -858,19 +859,19 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                     onClick={() => scrollToSection('meetra-planner')}
                     className="meetra-button meetra-focus-ring inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold text-slate-100"
                   >
-                    Planifier ou démarrer
+                    Créer ou planifier
                     <SparkIcon size={15} />
                   </button>
                 </div>
               </div>
 
-              <div className="meetra-hero-panel relative rounded-[32px] p-5">
+              <div className="meetra-hero-panel relative rounded-[24px] p-4 sm:p-5 md:rounded-[32px]">
                 <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-blue-500/18 blur-3xl" />
                 <div className="absolute bottom-0 left-10 h-36 w-36 rounded-full bg-emerald-400/12 blur-3xl" />
                 <div className="relative grid gap-4">
-                  <div className="rounded-[24px] border border-white/10 bg-slate-950/70 p-5">
+                  <div className="rounded-[22px] border border-white/10 bg-slate-950/70 p-4 sm:p-5">
                     <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Démarrage rapide</div>
-                    <div className="mt-3 text-xl font-semibold text-slate-50">Campus Hub, réunion, accès hôte.</div>
+                    <div className="mt-3 text-lg font-semibold text-slate-50 sm:text-xl">Campus Hub, réunion, accès hôte.</div>
                     <div className="mt-4 grid gap-3">
                       {[
                         'Connexion Campus Hub',
@@ -903,8 +904,8 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
         {!prefillRoomId && (
           <section className="mt-6">
             <div className="meetra-divider-label">Chemins principaux</div>
-            <div className="meetra-card-grid mt-4 grid gap-6 lg:grid-cols-3">
-            <div className="meetra-surface meetra-subtle-card meetra-shortcut-card rounded-[28px] p-5">
+            <div className="meetra-card-grid mt-4 grid gap-4 lg:grid-cols-3 lg:gap-6">
+            <div className="meetra-surface meetra-subtle-card meetra-shortcut-card rounded-[24px] p-4 sm:p-5 md:rounded-[28px]">
               <span className="meetra-shortcut-index">01</span>
               <div className="meetra-section-label mt-4">Campus Hub</div>
               <div className="mt-3 text-xl font-semibold text-slate-50">Connexion et présence</div>
@@ -919,7 +920,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                 Aller au Campus Hub
               </button>
             </div>
-            <div className="meetra-surface meetra-subtle-card meetra-shortcut-card rounded-[28px] p-5">
+            <div className="meetra-surface meetra-subtle-card meetra-shortcut-card rounded-[24px] p-4 sm:p-5 md:rounded-[28px]">
               <span className="meetra-shortcut-index">02</span>
               <div className="meetra-section-label mt-4">Créer</div>
               <div className="mt-3 text-xl font-semibold text-slate-50">Réunion immédiate</div>
@@ -934,7 +935,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                 Ouvrir le planificateur
               </button>
             </div>
-            <div className="meetra-surface meetra-subtle-card meetra-shortcut-card rounded-[28px] p-5">
+            <div className="meetra-surface meetra-subtle-card meetra-shortcut-card rounded-[24px] p-4 sm:p-5 md:rounded-[28px]">
               <span className="meetra-shortcut-index">03</span>
               <div className="meetra-section-label mt-4">Rejoindre</div>
               <div className="mt-3 text-xl font-semibold text-slate-50">Salle existante</div>
@@ -1001,12 +1002,12 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
           <CampusHub />
         )}
 
-        <div className="mt-6 grid min-h-full gap-6 lg:grid-cols-[1.08fr_0.92fr] lg:items-start">
-          <section id="meetra-planner" className="meetra-surface meetra-accent-panel rounded-[32px] p-6 md:p-8">
+        <div className="mt-6 grid min-h-full gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-start">
+          <section id="meetra-planner" className="meetra-surface meetra-accent-panel rounded-[28px] p-4 sm:p-6 md:rounded-[32px] md:p-8">
           {!prefillRoomId && (
             <div className="mb-5">
               <div className="meetra-section-label">Réunions</div>
-              <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">Créer, planifier ou rejoindre</div>
+              <div className="mt-2 text-xl font-semibold tracking-tight text-slate-50 sm:text-2xl">Créer, planifier ou rejoindre</div>
               <div className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
                 Toutes les actions liées aux réunions sont regroupées ici, juste sous le Campus Hub.
               </div>
@@ -1267,7 +1268,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
 
                 <div className="mt-4 space-y-3">
                   {auth.token && (
-                    <div className="grid gap-3 lg:grid-cols-3">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                       <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
                         <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Compte</div>
                         <div className="mt-2 text-sm font-semibold text-slate-100">{auth.profile?.name || userName || 'Meetra user'}</div>
@@ -1439,9 +1440,9 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
           </section>
 
           {!prefillRoomId && (
-          <section className="meetra-surface meetra-subtle-card meetra-sticky-panel rounded-[32px] px-6 py-8 md:px-8">
+          <section className="meetra-surface meetra-subtle-card rounded-[28px] px-4 py-6 sm:px-6 md:rounded-[32px] md:px-8 md:py-8 xl:meetra-sticky-panel">
               <div className="meetra-section-label">Parcours rapide</div>
-              <div className="mt-3 text-2xl font-semibold tracking-tight text-slate-50">Ordre recommandé</div>
+              <div className="mt-3 text-xl font-semibold tracking-tight text-slate-50 sm:text-2xl">Ordre recommandé</div>
               <div className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
                 Utilisez ce chemin si vous voulez aller vite sans chercher dans la page.
               </div>

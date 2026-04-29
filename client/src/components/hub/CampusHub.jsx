@@ -853,22 +853,22 @@ export default function CampusHub() {
       : activityView;
 
   return (
-    <section id="meetra-campus-hub" className="meetra-surface meetra-accent-panel rounded-[32px] px-6 py-8 md:px-8">
+    <section id="meetra-campus-hub" className="meetra-surface meetra-accent-panel rounded-[28px] px-4 py-6 sm:px-6 md:rounded-[32px] md:px-8 md:py-8">
       <div className="meetra-section-label">Campus Hub</div>
       <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="text-2xl font-semibold tracking-tight text-slate-50">Campus Hub Meetra</div>
+          <div className="text-xl font-semibold tracking-tight text-slate-50 sm:text-2xl">Campus Hub Meetra</div>
           <div className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
             Connectez-vous, voyez les membres en ligne et ouvrez un message direct.
           </div>
         </div>
-        <div className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs text-slate-400">
+        <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-2 text-xs text-slate-400 sm:rounded-full">
           {accessSummary}
         </div>
       </div>
 
-      <div className="mt-7 grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="rounded-[28px] border border-white/10 bg-slate-950/60 p-5">
+      <div className="mt-7 grid gap-6 2xl:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="rounded-[24px] border border-white/10 bg-slate-950/60 p-4 sm:p-5 md:rounded-[28px]">
           <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">Navigation</div>
           <div className="mt-4 space-y-2">
             {HUB_TABS.map(({ id, label, Icon }) => (
