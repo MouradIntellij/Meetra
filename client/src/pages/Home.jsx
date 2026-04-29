@@ -157,7 +157,7 @@ function NavMenuButton({ label, active, onClick }) {
   );
 }
 
-function NavDropdown({ title, items, onSelect }) {
+function NavDropdown({ title, items }) {
   const iconMap = {
     meetings: VideoAppIcon,
     hub: UsersIcon,
@@ -191,11 +191,9 @@ function NavDropdown({ title, items, onSelect }) {
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {items.map((item) => (
-          <button
+          <div
             key={item.title}
-            type="button"
-            onClick={() => onSelect?.(item.sectionId)}
-            className="rounded-[22px] border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-[1px] hover:border-blue-300/60 hover:bg-blue-50/60"
+            className="rounded-[22px] border border-slate-200 bg-white p-4 text-left"
           >
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-blue-50 text-blue-700">
@@ -209,7 +207,7 @@ function NavDropdown({ title, items, onSelect }) {
                 <div className="mt-1 text-sm leading-6 text-slate-600">{item.body}</div>
               </div>
             </div>
-          </button>
+          </div>
         ))}
       </div>
     </div>
@@ -247,6 +245,31 @@ function LaunchMeetingDropdown({ onJoinMeeting, onHostMeeting }) {
             Ouvrir la zone de planification pour créer ou planifier une réunion.
           </div>
         </button>
+      </div>
+    </div>
+  );
+}
+
+function MenuModal({ children, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/60 px-4 py-12 backdrop-blur-sm">
+      <button
+        type="button"
+        aria-label="Fermer"
+        onClick={onClose}
+        className="absolute inset-0 cursor-default"
+      />
+      <div className="relative z-10 w-full max-w-5xl">
+        <div className="mb-3 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-white/12 bg-slate-950/70 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-900"
+          >
+            Fermer
+          </button>
+        </div>
+        {children}
       </div>
     </div>
   );
@@ -402,37 +425,35 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
 
   const navMenus = {
     produits: [
-      { title: 'Meetings', body: 'Réunions vidéo, admission, co-hôte, partage et sous-titres dans une seule expérience.', icon: 'meetings', sectionId: 'product-meetings' },
-      { title: 'Phone', body: 'Appels, coordination d’équipe et base de communication unifiée à faire évoluer.', icon: 'phone', sectionId: 'product-phone' },
-      { title: 'Whiteboard', body: 'Tableau blanc collaboratif pour expliquer, dessiner et structurer une session.', icon: 'whiteboard', sectionId: 'product-whiteboard' },
-      { title: 'Chat', body: 'Messagerie contextuelle intégrée à la salle pour garder les échanges visibles.', icon: 'chat', sectionId: 'product-chat' },
-      { title: 'Rooms', body: 'Vision d’espaces, salles et présence hybride pour une plateforme plus complète.', icon: 'rooms', sectionId: 'product-rooms' },
-      { title: 'Mail & Calendar', body: 'Pont naturel entre la planification, les invitations et les rappels de réunion.', icon: 'mail', sectionId: 'product-mail-calendar' },
-      { title: 'Scheduler', body: 'Création de réunions avec date, heure, lien public et notifications hôte.', icon: 'schedulerPlus', sectionId: 'meetra-planner' },
-      { title: 'AI Docs', body: 'Sous-titres, résumé et base documentaire évolutive à partir de la transcription.', icon: 'docs', sectionId: 'meetra-product' },
+      { title: 'Meetings', body: 'Réunions vidéo, admission, co-hôte, partage d’écran, chat et sous-titres dans une seule expérience.', icon: 'meetings' },
+      { title: 'Phone', body: 'Appels et coordination d’équipe pour étendre Meetra au-delà de la réunion web.', icon: 'phone' },
+      { title: 'Whiteboard', body: 'Tableau blanc collaboratif pour expliquer, annoter et piloter des ateliers.', icon: 'whiteboard' },
+      { title: 'Chat', body: 'Messagerie contextuelle intégrée pour garder les échanges visibles pendant la réunion.', icon: 'chat' },
+      { title: 'Rooms', body: 'Vision hybride avec présence, espaces partagés et salles collaboratives.', icon: 'rooms' },
+      { title: 'Mail & Calendar', body: 'Invitations, rappels et coordination de planning autour des réunions.', icon: 'mail' },
     ],
     plateforme: [
-      { title: 'Accueil produit', body: 'Page d’entrée plus vivante avec sections, navigation et appels à l’action.', icon: 'platform', sectionId: 'platform-experience' },
-      { title: 'Salle d’attente', body: 'Réception des invités avant admission avec contrôles hôte et co-hôte.', icon: 'hub', sectionId: 'platform-experience' },
-      { title: 'Transcription', body: 'Base de sous-titres et résumé prête pour une future traduction live.', icon: 'docs', sectionId: 'platform-ai' },
-      { title: 'Webhooks', body: 'Notifications hôte et intégration email via services externes.', icon: 'alerts', sectionId: 'platform-ai' },
+      { title: 'Campus Hub', body: 'Connexion, présence, annuaire, messages et vie du campus visibles dès l’accueil.', icon: 'hub' },
+      { title: 'Salle d’attente', body: 'Admission des invités avec contrôle hôte et meilleure lisibilité du flux d’entrée.', icon: 'platform' },
+      { title: 'Transcription', body: 'Sous-titres et base de résumé prêts pour une évolution vers la traduction live.', icon: 'docs' },
+      { title: 'Automatisation', body: 'Notifications hôte, webhooks et ponts vers email ou intégrations externes.', icon: 'alerts' },
     ],
     ressources: [
-      { title: 'Réunions récentes', body: 'Retrouver rapidement un lien planifié et modifier une réunion existante.', icon: 'scheduler', sectionId: 'resources-operations' },
-      { title: 'Pré-test audio/vidéo', body: 'Tester caméra, micro et haut-parleurs avant de rejoindre.', icon: 'meetings', sectionId: 'resources-operations' },
-      { title: 'Paramètres', body: 'Panneau centralisé pour caméra, micro, sous-titres et préférences.', icon: 'settings', sectionId: 'resources-operations' },
-      { title: 'Évolutions IA', body: 'Résumé, transcription enrichie, et future traduction temps réel.', icon: 'docs', sectionId: 'resources-guidance' },
+      { title: 'Réunions récentes', body: 'Retrouver rapidement un lien planifié, relancer ou modifier une réunion existante.', icon: 'scheduler' },
+      { title: 'Pré-test audio/vidéo', body: 'Tester caméra, micro et haut-parleurs avant de rejoindre une salle.', icon: 'meetings' },
+      { title: 'Paramètres', body: 'Caméra, micro, sous-titres et préférences de réunion centralisés.', icon: 'settings' },
+      { title: 'Évolutions IA', body: 'Résumé, transcription enrichie et future traduction temps réel.', icon: 'docs' },
     ],
-    lancer: [
-      { title: 'Participer à une réunion', body: 'Rejoindre une salle existante avec un ID ou un lien public.' },
-      { title: 'Organiser une réunion', body: 'Créer tout de suite ou planifier une réunion avec date, heure et notifications.' },
-    ],
+  };
+
+  const closePanels = () => {
+    setOpenMenu('');
+    setSearchOpen(false);
   };
 
   const scrollToSection = (sectionId) => {
     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setOpenMenu('');
-    setSearchOpen(false);
+    closePanels();
   };
 
   const openJoinMeeting = () => {
@@ -444,29 +465,15 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
   };
 
   const searchItems = [
-    { id: 'organiser', label: 'Organiser une réunion', sectionId: 'meetra-planner' },
+    { id: 'campus', label: 'Campus Hub', sectionId: 'meetra-campus-hub' },
+    { id: 'organiser', label: 'Créer ou planifier une réunion', sectionId: 'meetra-planner' },
     { id: 'participer', label: 'Participer à une réunion', sectionId: 'meetra-join' },
     { id: 'recent', label: 'Réunions récentes', sectionId: 'meetra-recent' },
-    { id: 'product', label: 'Expérience produit', sectionId: 'meetra-product' },
   ];
 
   const filteredSearchItems = searchItems.filter((item) =>
     item.label.toLowerCase().includes(searchQuery.trim().toLowerCase())
   );
-
-  useEffect(() => {
-    if (!openMenu && !searchOpen) return undefined;
-
-    const handleClickOutside = (event) => {
-      if (!menuRef.current?.contains(event.target)) {
-        setOpenMenu('');
-        setSearchOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [openMenu, searchOpen]);
 
   useEffect(() => {
     if (!auth.token) return;
@@ -775,8 +782,11 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                   <NavMenuButton label="Lancer une réunion" active={openMenu === 'lancer'} onClick={() => setOpenMenu((current) => current === 'lancer' ? '' : 'lancer')} />
                   <NavMenuButton label="Plateforme" active={openMenu === 'plateforme'} onClick={() => setOpenMenu((current) => current === 'plateforme' ? '' : 'plateforme')} />
                   <NavMenuButton label="Ressources" active={openMenu === 'ressources'} onClick={() => setOpenMenu((current) => current === 'ressources' ? '' : 'ressources')} />
-                  <button type="button" onClick={() => scrollToSection('meetra-planner')} className="meetra-focus-ring whitespace-nowrap rounded-full px-5 py-3 text-[15px] font-semibold text-slate-300 transition hover:bg-white/[0.05] hover:text-slate-100">
-                    Tarification
+                  <button type="button" onClick={() => {
+                    setOpenMenu('');
+                    setSearchOpen(true);
+                  }} className="meetra-focus-ring whitespace-nowrap rounded-full px-5 py-3 text-[15px] font-semibold text-slate-300 transition hover:bg-white/[0.05] hover:text-slate-100">
+                    Accès rapide
                   </button>
                 </nav>
 
@@ -794,46 +804,6 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                 </div>
               </div>
 
-              {openMenu && (
-                <div className="mt-4">
-                  {openMenu === 'lancer' ? (
-                    <LaunchMeetingDropdown onJoinMeeting={openJoinMeeting} onHostMeeting={openHostMeeting} />
-                  ) : (
-                    <NavDropdown title={openMenu} items={navMenus[openMenu]} onSelect={scrollToSection} />
-                  )}
-                </div>
-              )}
-
-              {searchOpen && (
-                <div className="mt-4 rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.98))] p-5 text-slate-900 shadow-[0_34px_90px_rgba(2,6,23,0.28)]">
-                  <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Recherche</div>
-                  <input
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Rechercher une action Meetra"
-                    className="mt-4 w-full rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-400"
-                    autoFocus
-                  />
-                  <div className="mt-4 grid gap-2">
-                    {filteredSearchItems.length === 0 ? (
-                      <div className="rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                        Aucun résultat pour cette recherche.
-                      </div>
-                    ) : (
-                      filteredSearchItems.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => scrollToSection(item.sectionId)}
-                          className="rounded-[18px] border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-800 transition hover:border-blue-300 hover:bg-blue-50/60"
-                        >
-                          {item.label}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
             </header>
 
             <div className="rounded-[22px] border border-blue-400/14 bg-blue-500/10 px-4 py-3 text-sm text-blue-50">
@@ -983,225 +953,48 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
           </section>
         )}
 
-        {!prefillRoomId && (
-          <section id="meetra-product" className="mt-6 grid gap-6 lg:grid-cols-3">
-            <ProductLane
-              title="Accueil des invités"
-              body="Liens publics, vérification du nom, salle d’attente et notification hôte pour gérer les entrées avec plus de clarté."
-              tags={['Lien public', 'Salle d’attente', 'Notifications']}
-            />
-            <ProductLane
-              title="Réunion structurée"
-              body="Contrôles hôte, co-hôte, panneau paramètres et barre d’actions plus stable pour un usage quotidien."
-              tags={['Co-hôte', 'Paramètres', 'Chat']}
-              accent="emerald"
-            />
-            <ProductLane
-              title="Transcription évolutive"
-              body="Sous-titres et résumé peuvent servir de base à une future traduction live français-anglais ou anglais-français."
-              tags={['Sous-titres', 'Résumé', 'Évolution IA']}
-              accent="amber"
-            />
-          </section>
+        {openMenu && (
+          <MenuModal onClose={closePanels}>
+            {openMenu === 'lancer' ? (
+              <LaunchMeetingDropdown onJoinMeeting={openJoinMeeting} onHostMeeting={openHostMeeting} />
+            ) : (
+              <NavDropdown title={openMenu} items={navMenus[openMenu] || []} />
+            )}
+          </MenuModal>
         )}
 
-        {!prefillRoomId && (
-          <section className="mt-6 grid gap-6">
-            <div>
-              <div className="meetra-divider-label">Produits phares</div>
-              <div className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                Les blocs ci-dessous prolongent la plateforme sans prendre le dessus sur Campus Hub et les actions de réunion.
-              </div>
-            </div>
-            <ProductShowcase
-              sectionId="product-meetings"
-              icon={<VideoAppIcon size={22} />}
-              title="Meetings"
-              body="Le cœur de Meetra: réunions planifiées, admissions d’invités, co-hôte, partage d’écran, chat et sous-titres dans un flux cohérent."
-              bullets={['Créer et démarrer', 'Salle d’attente et admission', 'Sous-titres et co-hôte']}
-              mockTitle="Réunion d’équipe Meetra"
-              mockLines={['Vue principale avec participants', 'Admission d’un invité en attente', 'Sous-titres et partage actifs']}
-              mockBadges={['Réunion live', 'Co-hôte', 'Transcript']}
-            />
-            <ProductShowcase
-              sectionId="product-phone"
-              icon={<PhoneIcon size={22} />}
-              title="Phone"
-              body="Une future brique de communication plus large pour appels et coordination d’équipe. La page produit peut déjà la présenter comme extension de la plateforme."
-              bullets={['Communication unifiée', 'Appels d’équipe', 'Extension future']}
-              accent="emerald"
-              mockTitle="Console d’appel"
-              mockLines={['Contacts prioritaires', 'Historique rapide des appels', 'Canal direct équipe ou client']}
-              mockBadges={['Voice', 'Directory', 'Extension']}
-            />
-            <ProductShowcase
-              sectionId="product-whiteboard"
-              icon={<WhiteboardIcon size={22} />}
-              title="Whiteboard"
-              body="Le tableau blanc donne à Meetra une dimension plus collaborative pour la démonstration, l’enseignement ou les ateliers visuels."
-              bullets={['Explication visuelle', 'Ateliers collaboratifs', 'Support de présentation']}
-              accent="amber"
-              mockTitle="Board de session"
-              mockLines={['Notes de réunion', 'Zone de dessin et d’annotation', 'Espace de structuration rapide']}
-              mockBadges={['Draw', 'Notes', 'Workshop']}
-            />
-            <ProductShowcase
-              sectionId="product-chat"
-              icon={<ChatBubbleIcon size={22} />}
-              title="Chat"
-              body="Le chat temps réel reste intégré à la réunion pour garder les messages, liens et suivis visibles sans quitter la salle."
-              bullets={['Messages contextuels', 'Suivi pendant la réunion', 'Notifications visuelles']}
-              mockTitle="Conversation de réunion"
-              mockLines={['Message de suivi partagé', 'Lien de document collé', 'Notification de nouveau message']}
-              mockBadges={['Realtime', 'Follow-up', 'Links']}
-            />
-            <ProductShowcase
-              sectionId="product-rooms"
-              icon={<BuildingIcon size={22} />}
-              title="Rooms"
-              body="Une extension naturelle pour imaginer Meetra au-delà de la réunion web: présence, espaces partagés et expérience plus hybride."
-              bullets={['Espaces dédiés', 'Vision hybride', 'Évolution plateforme']}
-              accent="emerald"
-              mockTitle="Salle et présence"
-              mockLines={['État de disponibilité de la salle', 'Session planifiée dans un espace partagé', 'Expérience hybride à venir']}
-              mockBadges={['Spaces', 'Hybrid', 'Presence']}
-            />
-            <ProductShowcase
-              sectionId="product-mail-calendar"
-              icon={<MailCalendarIcon size={22} />}
-              title="Mail & Calendar"
-              body="Meetra peut déjà valoriser la planification, les liens publics et les notifications. Cette section prépare visuellement une évolution vers un calendrier plus intégré."
-              bullets={['Invitations', 'Rappels', 'Coordination de réunion']}
-              accent="amber"
-              mockTitle="Invitation planifiée"
-              mockLines={['Titre, date et heure de réunion', 'Lien public et rappel hôte', 'Coordination par email et agenda']}
-              mockBadges={['Invite', 'Reminder', 'Calendar']}
-            />
-          </section>
-        )}
-
-        {!prefillRoomId && (
-          <section className="mt-6 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-            <div className="meetra-surface meetra-accent-panel rounded-[32px] px-6 py-8 md:px-8">
-              <div className="meetra-section-label">Pourquoi Meetra</div>
-              <div className="mt-3 text-3xl font-semibold tracking-tight text-slate-50">
-                Une expérience plus professionnelle pour planifier, accueillir et collaborer.
-              </div>
-              <div className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
-                Meetra présente maintenant une lecture plus claire: entrée par Campus Hub, gestion des réunions au centre, puis exploration produit plus bas dans la page.
-              </div>
-
-              <div className="mt-6 flex flex-wrap gap-3">
-                {['Réunions planifiées', 'Salle d’attente', 'Co-hôte', 'Sous-titres', 'Chat', 'Webhooks'].map((item) => (
-                  <span key={item} className="meetra-badge">{item}</span>
-                ))}
-              </div>
-
-              <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                {['Équipes projet', 'Support client', 'Présentations', 'Suivis internes', 'Cours virtuels', 'Réunions planifiées'].map((logo) => (
-                  <div key={logo} className="rounded-[18px] border border-white/10 bg-slate-950/35 px-4 py-4 text-center text-sm font-semibold text-slate-300">
-                    {logo}
+        {searchOpen && (
+          <MenuModal onClose={closePanels}>
+            <div className="rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.98))] p-5 text-slate-900 shadow-[0_34px_90px_rgba(2,6,23,0.28)]">
+              <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Accès rapide</div>
+              <div className="mt-2 text-lg font-semibold text-slate-900">Ouvrir directement une action clé</div>
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Rechercher une action Meetra"
+                className="mt-4 w-full rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-400"
+                autoFocus
+              />
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                {filteredSearchItems.length === 0 ? (
+                  <div className="rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                    Aucun résultat pour cette recherche.
                   </div>
-                ))}
-              </div>
-
-              <div className="mt-8 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => scrollToSection('meetra-product')}
-                  className="meetra-button meetra-button-primary meetra-focus-ring inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold text-white"
-                >
-                  Découvrir les produits
-                  <ArrowRightIcon size={15} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollToSection('resources-guidance')}
-                  className="meetra-button meetra-focus-ring inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold text-slate-100"
-                >
-                  Trouver votre parcours
-                  <SparkIcon size={15} />
-                </button>
+                ) : (
+                  filteredSearchItems.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => scrollToSection(item.sectionId)}
+                      className="rounded-[18px] border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-800 transition hover:border-blue-300 hover:bg-blue-50/60"
+                    >
+                      {item.label}
+                    </button>
+                  ))
+                )}
               </div>
             </div>
-
-            <div className="grid gap-4">
-              <TestimonialCard
-                quote="Meetra présente désormais une vraie logique produit: accueil plus fort, réunions planifiées, et parcours d’admission cohérent."
-                author="Équipe produit"
-                role="Expérience plateforme"
-              />
-              <TestimonialCard
-                quote="La page d’accueil explique mieux la valeur de l’application avant même d’entrer dans une réunion."
-                author="Responsable démonstration"
-                role="Présentation client et soutenance"
-              />
-            </div>
-          </section>
-        )}
-
-        {!prefillRoomId && (
-          <section className="mt-6 grid gap-6">
-            <div>
-              <div className="meetra-divider-label">Plateforme et ressources</div>
-              <div className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                Cette partie détaille les capacités de la plateforme après les actions principales, pour garder le haut de page plus direct.
-              </div>
-            </div>
-            <CapabilityShowcase
-              sectionId="platform-experience"
-              icon={<GlobeIcon size={22} />}
-              title="Plateforme"
-              body="Meetra se présente maintenant comme une plateforme de travail connectée, pas seulement comme une page de création de salle. L’accueil, la salle d’attente et le parcours de réunion sont mieux organisés."
-              items={[
-                { title: 'Accueil produit', body: 'Navigation de plateforme, zones produit, actions principales visibles dès le header.' },
-                { title: 'Salle d’attente', body: 'Admission structurée avec badge hôte/co-hôte et demande d’accès claire.' },
-                { title: 'Parcours de réunion', body: 'Créer, planifier, rejoindre et retrouver une réunion dans un seul flux cohérent.' },
-                { title: 'Expérience web public', body: 'Pensé pour être partagé via un lien Vercel et testé comme un vrai produit.' },
-              ]}
-            />
-
-            <CapabilityShowcase
-              sectionId="platform-ai"
-              icon={<TranscriptIcon size={22} />}
-              title="Plateforme IA et automatisation"
-              body="Les briques déjà en place permettent de présenter Meetra comme une plateforme prête pour résumé, sous-titres, traduction live et notifications automatisées."
-              items={[
-                { title: 'Sous-titres', body: 'Base temps réel pour afficher des captions plus visibles pendant la réunion.' },
-                { title: 'Résumé', body: 'Point d’appui pour produire un compte rendu exploitable après réunion.' },
-                { title: 'Webhooks', body: 'Déclenchement d’alertes hôte et intégration avec email ou automatisation externe.' },
-                { title: 'Traduction live', body: 'Étape suivante logique: transcription puis traduction vers une langue cible.' },
-              ]}
-              accent="emerald"
-            />
-
-            <CapabilityShowcase
-              sectionId="resources-operations"
-              icon={<SettingsIcon size={22} />}
-              title="Ressources et opérations"
-              body="L’utilisateur retrouve plus facilement les outils de préparation et d’exploitation de réunion: pré-test, paramètres, réunions récentes et édition rapide."
-              items={[
-                { title: 'Pré-test audio/vidéo', body: 'Choix du micro, de la caméra et vérification avant d’entrer dans la salle.' },
-                { title: 'Réunions récentes', body: 'Récupération rapide d’un lien existant, modification d’horaire ou relance de réunion.' },
-                { title: 'Paramètres', body: 'Panneau centralisé pour micro, caméra, sous-titres et confort de réunion.' },
-                { title: 'Support hôte', body: 'Notifications, co-hôte, salle d’attente et parcours d’admission plus clairs.' },
-              ]}
-              accent="amber"
-            />
-
-            <CapabilityShowcase
-              sectionId="resources-guidance"
-              icon={<SparkIcon size={22} />}
-              title="Ressources d’évolution"
-              body="Cette zone positionne Meetra comme un produit qui peut continuer à monter en gamme, avec IA, traduction live, automatisation et expérience plus enterprise."
-              items={[
-                { title: 'Traduction FR↔EN', body: 'Sous-titres traduits par langue cible à partir de la transcription temps réel.' },
-                { title: 'Historique exportable', body: 'Résumé, transcript et suivi de réunion plus complets pour l’après-session.' },
-                { title: 'Automatisation', body: 'Webhooks, email, rappels et intégrations externes pour le flux de réunion.' },
-                { title: 'Vision enterprise', body: 'Une homepage plus forte et une plateforme plus structurée pour convaincre plus vite.' },
-              ]}
-            />
-          </section>
+          </MenuModal>
         )}
 
         {!prefillRoomId && (
