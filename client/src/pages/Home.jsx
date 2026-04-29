@@ -157,7 +157,7 @@ function NavMenuButton({ label, active, onClick }) {
   );
 }
 
-function NavDropdown({ title, items, actions = [] }) {
+function NavDropdown({ title, items, actions = [], onItemSelect }) {
   const iconMap = {
     meetings: VideoAppIcon,
     hub: UsersIcon,
@@ -191,9 +191,11 @@ function NavDropdown({ title, items, actions = [] }) {
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {items.map((item) => (
-          <div
+          <button
             key={item.title}
-            className="rounded-[20px] border border-slate-200 bg-white p-4 text-left"
+            type="button"
+            onClick={() => onItemSelect?.(item)}
+            className="rounded-[20px] border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-[1px] hover:border-blue-300/60 hover:bg-blue-50/60"
           >
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-blue-50 text-blue-700">
@@ -207,7 +209,7 @@ function NavDropdown({ title, items, actions = [] }) {
                 <div className="mt-1 text-sm leading-6 text-slate-600">{item.body}</div>
               </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
       {actions.length > 0 && (
@@ -574,6 +576,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
   const [openMenu, setOpenMenu] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeProductPage, setActiveProductPage] = useState('');
   const effectiveUserName = userName.trim() || auth.profile?.name || '';
   const effectiveHostEmail = hostEmail.trim() || auth.profile?.email || '';
 
@@ -590,7 +593,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
 
   const navMenus = {
     produits: [
-      { title: 'Meetings', body: 'Réunions vidéo, admission, co-hôte, partage d’écran, chat et sous-titres dans une seule expérience.', icon: 'meetings' },
+      { title: 'Meetings', body: 'Réunions vidéo, admission, co-hôte, partage d’écran, chat et sous-titres dans une seule expérience.', icon: 'meetings', pageKey: 'meetings' },
       { title: 'Phone', body: 'Appels et coordination d’équipe pour étendre Meetra au-delà de la réunion web.', icon: 'phone' },
       { title: 'Whiteboard', body: 'Tableau blanc collaboratif pour expliquer, annoter et piloter des ateliers.', icon: 'whiteboard' },
       { title: 'Chat', body: 'Messagerie contextuelle intégrée pour garder les échanges visibles pendant la réunion.', icon: 'chat' },
@@ -616,9 +619,32 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
     setSearchOpen(false);
   };
 
+  const productPages = {
+    meetings: {
+      title: 'Meetings',
+      subtitle: 'Réunions vidéo, admission, co-hôte, partage d’écran, chat et sous-titres dans une seule expérience.',
+      accent: 'blue',
+      icon: <VideoAppIcon size={22} />,
+      bullets: ['Créer et démarrer', 'Salle d’attente et admission', 'Sous-titres et co-hôte'],
+      mockTitle: 'Réunion d’équipe Meetra',
+      mockLines: ['Vue principale avec participants', 'Admission d’un invité en attente', 'Sous-titres et partage actifs'],
+      mockBadges: ['Réunion live', 'Co-hôte', 'Transcript'],
+    },
+  };
+
   const scrollToSection = (sectionId) => {
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    closePanels();
+    const performScroll = () => {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      closePanels();
+    };
+
+    if (activeProductPage) {
+      setActiveProductPage('');
+      setTimeout(performScroll, 0);
+      return;
+    }
+
+    performScroll();
   };
 
   const openJoinMeeting = () => {
@@ -627,6 +653,14 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
 
   const openHostMeeting = () => {
     scrollToSection('meetra-planner');
+  };
+
+  const handleMenuItemSelect = (item) => {
+    if (item.pageKey && productPages[item.pageKey]) {
+      setActiveProductPage(item.pageKey);
+      closePanels();
+      return;
+    }
   };
 
   const joinRecentMeeting = (meeting) => {
@@ -908,6 +942,11 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
                   <div>
                     <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Workspace vidéo</div>
                     <div className="text-2xl font-semibold tracking-tight text-slate-50 sm:text-[28px]">Meetra</div>
+                    {activeProductPage && productPages[activeProductPage] && (
+                      <div className="mt-1 text-sm font-semibold text-blue-100">
+                        Page actuelle: {productPages[activeProductPage].title}
+                      </div>
+                    )}
                   </div>
                 </div>
                   <button
@@ -1047,7 +1086,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
           </section>
         )}
 
-        {!prefillRoomId && (
+        {!prefillRoomId && !activeProductPage && (
           <section className="mt-6">
             <div className="meetra-divider-label">Chemins principaux</div>
             <div className="meetra-card-grid mt-3 grid gap-3 lg:grid-cols-3 lg:gap-4">
@@ -1127,6 +1166,7 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
               <NavDropdown
                 title={openMenu}
                 items={navMenus[openMenu] || []}
+                onItemSelect={handleMenuItemSelect}
                 actions={openMenu === 'produits' ? [
                   {
                     label: 'Ouvrir le Hub',
@@ -1193,6 +1233,43 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
           </MenuModal>
         )}
 
+        {!prefillRoomId && (
+          activeProductPage && productPages[activeProductPage] ? (
+            <section className="mt-6">
+              <div className="meetra-divider-label">Produit</div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-3xl font-semibold tracking-tight text-slate-50">
+                    {productPages[activeProductPage].title}
+                  </div>
+                  <div className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+                    {productPages[activeProductPage].subtitle}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveProductPage('')}
+                  className="meetra-button meetra-focus-ring px-4 py-3 text-sm font-semibold text-slate-100"
+                >
+                  Retour à l’accueil
+                </button>
+              </div>
+              <div className="mt-5">
+                <ProductShowcase
+                  sectionId={`product-${activeProductPage}`}
+                  icon={productPages[activeProductPage].icon}
+                  title={productPages[activeProductPage].title}
+                  body={productPages[activeProductPage].subtitle}
+                  bullets={productPages[activeProductPage].bullets}
+                  accent={productPages[activeProductPage].accent}
+                  mockTitle={productPages[activeProductPage].mockTitle}
+                  mockLines={productPages[activeProductPage].mockLines}
+                  mockBadges={productPages[activeProductPage].mockBadges}
+                />
+              </div>
+            </section>
+          ) : (
+          <>
         {!prefillRoomId && (
           <CampusHub />
         )}
@@ -1499,6 +1576,9 @@ export default function Home({ onJoin, prefillRoomId = '' }) {
             </section>
           )}
         </div>
+        </>
+          )
+        )}
       </div>
     </div>
   );

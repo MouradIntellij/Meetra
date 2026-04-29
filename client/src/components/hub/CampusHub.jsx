@@ -843,6 +843,39 @@ export default function CampusHub() {
           </div>
         )}
       </SectionCard>
+
+      <div className="2xl:col-span-2">
+        <SectionCard
+          title="Membres connectés"
+          subtitle="Présence active en ce moment."
+        >
+          <div className="space-y-3">
+            {onlineMembers.length === 0 ? (
+              <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-slate-400">
+                Aucun membre connecté pour le moment.
+              </div>
+            ) : onlineMembers.map((member) => (
+              <button
+                key={member.email}
+                type="button"
+                onClick={() => handleOpenConversation(member)}
+                className="flex w-full items-center justify-between gap-3 rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3 text-left transition hover:bg-white/[0.05]"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-100">{member.name}</span>
+                    <span className={`h-2.5 w-2.5 rounded-full ${(PRESENCE_OPTIONS.find((option) => option.value === member.status)?.tone) || 'bg-emerald-400'}`} />
+                  </div>
+                  <div className="mt-1 truncate text-xs text-slate-500">{member.email}</div>
+                </div>
+                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] font-semibold text-slate-200">
+                  {PRESENCE_OPTIONS.find((option) => option.value === member.status)?.label || 'Disponible'}
+                </span>
+              </button>
+            ))}
+          </div>
+        </SectionCard>
+      </div>
     </div>
   );
 
@@ -1013,38 +1046,6 @@ export default function CampusHub() {
         </div>
       </div>
 
-      <div className="mt-6">
-        <SectionCard
-          title="Membres connectés"
-          subtitle="Présence active en ce moment."
-        >
-          <div className="space-y-3">
-            {onlineMembers.length === 0 ? (
-              <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-slate-400">
-                Aucun membre connecté pour le moment.
-              </div>
-            ) : onlineMembers.map((member) => (
-              <button
-                key={member.email}
-                type="button"
-                onClick={() => handleOpenConversation(member)}
-                className="flex w-full items-center justify-between gap-3 rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3 text-left transition hover:bg-white/[0.05]"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-100">{member.name}</span>
-                    <span className={`h-2.5 w-2.5 rounded-full ${(PRESENCE_OPTIONS.find((option) => option.value === member.status)?.tone) || 'bg-emerald-400'}`} />
-                  </div>
-                  <div className="mt-1 truncate text-xs text-slate-500">{member.email}</div>
-                </div>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] font-semibold text-slate-200">
-                  {PRESENCE_OPTIONS.find((option) => option.value === member.status)?.label || 'Disponible'}
-                </span>
-              </button>
-            ))}
-          </div>
-        </SectionCard>
-      </div>
     </section>
   );
 }
