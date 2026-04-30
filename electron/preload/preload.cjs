@@ -5,6 +5,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     config: {
         apiUrl: process.env.APP_API_URL || process.env.VITE_API_URL || '',
         publicJoinBaseUrl: process.env.APP_PUBLIC_JOIN_BASE_URL || process.env.VITE_PUBLIC_JOIN_BASE_URL || '',
+        turnUrl: process.env.APP_TURN_URL || process.env.VITE_TURN_URL || '',
+        turnUsername: process.env.APP_TURN_USERNAME || process.env.VITE_TURN_USERNAME || '',
+        turnCredential: process.env.APP_TURN_CREDENTIAL || process.env.VITE_TURN_CREDENTIAL || '',
     },
     getRuntimeInfo: () => ipcRenderer.invoke('platform:get-runtime-info'),
     getScreenSources: (options) => ipcRenderer.invoke('screen:get-sources', options),
