@@ -1,0 +1,13 @@
+{
+  "roomId": "ROOM-A1",
+  "locked": false,
+  "status": "idle",
+  "source": "socket-join",
+  "createdAt": 1777518730427,
+  "updatedAt": 1777519155016,
+  "startedAt": 1777518730428,
+  "endedAt": 1777519155014,
+  "metadata": {
+    "autoCreated": true
+  }
+}

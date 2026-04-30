@@ -10,6 +10,7 @@
     "dev:server": "npm run dev --workspace=server",
     "dev:client": "npm run dev --workspace=client",
     "dev:client:lan":"npm run dev --workspace=client -- --host 0.0.0.0",
+    "dev:email-webhook":"node scripts/dev-email-webhook.mjs",
     "dev:desktop":"node scripts/run-desktop-env.cjs",
     "dev:desktop:prod":"node scripts/run-desktop-env.cjs --remote",
     "dev:desktop:raw":"concurrently \"npm run dev:server\" \"npm run dev:client\" \"npm run electron:open\"",

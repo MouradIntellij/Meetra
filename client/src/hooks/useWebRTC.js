@@ -71,6 +71,13 @@ export function useWebRTC(roomId, userName) {
   useEffect(() => {
     if (!socket) return;
 
+    socket.on(EVENTS.ROOM_JOINED, ({ participants = [], hostSocketId, isHost, roomId: joinedRoomId }) => {
+      const others = participants.filter((p) => p.socketId !== socket.id);
+      setParticipants(others);
+      setHostId(hostSocketId || (isHost ? socket.id : ''));
+      if (joinedRoomId !== roomId) return;
+    });
+
     socket.on(EVENTS.ROOM_PARTICIPANTS, ({ participants, hostId, locked, coHostIds = [] }) => {
       const others = participants.filter(p => p.socketId !== socket.id);
       setParticipants(others);
@@ -96,6 +103,7 @@ export function useWebRTC(roomId, userName) {
       if (user.coHostIds) setCoHostIds(user.coHostIds);
     });
 
+    socket.on(EVENTS.ASSIGN_HOST, ({ socketId }) => setHostId(socketId));
     socket.on(EVENTS.HOST_CHANGED,  ({ newHostId }) => setHostId(newHostId));
     socket.on(EVENTS.COHOSTS_UPDATED, ({ coHostIds = [] }) => setCoHostIds(coHostIds));
     socket.on(EVENTS.ROOM_LOCKED,   ({ locked }) => setLocked(locked));
@@ -135,7 +143,9 @@ export function useWebRTC(roomId, userName) {
 
     return () => {
       socket.off(EVENTS.ROOM_PARTICIPANTS);
+      socket.off(EVENTS.ROOM_JOINED);
       socket.off(EVENTS.USER_JOINED);
+      socket.off(EVENTS.ASSIGN_HOST);
       socket.off(EVENTS.HOST_CHANGED);
       socket.off(EVENTS.COHOSTS_UPDATED);
       socket.off(EVENTS.ROOM_LOCKED);

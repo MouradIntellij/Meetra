@@ -25,8 +25,8 @@ export function registerMediaHandlers(io, socket) {
     });
   });
 
-  socket.on(EVENTS.ICE, ({ candidate, targetUserId, roomId }) => {
-    io.to(targetUserId).emit(EVENTS.ICE, {
+  socket.on(EVENTS.ICE_CANDIDATE, ({ candidate, targetUserId, roomId }) => {
+    io.to(targetUserId).emit(EVENTS.ICE_CANDIDATE, {
       candidate,
       fromUserId: socket.id,
       targetUserId,

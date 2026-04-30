@@ -8,5 +8,15 @@
     "createdAt": 1777386633819,
     "updatedAt": 1777391652172,
     "lastLoginAt": 1777391652172
+  },
+  {
+    "id": "97e976c7-6d4d-4ba4-8d53-046295f9a765",
+    "email": "profmaths@hotmail.ca",
+    "name": "Mourad Sehboub",
+    "role": "member",
+    "passwordHash": "33f15f487de994b295182f5c157a3c74:bb07a1bb651dd0b3e0dea6d49213474504a1b88094df072b9f58491fd5eda6f95e2dfa78d26e022521ca14ecd685617ba06291aa07e862dda8c30d9d2d8c7537",
+    "createdAt": 1777519479613,
+    "updatedAt": 1777519479613,
+    "lastLoginAt": 1777519479613
   }
 ]

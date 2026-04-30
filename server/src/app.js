@@ -10,9 +10,15 @@ import { createAuthRouter, getBearerToken } from './routes/authRoutes.js';
 import { purgeExpiredTranscriptFiles } from './services/transcription/transcriptPersistenceService.js';
 import { appendHubActivity, upsertHubProfile } from './services/hub/hubStore.js';
 import { resolveAuthenticatedUserFromToken } from './services/auth/authService.js';
+import { listWaitingGuests } from './socket/handlers/roomHandler.js';
+import { sendMeetingInvitationEmails } from './services/notifications/emailNotificationService.js';
 
 export function createApp() {
   const app = express();
+
+  function normalizeRoomId(value) {
+    return String(value || '').trim().toLowerCase();
+  }
 
   function normalizeOrigin(value) {
     return String(value || '').trim().replace(/\/+$/, '');
@@ -101,6 +107,8 @@ export function createApp() {
         hostName = null,
         hostEmail = null,
         hostPhone = null,
+        inviteeEmails = [],
+        inviteMessage = '',
       } = req.body || {};
 
       if (scheduledFor) {
@@ -127,6 +135,17 @@ export function createApp() {
       const joinUrl = joinBase ? `${joinBase}/room/${room.roomId}` : null;
 
       logger.info('Room created:', room.roomId);
+      let invitationSummary = null;
+      if (Array.isArray(inviteeEmails) && inviteeEmails.length > 0 && joinUrl) {
+        invitationSummary = await sendMeetingInvitationEmails({
+          meeting: room,
+          roomId: room.roomId,
+          joinUrl,
+          recipients: inviteeEmails,
+          actorName: authenticated.name || authenticated.email || 'Meetra',
+          customMessage: inviteMessage,
+        });
+      }
       if (authenticated.email) {
         try {
           await upsertHubProfile({ email: authenticated.email, name: authenticated.name || authenticated.email });
@@ -153,6 +172,7 @@ export function createApp() {
         hostName: room.metadata?.hostName || authenticated.name || hostName || null,
         hostEmail: room.metadata?.hostEmail || authenticated.email || hostEmail || null,
         hostPhone: room.metadata?.hostPhone || hostPhone || null,
+        invitations: invitationSummary,
       });
     } catch (err) {
       logger.error('createRoom error:', err);
@@ -164,7 +184,8 @@ export function createApp() {
   app.get('/api/rooms/:roomId', async (req, res) => {
     try {
       const authenticated = await resolveRequestUser(req);
-      const info = await roomService.getMeetingRoomInfo(req.params.roomId);
+      const roomId = normalizeRoomId(req.params.roomId);
+      const info = await roomService.getMeetingRoomInfo(roomId);
       if (info) {
         res.json({
           exists: true,
@@ -188,7 +209,8 @@ export function createApp() {
       }
 
       const { roomId } = req.params;
-      const existing = await roomService.getMeetingRoomInfo(roomId);
+      const normalizedRoomId = normalizeRoomId(roomId);
+      const existing = await roomService.getMeetingRoomInfo(normalizedRoomId);
       if (!existing) {
         return res.status(404).json({ error: 'ROOM_NOT_FOUND' });
       }
@@ -213,7 +235,7 @@ export function createApp() {
         }
       }
 
-      const updated = await roomService.updateMeetingSchedule(roomId, {
+      const updated = await roomService.updateMeetingSchedule(normalizedRoomId, {
         title,
         scheduledFor,
         timezone,
@@ -236,14 +258,14 @@ export function createApp() {
             targetEmail,
             actorEmail: targetEmail,
             actorName: targetName,
-            meta: { roomId, joinUrl: joinBase ? `${joinBase}/room/${roomId}` : null },
+            meta: { roomId: normalizedRoomId, joinUrl: joinBase ? `${joinBase}/room/${normalizedRoomId}` : null },
           });
         } catch (hubError) {
           logger.warn('Hub activity sync skipped on room update:', hubError?.message);
         }
       }
       return res.json(serializeMeetingSummary({
-        roomId,
+        roomId: normalizedRoomId,
         ...updated,
         title: updated.metadata?.title,
         scheduledFor: updated.metadata?.scheduledFor,
@@ -286,7 +308,7 @@ export function createApp() {
   // Utilisé par WaitingRoom.jsx pour afficher qui est déjà connecté.
   app.get('/api/rooms/:roomId/participants', async (req, res) => {
     try {
-      const { roomId } = req.params;
+      const roomId = normalizeRoomId(req.params.roomId);
       const info = await roomService.getMeetingRoomInfo(roomId);
 
       // Salle introuvable → tableau vide (pas d'erreur 404,
@@ -333,6 +355,102 @@ export function createApp() {
     } catch (err) {
       logger.error('getParticipants error:', err);
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/rooms/:roomId/waiting', async (req, res) => {
+    try {
+      const authenticated = await resolveRequestUser(req);
+      const roomId = normalizeRoomId(req.params.roomId);
+      const info = await roomService.getMeetingRoomInfo(roomId);
+
+      if (!info) {
+        return res.json({
+          exists: false,
+          queue: [],
+          count: 0,
+        });
+      }
+
+      if (!authenticated || !canManageMeeting(info, authenticated)) {
+        return res.status(403).json({ error: 'MEETING_ACCESS_DENIED' });
+      }
+
+      const queue = listWaitingGuests(roomId).map((guest) => ({
+        socketId: guest.socketId,
+        userName: guest.userName,
+        userId: guest.userId || null,
+        joinedAt: guest.joinedAt,
+      }));
+
+      return res.json({
+        exists: true,
+        queue,
+        count: queue.length,
+      });
+    } catch (err) {
+      logger.error('getWaitingGuests error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/rooms/:roomId/invitations', async (req, res) => {
+    try {
+      const authenticated = await resolveRequestUser(req);
+      if (!authenticated) {
+        return res.status(401).json({ error: 'UNAUTHENTICATED' });
+      }
+
+      const roomId = normalizeRoomId(req.params.roomId);
+      const info = await roomService.getMeetingRoomInfo(roomId);
+      if (!info) {
+        return res.status(404).json({ error: 'ROOM_NOT_FOUND' });
+      }
+      if (!canManageMeeting(info, authenticated)) {
+        return res.status(403).json({ error: 'MEETING_ACCESS_DENIED' });
+      }
+
+      const { recipients = [], message = '' } = req.body || {};
+      const normalizedRecipients = Array.isArray(recipients)
+        ? recipients.map((item) => String(item || '').trim()).filter(Boolean)
+        : [];
+
+      if (!normalizedRecipients.length) {
+        return res.status(400).json({ error: 'RECIPIENTS_REQUIRED' });
+      }
+
+      const joinBase = resolveMeetingJoinBase(req);
+      const joinUrl = joinBase ? `${joinBase}/room/${roomId}` : roomId;
+      const invitations = await sendMeetingInvitationEmails({
+        meeting: info,
+        roomId,
+        joinUrl,
+        recipients: normalizedRecipients,
+        actorName: authenticated.name || authenticated.email || 'Meetra',
+        customMessage: message,
+      });
+
+      if (authenticated.email) {
+        try {
+          await upsertHubProfile({ email: authenticated.email, name: authenticated.name || authenticated.email });
+          await appendHubActivity({
+            type: 'meeting-invitation',
+            title: 'Invitations envoyées',
+            body: `${invitations.total} invitation(s) envoyée(s) pour "${info.metadata?.title || 'Réunion Meetra'}".`,
+            targetEmail: authenticated.email,
+            actorEmail: authenticated.email,
+            actorName: authenticated.name || authenticated.email,
+            meta: { roomId, joinUrl, invitations },
+          });
+        } catch (hubError) {
+          logger.warn('Hub activity sync skipped on invitations:', hubError?.message);
+        }
+      }
+
+      return res.status(201).json({ ok: true, invitations });
+    } catch (err) {
+      logger.error('sendInvitations error:', err);
+      return res.status(500).json({ error: err.message || 'INVITATIONS_FAILED' });
     }
   });
 

@@ -23,6 +23,17 @@ import ModalFrame from '../components/common/ModalFrame.jsx';
 
 const PUBLIC_JOIN_BASE_URL = getPublicJoinBaseUrl();
 const API_URL = getApiUrl();
+const AUTH_STORAGE_KEY = 'meetra-auth-session';
+
+function readStoredAuthToken() {
+  if (typeof window === 'undefined') return '';
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(AUTH_STORAGE_KEY) || '{}');
+    return parsed.token || '';
+  } catch {
+    return '';
+  }
+}
 
 function deriveInviteBaseFromApiUrl() {
   if (!API_URL) return '';
@@ -285,18 +296,40 @@ function InviteDialog({ roomId, onDismiss }) {
   };
 
   const handleEmail = async () => {
-    if (!hasPublicLink) return;
-    const to = recipients.join(',');
-    const mailtoUrl = `mailto:${encodeURIComponent(to)}?subject=${inviteSubject}&body=${inviteBody}`;
+    if (!hasPublicLink || !recipients.length) return;
 
-    if (platform.isElectron) {
-      await platform.openExternal(mailtoUrl);
-    } else {
-      window.location.href = mailtoUrl;
+    const token = readStoredAuthToken();
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/rooms/${roomId}/invitations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          recipients,
+          message: `Lien de réunion:\n${link}`,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('INVITATION_SEND_FAILED');
+      }
+
+      setEmailed(true);
+      setTimeout(() => setEmailed(false), 2500);
+    } catch {
+      const mailtoUrl = `mailto:${encodeURIComponent(recipients.join(','))}?subject=${inviteSubject}&body=${inviteBody}`;
+      if (platform.isElectron) {
+        await platform.openExternal(mailtoUrl);
+      } else {
+        window.location.href = mailtoUrl;
+      }
+      setEmailed(true);
+      setTimeout(() => setEmailed(false), 2500);
     }
-
-    setEmailed(true);
-    setTimeout(() => setEmailed(false), 2500);
   };
 
   const handleCalendar = () => {
@@ -522,11 +555,9 @@ export default function Room({ roomId, userName, onLeave }) {
   const { screenStream, leaveRoom, screenShareError, clearScreenShareError, mediaAccessError } = useMedia();
   const { layout, toggleLayout, chatOpen, participantsOpen, transcriptOpen, settingsOpen, setChatOpen, setParticipantsOpen, setTranscriptOpen, setSettingsOpen }    = useUI();
 
-  const { joinRoom, toggleHand } = useWebRTC(roomId, userName);
-
-  const [joined,      setJoined]      = useState(false);
+  const { toggleHand } = useWebRTC(roomId, userName);
   const [kicked,      setKicked]      = useState(false);
-  const [showInvite,  setShowInvite]  = useState(true);
+  const [showInvite,  setShowInvite]  = useState(false);
   const [handRaised,  setHandRaised]  = useState(false);
   const [showHands,   setShowHands]   = useState(false);
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
@@ -558,11 +589,6 @@ export default function Room({ roomId, userName, onLeave }) {
     setTranscriptOpen(false);
     setSettingsOpen(false);
   }, [isCompact, setChatOpen, setParticipantsOpen, setTranscriptOpen, setSettingsOpen]);
-
-  useEffect(() => {
-    if (!connected || joined) return;
-    joinRoom().then(() => setJoined(true)).catch(() => {});
-  }, [connected, joined, joinRoom]);
 
   useEffect(() => {
     if (!socket) return;

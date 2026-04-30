@@ -6,8 +6,17 @@
       "role": "member",
       "presenceStatus": "available",
       "createdAt": 1777386633907,
-      "updatedAt": 1777423145538,
-      "lastSeenAt": 1777423145538
+      "updatedAt": 1777492521336,
+      "lastSeenAt": 1777492521336
+    },
+    {
+      "email": "profmaths@hotmail.ca",
+      "name": "Mourad Sehboub",
+      "role": "member",
+      "presenceStatus": "available",
+      "createdAt": 1777519490771,
+      "updatedAt": 1777523225540,
+      "lastSeenAt": 1777523225540
     }
   ],
   "messages": [],
@@ -53,6 +62,146 @@
         "joinUrl": "http://localhost:5173/room/338903a2-f2a0-493a-bc30-6e1b277c32d6"
       },
       "createdAt": 1777391659619
+    },
+    {
+      "id": "act-1777519490773-yc6618",
+      "type": "meeting",
+      "title": "Réunion créée",
+      "body": "\"Réunion instantanée · Mourad Sehboub\" est prête à démarrer.",
+      "targetEmail": "profmaths@hotmail.ca",
+      "actorEmail": "profmaths@hotmail.ca",
+      "actorName": "Mourad Sehboub",
+      "meta": {
+        "roomId": "73aba036-72dd-40b8-bd9e-d453e910f537",
+        "joinUrl": "http://localhost:5174/room/73aba036-72dd-40b8-bd9e-d453e910f537"
+      },
+      "createdAt": 1777519490773
+    },
+    {
+      "id": "act-1777519950548-cf2efv",
+      "type": "meeting",
+      "title": "Réunion créée",
+      "body": "\"Réunion instantanée · Mourad Sehboub\" est prête à démarrer.",
+      "targetEmail": "profmaths@hotmail.ca",
+      "actorEmail": "profmaths@hotmail.ca",
+      "actorName": "Mourad Sehboub",
+      "meta": {
+        "roomId": "1cc122bc-9c5c-4268-9478-21e4eca54ddc",
+        "joinUrl": "http://localhost:5174/room/1cc122bc-9c5c-4268-9478-21e4eca54ddc"
+      },
+      "createdAt": 1777519950548
+    },
+    {
+      "id": "act-1777520385713-24rkch",
+      "type": "meeting",
+      "title": "Réunion créée",
+      "body": "\"Réunion instantanée · Mourad Sehboub\" est prête à démarrer.",
+      "targetEmail": "profmaths@hotmail.ca",
+      "actorEmail": "profmaths@hotmail.ca",
+      "actorName": "Mourad Sehboub",
+      "meta": {
+        "roomId": "c266f1d2-0d5b-4d85-80f9-a8fa26747fb7",
+        "joinUrl": "http://localhost:5174/room/c266f1d2-0d5b-4d85-80f9-a8fa26747fb7"
+      },
+      "createdAt": 1777520385713
+    },
+    {
+      "id": "act-1777520779302-9w3yy5",
+      "type": "meeting",
+      "title": "Réunion créée",
+      "body": "\"Réunion instantanée · Mourad Sehboub\" est prête à démarrer.",
+      "targetEmail": "profmaths@hotmail.ca",
+      "actorEmail": "profmaths@hotmail.ca",
+      "actorName": "Mourad Sehboub",
+      "meta": {
+        "roomId": "eeccbd0e-2056-496b-9173-e8768566e66c",
+        "joinUrl": "http://localhost:5174/room/eeccbd0e-2056-496b-9173-e8768566e66c"
+      },
+      "createdAt": 1777520779302
+    },
+    {
+      "id": "act-1777521073425-4rtkip",
+      "type": "meeting",
+      "title": "Réunion créée",
+      "body": "\"Réunion instantanée · Mourad Sehboub\" est prête à démarrer.",
+      "targetEmail": "profmaths@hotmail.ca",
+      "actorEmail": "profmaths@hotmail.ca",
+      "actorName": "Mourad Sehboub",
+      "meta": {
+        "roomId": "4bb74327-4e08-4d10-bb01-7a4b30e3fc45",
+        "joinUrl": "http://localhost:5174/room/4bb74327-4e08-4d10-bb01-7a4b30e3fc45"
+      },
+      "createdAt": 1777521073425
+    },
+    {
+      "id": "act-1777521298807-mnode9",
+      "type": "meeting",
+      "title": "Réunion créée",
+      "body": "\"Réunion instantanée · Mourad Sehboub\" est prête à démarrer.",
+      "targetEmail": "profmaths@hotmail.ca",
+      "actorEmail": "profmaths@hotmail.ca",
+      "actorName": "Mourad Sehboub",
+      "meta": {
+        "roomId": "f8d05d3e-52e9-403d-b11d-c5baab7945a0",
+        "joinUrl": "http://localhost:5174/room/f8d05d3e-52e9-403d-b11d-c5baab7945a0"
+      },
+      "createdAt": 1777521298807
+    },
+    {
+      "id": "act-1777521631781-3le9ey",
+      "type": "meeting",
+      "title": "Réunion créée",
+      "body": "\"Réunion instantanée · Mourad Sehboub\" est prête à démarrer.",
+      "targetEmail": "profmaths@hotmail.ca",
+      "actorEmail": "profmaths@hotmail.ca",
+      "actorName": "Mourad Sehboub",
+      "meta": {
+        "roomId": "b95615b2-329f-4496-bbbd-86863a47910a",
+        "joinUrl": "http://localhost:5174/room/b95615b2-329f-4496-bbbd-86863a47910a"
+      },
+      "createdAt": 1777521631781
+    },
+    {
+      "id": "act-1777522101622-pbd7w4",
+      "type": "meeting",
+      "title": "Réunion créée",
+      "body": "\"Réunion instantanée · Mourad Sehboub\" est prête à démarrer.",
+      "targetEmail": "profmaths@hotmail.ca",
+      "actorEmail": "profmaths@hotmail.ca",
+      "actorName": "Mourad Sehboub",
+      "meta": {
+        "roomId": "711ba9c4-ad44-4d22-9ad6-eb1aa8595581",
+        "joinUrl": "http://localhost:5174/room/711ba9c4-ad44-4d22-9ad6-eb1aa8595581"
+      },
+      "createdAt": 1777522101622
+    },
+    {
+      "id": "act-1777522740286-t5sks6",
+      "type": "meeting",
+      "title": "Réunion créée",
+      "body": "\"Réunion instantanée · Mourad Sehboub\" est prête à démarrer.",
+      "targetEmail": "profmaths@hotmail.ca",
+      "actorEmail": "profmaths@hotmail.ca",
+      "actorName": "Mourad Sehboub",
+      "meta": {
+        "roomId": "f92739a5-ca43-4e41-a337-400b30668c7a",
+        "joinUrl": "http://localhost:5174/room/f92739a5-ca43-4e41-a337-400b30668c7a"
+      },
+      "createdAt": 1777522740286
+    },
+    {
+      "id": "act-1777523225543-2487b5",
+      "type": "meeting",
+      "title": "Réunion créée",
+      "body": "\"Réunion instantanée · Mourad Sehboub\" est prête à démarrer.",
+      "targetEmail": "profmaths@hotmail.ca",
+      "actorEmail": "profmaths@hotmail.ca",
+      "actorName": "Mourad Sehboub",
+      "meta": {
+        "roomId": "fccfac11-ce2d-4bf9-a718-3f4cb9ab9bf0",
+        "joinUrl": "http://localhost:5174/room/fccfac11-ce2d-4bf9-a718-3f4cb9ab9bf0"
+      },
+      "createdAt": 1777523225543
     }
   ]
 }

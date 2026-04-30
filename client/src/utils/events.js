@@ -1,113 +1,94 @@
+// client/src/utils/events.js
+// ─── Exports individuels (utilisés par WaitingRoom, WaitingRoomPanel, Lobby) ──
+export const JOIN_ROOM            = 'join-room';
+export const LEAVE_ROOM           = 'leave-room';
+export const ROOM_JOINED          = 'room-joined';
+export const ROOM_PARTICIPANTS    = 'room-participants';
+export const USER_JOINED          = 'user-joined';
+export const USER_LEFT            = 'user-left';
+
+export const OFFER                = 'offer';
+export const ANSWER               = 'answer';
+export const ICE_CANDIDATE        = 'ice-candidate';
+
+export const CHAT_MESSAGE         = 'chat-message';
+export const REACTION             = 'reaction';
+export const RAISE_HAND           = 'raise-hand';
+
+export const MUTE_ALL             = 'mute-all';
+export const KICK_USER            = 'kick-user';
+export const LOCK_ROOM            = 'lock-room';
+export const ASSIGN_HOST          = 'assign-host';
+
+export const SCREEN_SHARE_START   = 'screen-share-start';
+export const SCREEN_SHARE_STOP    = 'screen-share-stop';
+export const RECORDING_START      = 'recording-start';
+export const RECORDING_STOP       = 'recording-stop';
+
+export const BREAKOUT_CREATE      = 'breakout-create';
+export const BREAKOUT_JOIN        = 'breakout-join';
+export const BREAKOUT_END         = 'breakout-end';
+
+// ─── Salle d'attente ──────────────────────────────────────────────────────────
+export const ADMIT_GUEST          = 'admit-guest';
+export const DENY_GUEST           = 'deny-guest';
+export const WAITING_ROOM_GUEST   = 'waiting-room-guest';
+export const GUEST_ADMITTED       = 'guest-admitted';
+export const GUEST_DENIED         = 'guest-denied';
+export const WAITING_ROOM_STATUS  = 'waiting-room-status';
+
+// ─── Export groupé EVENTS (requis par MediaContext, RoomContext, etc.) ─────────
+// Permet : import { EVENTS } from '../utils/events.js'
+// Utilisé comme : EVENTS.USER_JOINED, EVENTS.OFFER, EVENTS.SCREEN_START, etc.
 export const EVENTS = {
-  // Room lifecycle
-  JOIN_ROOM:         "join-room",
-  USER_JOINED:       "user-joined",
-  USER_LEFT:         "user-left",
-  ROOM_PARTICIPANTS: "room-participants",
+  // Salle
+  JOIN_ROOM,
+  LEAVE_ROOM,
+  ROOM_JOINED,
+  ROOM_PARTICIPANTS,
+  USER_JOINED,
+  USER_LEFT,
 
-  // WebRTC signaling
-  OFFER:   "offer",
-  ANSWER:  "answer",
-  ICE:     "ice-candidate",
+  // WebRTC
+  OFFER,
+  ANSWER,
+  ICE:           'ice',                // alias court utilisé dans MediaContext
+  ICE_CANDIDATE,
 
-  // Chat
-  CHAT: "chat-message",
+  // Chat & interactions
+  CHAT_MESSAGE,
+  REACTION,
+  RAISE_HAND,
 
-  // Screen share
-  SCREEN_START: "screen-share-start",
-  SCREEN_STOP:  "screen-share-stop",
+  // Contrôles hôte
+  MUTE_ALL,
+  KICK_USER,
+  LOCK_ROOM,
+  ASSIGN_HOST,
 
-  // Host controls
-  MUTE_ALL:    "mute-all",
-  MUTE_USER:   "mute-user",
-  KICK_USER:   "kick-user",
-  LOCK_ROOM:   "lock-room",
-  ASSIGN_HOST: "assign-host",
-  ASSIGN_COHOST:"assign-cohost",
-  REMOVE_COHOST:"remove-cohost",
-  HOST_CHANGED:"host-changed",
-  COHOSTS_UPDATED:"cohosts-updated",
+  // Partage d'écran  (noms courts utilisés dans MediaContext)
+  SCREEN_START:  'screen-share-start',
+  SCREEN_STOP:   'screen-share-stop',
+  SCREEN_SHARE_START,
+  SCREEN_SHARE_STOP,
 
-  // Participant status
-  TOGGLE_VIDEO:   "toggle-video",
-  TOGGLE_AUDIO:   "toggle-audio",
-  VIDEO_TOGGLED:  "user-video-toggled",
-  AUDIO_TOGGLED:  "user-audio-toggled",
-  MUTED_BY_HOST:  "muted-by-host",
-  KICKED:         "kicked",
-  ROOM_LOCKED:    "room-locked",
+  // Enregistrement
+  RECORDING_START,
+  RECORDING_STOP,
 
-  // Raise hand
-  RAISE_HAND:  "raise-hand",
-  LOWER_HAND:  "lower-hand",
-  HAND_RAISED: "hand-raised",
-  HAND_LOWERED:"hand-lowered",
+  // Niveau audio  (utilisé dans MediaContext : EVENTS.AUDIO_LEVEL)
+  AUDIO_LEVEL:   'audio-level',
 
-  // Reactions
-  REACTION:           "reaction",
-  REACTION_BROADCAST: "reaction-broadcast",
+  // Breakout
+  BREAKOUT_CREATE,
+  BREAKOUT_JOIN,
+  BREAKOUT_END,
 
-  // Audio levels
-  AUDIO_LEVEL:   "audio-level",
-  ACTIVE_SPEAKER:"active-speaker",
-
-  // Recording
-  RECORDING_START: "recording-start",
-  RECORDING_STOP:  "recording-stop",
-
-  // Breakout rooms
-  BREAKOUT_CREATE:   "breakout-create",
-  BREAKOUT_JOIN:     "breakout-join",
-  BREAKOUT_LEAVE:    "breakout-leave",
-  BREAKOUT_END_ALL:  "breakout-end-all",
-  BREAKOUT_UPDATED:  "breakout-updated",
-  BREAKOUT_ASSIGNED: "breakout-assigned",
-
-  // Whiteboard
-  WHITEBOARD_DRAW:  "whiteboard-draw",
-  WHITEBOARD_CLEAR: "whiteboard-clear",
-
-  // ── SALLE D'ATTENTE (nouveaux) ─────────────────────────────
-  WAITING_JOIN:     "waiting-join",      // émettre pour entrer en salle d'attente
-  WAITING_LEAVE:    "waiting-leave",     // émettre pour quitter la salle d'attente
-  WAITING_UPDATE:   "waiting-update",    // écouter : liste des gens en attente
-  WAITING_ADMITTED: "waiting-admitted",  // écouter : l'hôte nous a admis → entrer en salle
-  WAITING_REQUIRED: "waiting-required",  // écouter : entrée directe refusée, attendre l'admission
-  WAITING_REJECTED: "waiting-rejected",  // écouter : l'hôte nous a refusé
-  WAITING_ADMIT:    "waiting-admit",     // hôte émet : admettre un user
-  WAITING_REJECT:   "waiting-reject",    // hôte émet : refuser un user
-  WAITING_ADMIT_ALL:"waiting-admit-all", // hôte émet : admettre tout le monde
-
-
-
-  // ─── Ajouter ces constantes dans les deux fichiers events.js ─
-// client/src/utils/events.js  ET  server/src/constants/events.js
-
-// Transfert de fichiers dans le chat
-  FILE_TRANSFER_START:    "file-transfer-start",
-  FILE_TRANSFER_READY:    "file-transfer-ready",
-  FILE_TRANSFER_CHUNK:    "file-transfer-chunk",
-  FILE_TRANSFER_PROGRESS: "file-transfer-progress",
-  FILE_TRANSFER_ERROR:    "file-transfer-error",
-  FILE_TRANSFER_CANCEL:   "file-transfer-cancel",
-
-// Réactions sur messages
-  CHAT_REACTION:          "chat-reaction",
-
-  // Transcription / captions
-  TRANSCRIPTION_START:    "transcription-start",
-  TRANSCRIPTION_STOP:     "transcription-stop",
-  TRANSCRIPTION_SEGMENT:  "transcription-segment",
-  TRANSCRIPTION_STATE:    "transcription-state",
-  TRANSCRIPTION_ERROR:    "transcription-error",
-  TRANSCRIPTION_SUMMARY_READY: "transcription-summary-ready",
-  TRANSCRIPTION_AUDIO_CHUNK: "transcription-audio-chunk",
-
-  // Hub / direct messaging
-  HUB_ACCESS: "hub-access",
-  HUB_MESSAGE_SEND: "hub-message-send",
-  HUB_MESSAGE_RECEIVED: "hub-message-received",
-  HUB_ACTIVITY_RECEIVED: "hub-activity-received",
-  HUB_PRESENCE_UPDATED: "hub-presence-updated",
-  HUB_STATUS_SET: "hub-status-set",
+  // Salle d'attente
+  ADMIT_GUEST,
+  DENY_GUEST,
+  WAITING_ROOM_GUEST,
+  GUEST_ADMITTED,
+  GUEST_DENIED,
+  WAITING_ROOM_STATUS,
 };

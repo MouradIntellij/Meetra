@@ -5,29 +5,18 @@ import { UIProvider }     from './context/UIContext.jsx';
 import { MediaProvider }  from './context/MediaContext.jsx';
 import { TranscriptionProvider } from './context/TranscriptionContext.jsx';
 import { platform }       from './services/platform/index.js';
-import { getApiUrl }      from './utils/appConfig.js';
 
 import Home        from './pages/Home.jsx';
 import Lobby       from './pages/Lobby.jsx';
 import WaitingRoom from './pages/WaitingRoom.jsx';
 import Room        from './pages/Room.jsx';
-
-const AUTH_STORAGE_KEY = 'meetra-auth-session';
+import WaitingRoomPanel from './components/layout/WaitingRoomPanel.jsx';
 
 function getRouteRoomId() {
   const match = window.location.pathname.match(/\/room\/([^/?#]+)/);
   return match ? match[1] : null;
 }
 
-function readStoredAuthToken() {
-  if (typeof window === 'undefined') return '';
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(AUTH_STORAGE_KEY) || '{}');
-    return parsed.token || '';
-  } catch {
-    return '';
-  }
-}
 
 function ConnectionBanner() {
   const { connected, connectionError, apiUrl } = useSocket();
@@ -68,6 +57,7 @@ function ConnectionBanner() {
 }
 
 export default function App() {
+  const { socket } = useSocket();
   const urlRoomId = getRouteRoomId();
 
   const [screen,   setScreen]   = useState(urlRoomId ? 'home-join' : 'home');
@@ -75,6 +65,12 @@ export default function App() {
   const [userName, setUserName] = useState('');
   const [isHost,   setIsHost]   = useState(false);
   const [requestedHostJoin, setRequestedHostJoin] = useState(false);
+  const [roomSession, setRoomSession] = useState({
+    hostSocketId: '',
+    participants: [],
+    locked: false,
+    coHostIds: [],
+  });
   const existingStream = useRef(null);
 
   useEffect(() => {
@@ -82,31 +78,36 @@ export default function App() {
   }, []);
 
   const handleJoin = (rid, uname, options = {}) => {
+    const wantsHostAccess = Boolean(options.asHost);
     setRoomId(rid);
     setUserName(uname);
-    setRequestedHostJoin(Boolean(options.asHost));
+    setRequestedHostJoin(wantsHostAccess);
+    setIsHost(wantsHostAccess);
     setScreen('lobby');
     window.history.replaceState(null, '', `/room/${rid}`);
   };
 
-  const handleEnterWaiting = async (stream) => {
+  const handleEnterWaiting = (stream, admitted = false, payload = null) => {
     existingStream.current = stream || null;
 
-    try {
-      const API_URL = getApiUrl();
-      const token = readStoredAuthToken();
-      const headers = token ? { authorization: `Bearer ${token}` } : {};
-      const res  = await fetch(`${API_URL}/api/rooms/${roomId}`, { headers });
-      const data = await res.json();
-
-      const willBeHost = Boolean(requestedHostJoin) || Boolean(data.canJoinAsHost);
-
-      setIsHost(willBeHost);
-      setScreen(willBeHost ? 'room' : 'waiting');
-    } catch {
-      setIsHost(Boolean(requestedHostJoin));
-      setScreen(requestedHostJoin ? 'room' : 'waiting');
+    if (!admitted) {
+      setIsHost(false);
+      setScreen('waiting');
+      return;
     }
+
+    const nextParticipants = payload?.participants || [];
+    const nextHostSocketId = payload?.hostSocketId || '';
+    const nextIsHost = Boolean(payload?.isHost) || Boolean(requestedHostJoin);
+
+    setRoomSession({
+      hostSocketId: nextHostSocketId,
+      participants: nextParticipants,
+      locked: Boolean(payload?.locked),
+      coHostIds: payload?.coHostIds || [],
+    });
+    setIsHost(nextIsHost);
+    setScreen('room');
   };
 
   const handleEnterRoom = (stream) => {
@@ -120,6 +121,12 @@ export default function App() {
     setUserName('');
     setIsHost(false);
     setRequestedHostJoin(false);
+    setRoomSession({
+      hostSocketId: '',
+      participants: [],
+      locked: false,
+      coHostIds: [],
+    });
     setScreen('home');
     window.history.replaceState(null, '', '/');
   };
@@ -145,6 +152,7 @@ export default function App() {
           <Lobby
               roomId={roomId}
               userName={userName}
+              isHost={requestedHostJoin || isHost}
               onJoin={handleEnterWaiting}
               onBack={() => {
                 setScreen('home');
@@ -163,9 +171,8 @@ export default function App() {
           <WaitingRoom
               roomId={roomId}
               userName={userName}
-              isHost={isHost}
-              onJoin={handleEnterRoom}
-              onBack={() => setScreen('lobby')}
+              onAdmitted={(payload) => handleEnterWaiting(existingStream.current, true, payload)}
+              onDenied={handleLeave}
           />
         </>
     );
@@ -175,10 +182,17 @@ export default function App() {
   return (
       <>
         <ConnectionBanner />
-        <RoomProvider initialRoomId={roomId}>
+        <RoomProvider
+            initialRoomId={roomId}
+            initialHostId={roomSession.hostSocketId}
+            initialParticipants={roomSession.participants.filter((participant) => participant.socketId !== socket?.id)}
+            initialLocked={roomSession.locked}
+            initialCoHostIds={roomSession.coHostIds}
+        >
           <UIProvider>
             <MediaProvider initialStream={existingStream.current}>
               <TranscriptionProvider roomId={roomId} userName={userName}>
+                {(requestedHostJoin || isHost) && <WaitingRoomPanel roomId={roomId} />}
                 <Room
                     roomId={roomId}
                     userName={userName}

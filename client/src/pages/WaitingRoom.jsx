@@ -1,906 +1,239 @@
-/**
- * WaitingRoom.jsx — Salle d'attente Pro
- *
- * Flux complet :
- *   1. Montage  → ouvre la cam locale (preview)
- *   2. Montage  → socket.emit(WAITING_JOIN) pour s'annoncer au serveur
- *   3. Serveur  → WAITING_UPDATE  : liste des gens déjà dans la salle
- *   4. Hôte     → WAITING_ADMITTED : entre dans Room  (socket déclenche onJoin)
- *   5. Hôte     → WAITING_REJECTED : affiche le refus
- *   6. Démontage → WAITING_LEAVE + stop tracks
- */
+// client/src/components/layout/WaitingRoom.jsx
+// Écran affiché au GUEST pendant qu'il attend l'approbation de l'hôte.
+// Props : roomId, userName, onAdmitted(stream), onDenied()
+// Ce composant écoute les événements GUEST_ADMITTED et GUEST_DENIED via le socket.
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { useSocket } from '../context/SocketContext.jsx';
-import { EVENTS }   from '../utils/events.js';
+import { useState, useEffect } from 'react';
+import { useSocket } from '../context/SocketContext.jsx'; // src/pages/ → ../
+import {
+  GUEST_ADMITTED,
+  GUEST_DENIED,
+  ROOM_JOINED,
+} from '../utils/events.js'; // src/pages/ → ../
 
-const AUDIO_DEVICE_STORAGE_KEY = 'meetra-preferred-audio-input';
-const VIDEO_DEVICE_STORAGE_KEY = 'meetra-preferred-video-input';
-const AUDIO_ENABLED_STORAGE_KEY = 'meetra-preferred-audio-enabled';
-const VIDEO_ENABLED_STORAGE_KEY = 'meetra-preferred-video-enabled';
-
-function readStoredValue(key, fallback = '') {
-  if (typeof window === 'undefined') return fallback;
-  return window.localStorage.getItem(key) ?? fallback;
-}
-
-function readStoredBool(key, fallback = true) {
-  if (typeof window === 'undefined') return fallback;
-  const value = window.localStorage.getItem(key);
-  if (value === null) return fallback;
-  return value !== 'false';
-}
-
-function persistBool(key, value) {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(key, String(value));
-}
-
-// ─── Icônes ───────────────────────────────────────────────────
-const Mic = ({ on, size = 18 }) => on
-  ? <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-  : <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>;
-
-const Cam = ({ on, size = 18 }) => on
-  ? <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-  : <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34"/><path d="M23 7l-7 5 7 5V7z"/><line x1="1" y1="1" x2="23" y2="23"/></svg>;
-
-const Crown = ({ size = 10 }) =>
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M2 20h20v2H2zM4 17l4-8 4 4 4-8 4 8H4z"/></svg>;
-
-const Back = ({ size = 15 }) =>
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>;
-
-const Check = ({ size = 15 }) =>
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
-
-const X = ({ size = 15 }) =>
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
-
-// ─── Palette avatar déterministe ──────────────────────────────
-const PALETTES = [
-  ['#1a3a5c','#60a5fa'], ['#1a2e1a','#4ade80'],
-  ['#3a1a2e','#f472b6'], ['#2e2a1a','#fbbf24'],
-  ['#1a2a3a','#818cf8'], ['#3a1a1a','#f87171'],
-];
-function avatarStyle(name) {
-  const [bg, color] = PALETTES[(name?.charCodeAt(0) ?? 0) % PALETTES.length];
-  return { bg, color };
-}
-
-// ─── Avatar ───────────────────────────────────────────────────
-function Av({ name, size = 36 }) {
-  const { bg, color } = avatarStyle(name || '');
-  return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      background: bg, color,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: Math.round(size * 0.38), fontWeight: 700,
-      fontFamily: "'DM Mono', monospace",
-    }}>
-      {name?.[0]?.toUpperCase() ?? '?'}
-    </div>
-  );
-}
-
-// ─── Ligne participant (salle principale) ─────────────────────
-function PeerRow({ p, isHost, last }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '8px 0',
-      borderBottom: last ? 'none' : '1px solid rgba(255,255,255,0.05)',
-    }}>
-      <div style={{ position: 'relative' }}>
-        <Av name={p.name} size={32} />
-        {isHost && (
-          <div style={{
-            position: 'absolute', bottom: -2, right: -2,
-            width: 13, height: 13, borderRadius: '50%',
-            background: '#f59e0b',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: '1.5px solid #0d1117',
-          }}>
-            <Crown size={7} />
-          </div>
-        )}
-      </div>
-
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontSize: 13, fontWeight: 600, color: '#e2e8f0',
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>
-          {p.name}
-        </div>
-        {isHost && <div style={{ fontSize: 10, color: '#f59e0b', marginTop: 1 }}>Hôte</div>}
-      </div>
-
-      <div style={{ display: 'flex', gap: 4 }}>
-        {[
-          { on: p.audioEnabled, Icon: Mic  },
-          { on: p.videoEnabled, Icon: Cam  },
-        ].map(({ on, Icon }, i) => (
-          <div key={i} style={{
-            width: 24, height: 24, borderRadius: 6,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: on ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)',
-            color:      on ? '#4ade80'                : '#f87171',
-          }}>
-            <Icon on={on} size={12} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Ligne personne en attente (panneau hôte) ─────────────────
-function WaitingRow({ person, onAdmit, onReject }) {
-  const [hoverAdmit,  setHoverAdmit]  = useState(false);
-  const [hoverReject, setHoverReject] = useState(false);
-
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '8px 12px',
-      background: 'rgba(59,130,246,0.07)',
-      border: '1px solid rgba(59,130,246,0.2)',
-      borderRadius: 10, marginBottom: 6,
-      animation: 'slideIn 0.25s ease-out',
-    }}>
-      <Av name={person.userName} size={30} />
-
-      <span style={{
-        flex: 1, fontSize: 13, fontWeight: 600, color: '#e2e8f0',
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-      }}>
-        {person.userName}
-      </span>
-
-      {/* Refuser */}
-      <button
-        onClick={() => onReject(person.socketId)}
-        onMouseEnter={() => setHoverReject(true)}
-        onMouseLeave={() => setHoverReject(false)}
-        style={{
-          width: 28, height: 28, borderRadius: 8, border: 'none', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: hoverReject ? 'rgba(239,68,68,0.25)' : 'rgba(239,68,68,0.12)',
-          color: '#f87171', transition: 'background 0.15s',
-        }}
-        title="Refuser"
-      >
-        <X size={13} />
-      </button>
-
-      {/* Admettre */}
-      <button
-        onClick={() => onAdmit(person.socketId)}
-        onMouseEnter={() => setHoverAdmit(true)}
-        onMouseLeave={() => setHoverAdmit(false)}
-        style={{
-          width: 28, height: 28, borderRadius: 8, border: 'none', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: hoverAdmit ? 'rgba(74,222,128,0.3)' : 'rgba(74,222,128,0.15)',
-          color: '#4ade80', transition: 'background 0.15s',
-        }}
-        title="Admettre"
-      >
-        <Check size={13} />
-      </button>
-    </div>
-  );
-}
-
-// ─── Bouton toggle Mic / Cam ──────────────────────────────────
-function ToggleBtn({ on, onToggle, Icon, label }) {
-  const [hover, setHover] = useState(false);
-  return (
-    <button
-      onClick={onToggle}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        flex: 1, padding: '12px 8px', borderRadius: 12,
-        border: `1px solid ${on
-          ? (hover ? 'rgba(74,222,128,0.45)'  : 'rgba(74,222,128,0.2)')
-          : (hover ? 'rgba(248,113,113,0.45)' : 'rgba(248,113,113,0.2)')}`,
-        background: on
-          ? (hover ? 'rgba(74,222,128,0.18)'  : 'rgba(74,222,128,0.08)')
-          : (hover ? 'rgba(248,113,113,0.18)' : 'rgba(248,113,113,0.08)'),
-        color:  on ? '#4ade80' : '#f87171',
-        cursor: 'pointer', fontFamily: 'inherit',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', gap: 5,
-        transition: 'all 0.15s',
-        transform: hover ? 'translateY(-1px)' : 'none',
-      }}
-    >
-      <Icon on={on} size={20} />
-      <span style={{ fontSize: 11, fontWeight: 600 }}>
-        {on ? label : label + ' OFF'}
-      </span>
-    </button>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
-//  COMPOSANT PRINCIPAL
-// ─────────────────────────────────────────────────────────────
-export default function WaitingRoom({ roomId, userName, isHost = false, onJoin, onBack }) {
+export default function WaitingRoom({ roomId, userName, onAdmitted, onDenied }) {
   const { socket } = useSocket();
+  const [dots, setDots] = useState('');
+  const [denied, setDenied] = useState(false);
+  const [deniedReason, setDeniedReason] = useState('');
+  const [admissionPayload, setAdmissionPayload] = useState(null);
 
-  // Caméra locale
-  const [stream,       setStream]       = useState(null);
-  const [audioOn,      setAudioOn]      = useState(() => readStoredBool(AUDIO_ENABLED_STORAGE_KEY, true));
-  const [videoOn,      setVideoOn]      = useState(() => readStoredBool(VIDEO_ENABLED_STORAGE_KEY, true));
-  const [mediaError,   setMediaError]   = useState('');
-
-  // Données salle
-  const [participants,  setParticipants]  = useState([]);   // dans la salle principale
-  const [waitingList,   setWaitingList]   = useState([]);   // en file d'attente (hôte seulement)
-  const [hostId,        setHostId]        = useState(null);
-
-  // UI
-  const [joining,      setJoining]      = useState(false);
-  const [rejected,     setRejected]     = useState('');
-  const [admitted,     setAdmitted]     = useState(false);
-  const [waitSecs,     setWaitSecs]     = useState(0);
-  const [requestSent,  setRequestSent]  = useState(false);
-
-  const videoRef  = useRef(null);
-  const streamRef = useRef(null);
-  const timerRef  = useRef(null);
-  const preserveStreamOnUnmountRef = useRef(false);
-
-  // ── Ouvrir la caméra locale ───────────────────────────────
+  // Animation "..." sur le texte d'attente
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const s = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user',
-            ...(readStoredValue(VIDEO_DEVICE_STORAGE_KEY) ? { deviceId: { exact: readStoredValue(VIDEO_DEVICE_STORAGE_KEY) } } : {}),
-          },
-          audio: {
-            echoCancellation: true, noiseSuppression: true, autoGainControl: true,
-            ...(readStoredValue(AUDIO_DEVICE_STORAGE_KEY) ? { deviceId: { exact: readStoredValue(AUDIO_DEVICE_STORAGE_KEY) } } : {}),
-          },
-        });
-        if (!alive) { s.getTracks().forEach(t => t.stop()); return; }
-        const audioTrack = s.getAudioTracks()[0];
-        const videoTrack = s.getVideoTracks()[0];
-        if (audioTrack) {
-          audioTrack.enabled = readStoredBool(AUDIO_ENABLED_STORAGE_KEY, true);
-        }
-        if (videoTrack) {
-          videoTrack.enabled = readStoredBool(VIDEO_ENABLED_STORAGE_KEY, true);
-        }
-        streamRef.current = s;
-        setStream(s);
-        setAudioOn(Boolean(audioTrack?.enabled ?? true));
-        setVideoOn(Boolean(videoTrack?.enabled ?? true));
-      } catch {
-        setAudioOn(false);
-        setVideoOn(false);
-        setMediaError("Caméra/micro inaccessibles. Vous pouvez quand même continuer sans vidéo.");
-      }
-    })();
-    return () => {
-      alive = false;
-      if (!preserveStreamOnUnmountRef.current) {
-        streamRef.current?.getTracks().forEach(t => t.stop());
-      }
-    };
+    const t = setInterval(() => setDots((d) => (d.length >= 3 ? '' : d + '.')), 600);
+    return () => clearInterval(t);
   }, []);
 
-  // Attacher le stream au <video>
-  useEffect(() => {
-    const el = videoRef.current;
-    if (el && stream) { el.srcObject = stream; el.play().catch(() => {}); }
-  }, [stream]);
-
-  // Timer d'attente
-  useEffect(() => {
-    timerRef.current = setInterval(() => setWaitSecs(s => s + 1), 1000);
-    return () => clearInterval(timerRef.current);
-  }, []);
-
-  // ── Socket : annoncer présence + écouter événements ──────
+  // Écouter les événements du serveur
   useEffect(() => {
     if (!socket) return;
 
-    // S'annoncer en salle d'attente
-    socket.emit(EVENTS.WAITING_JOIN, { roomId, userName });
-    setRequestSent(true);
-
-    // Mise à jour liste (participants dans salle + file d'attente)
-    const onWaitingUpdate = ({ participants: peers, waitingList: wl, hostId: hid }) => {
-      if (peers !== undefined) setParticipants(peers);
-      if (wl    !== undefined) setWaitingList(wl);
-      if (hid   !== undefined) setHostId(hid);
+    const handleRoomJoined = (payload) => {
+      if (payload?.roomId !== roomId) return;
+      setAdmissionPayload(payload);
     };
 
-    // Quelqu'un entre dans la salle principale → maj liste
-    const onUserJoined = (user) => {
-      const name = user.name || user.userName || 'Participant';
-      setParticipants(prev => {
-        if (prev.find(p => p.socketId === user.socketId)) return prev;
-        return [...prev, {
-          socketId: user.socketId, name,
-          audioEnabled: true, videoEnabled: true,
-        }];
-      });
-      if (user.hostId) setHostId(user.hostId);
+    const handleAdmitted = () => {
+      onAdmitted(admissionPayload);
     };
 
-    // Quelqu'un quitte la salle principale
-    const onUserLeft = ({ socketId }) =>
-      setParticipants(prev => prev.filter(p => p.socketId !== socketId));
-
-    // Changement d'hôte
-    const onHostChanged = ({ newHostId }) => setHostId(newHostId);
-
-    // 🟢 L'hôte nous admet → entrer dans Room
-    const onAdmitted = ({ roomId: rid }) => {
-      clearInterval(timerRef.current);
-      preserveStreamOnUnmountRef.current = true;
-      setAdmitted(true);
-      setTimeout(() => onJoin(streamRef.current), 400); // légère pause pour l'animation
+    const handleDenied = ({ reason }) => {
+      setDenied(true);
+      setDeniedReason(reason === 'room_locked' ? 'La salle est verrouillée.' : "L'hôte a refusé votre demande.");
     };
 
-    // 🔴 L'hôte nous refuse
-    const onRejected = ({ message }) => {
-      setRejected(message || "L'hôte a refusé votre entrée.");
-      setJoining(false);
-    };
-
-    socket.on(EVENTS.WAITING_UPDATE,   onWaitingUpdate);
-    socket.on(EVENTS.USER_JOINED,      onUserJoined);
-    socket.on(EVENTS.USER_LEFT,        onUserLeft);
-    socket.on(EVENTS.HOST_CHANGED,     onHostChanged);
-    socket.on(EVENTS.WAITING_ADMITTED, onAdmitted);
-    socket.on(EVENTS.WAITING_REJECTED, onRejected);
+    socket.on(ROOM_JOINED, handleRoomJoined);
+    socket.on(GUEST_ADMITTED, handleAdmitted);
+    socket.on(GUEST_DENIED,   handleDenied);
 
     return () => {
-      socket.off(EVENTS.WAITING_UPDATE,   onWaitingUpdate);
-      socket.off(EVENTS.USER_JOINED,      onUserJoined);
-      socket.off(EVENTS.USER_LEFT,        onUserLeft);
-      socket.off(EVENTS.HOST_CHANGED,     onHostChanged);
-      socket.off(EVENTS.WAITING_ADMITTED, onAdmitted);
-      socket.off(EVENTS.WAITING_REJECTED, onRejected);
-      // Quitter proprement la file d'attente
-      socket.emit(EVENTS.WAITING_LEAVE, { roomId });
+      socket.off(ROOM_JOINED, handleRoomJoined);
+      socket.off(GUEST_ADMITTED, handleAdmitted);
+      socket.off(GUEST_DENIED,   handleDenied);
     };
-  }, [socket, roomId, userName, onJoin]);
+  }, [socket, roomId, onAdmitted, onDenied, admissionPayload]);
 
-  // ── Toggles micro / cam ───────────────────────────────────
-  const toggleAudio = useCallback(() => {
-    const t = streamRef.current?.getAudioTracks()[0];
-    const nextEnabled = t ? !t.enabled : !audioOn;
-    if (t) t.enabled = nextEnabled;
-    setAudioOn(nextEnabled);
-    persistBool(AUDIO_ENABLED_STORAGE_KEY, nextEnabled);
-  }, [audioOn]);
-
-  const toggleVideo = useCallback(() => {
-    const t = streamRef.current?.getVideoTracks()[0];
-    const nextEnabled = t ? !t.enabled : !videoOn;
-    if (t) t.enabled = nextEnabled;
-    setVideoOn(nextEnabled);
-    persistBool(VIDEO_ENABLED_STORAGE_KEY, nextEnabled);
-  }, [videoOn]);
-
-  // ── Hôte : admettre / refuser ─────────────────────────────
-  const admit = useCallback((targetSocketId) => {
-    socket?.emit(EVENTS.WAITING_ADMIT, { roomId, targetSocketId });
-  }, [socket, roomId]);
-
-  const reject = useCallback((targetSocketId) => {
-    socket?.emit(EVENTS.WAITING_REJECT, { roomId, targetSocketId });
-  }, [socket, roomId]);
-
-  const admitAll = useCallback(() => {
-    socket?.emit(EVENTS.WAITING_ADMIT_ALL, { roomId });
-  }, [socket, roomId]);
-
-  // ── Entrer dans la salle (hôte ou premier arrivant) ───────
-  const handleJoin = useCallback(() => {
-    if (joining) return;
-    if (!isHost) {
-      setJoining(true);
-      return;
-    }
-
-    setJoining(true);
-    clearInterval(timerRef.current);
-    preserveStreamOnUnmountRef.current = true;
-    onJoin(streamRef.current);
-  }, [joining, participants.length, isHost, onJoin]);
-
-  // ── Retour ────────────────────────────────────────────────
-  const handleBack = useCallback(() => {
-    clearInterval(timerRef.current);
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    onBack();
-  }, [onBack]);
-
-  // ── Formatage timer ───────────────────────────────────────
-  const fmtTime = (s) => {
-    const m = Math.floor(s / 60), sec = s % 60;
-    return m > 0 ? `${m}m ${String(sec).padStart(2,'0')}s` : `${sec}s`;
-  };
-
-  const isFirst = participants.length === 0;
-  const hostPresent = participants.length > 0;
-  const needsAdmission = !isHost;
-
-  // ─────────────────────────────────────────────────────────
-  return (
-    <div style={{
-      minHeight: '100vh', background: '#0d1117',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 20, fontFamily: "'DM Sans', 'Segoe UI', system-ui, sans-serif",
-    }}>
-
-      {/* Fond ambiance */}
-      <div style={{
-        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
-        background: `
-          radial-gradient(ellipse 55% 45% at 15% 55%, rgba(30,58,138,0.18) 0%, transparent 70%),
-          radial-gradient(ellipse 45% 35% at 85% 45%, rgba(88,28,135,0.12) 0%, transparent 70%)
-        `,
-      }} />
-
-      <div style={{
-        position: 'relative', zIndex: 1, width: '100%', maxWidth: 920,
-        display: 'grid',
-        gridTemplateColumns: isHost ? '1fr 290px 260px' : '1fr 290px',
-        gap: 14, alignItems: 'start',
-      }}>
-
-        {/* ══════════════════════════════════════════════════
-            COLONNE 1 — Preview caméra + contrôles
-        ══════════════════════════════════════════════════ */}
-        <div style={{
-          background: 'rgba(255,255,255,0.025)',
-          border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: 20, overflow: 'hidden',
-          opacity: admitted ? 0 : 1,
-          transform: admitted ? 'scale(0.97)' : 'scale(1)',
-          transition: 'opacity 0.4s, transform 0.4s',
-        }}>
-
-          {/* Header barre */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '12px 14px',
-            borderBottom: '1px solid rgba(255,255,255,0.05)',
-          }}>
-            <button onClick={handleBack} style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 8, padding: '5px 11px',
-              color: 'rgba(255,255,255,0.5)', fontSize: 12,
-              fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-              transition: 'all 0.15s',
-            }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#e2e8f0'; }}
-              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
-            >
-              <Back /> Retour
+  // ── Vue refus ───────────────────────────────────────────────────────────────
+  if (denied) {
+    return (
+        <div style={styles.overlay}>
+          <div style={styles.card}>
+            <div style={{ ...styles.iconCircle, background: 'rgba(239,68,68,0.12)' }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+              </svg>
+            </div>
+            <h2 style={styles.title}>Accès refusé</h2>
+            <p style={styles.sub}>{deniedReason}</p>
+            <button style={styles.btnDanger} onClick={onDenied}>
+              Retourner à l'accueil
             </button>
-
-            <span style={{
-              flex: 1, textAlign: 'center',
-              fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
-              color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase',
-            }}>
-              Salle d'attente
-            </span>
-
-            {/* Timer */}
-            <div style={{
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.09)',
-              borderRadius: 8, padding: '4px 10px',
-              fontSize: 11, color: 'rgba(255,255,255,0.35)',
-              fontFamily: 'monospace',
-            }}>
-              {fmtTime(waitSecs)}
-            </div>
-          </div>
-
-          {/* Preview cam */}
-          <div style={{
-            position: 'relative', aspectRatio: '16/9',
-            background: '#080c14', overflow: 'hidden',
-          }}>
-            <video ref={videoRef} autoPlay playsInline muted style={{
-              width: '100%', height: '100%', objectFit: 'cover', display: 'block',
-              opacity: (stream && videoOn) ? 1 : 0,
-              transition: 'opacity 0.3s',
-            }} />
-
-            {(!stream || !videoOn) && (
-              <div style={{
-                position: 'absolute', inset: 0,
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center', gap: 12,
-              }}>
-                <Av name={userName} size={76} />
-                <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>
-                  {userName}
-                </span>
-              </div>
-            )}
-
-            {/* Animation "admis" */}
-            {admitted && (
-              <div style={{
-                position: 'absolute', inset: 0,
-                background: 'rgba(74,222,128,0.15)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                animation: 'fadeIn 0.3s ease',
-              }}>
-                <div style={{
-                  width: 64, height: 64, borderRadius: '50%',
-                  background: '#4ade80',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  animation: 'popIn 0.35s cubic-bezier(0.34,1.56,0.64,1)',
-                }}>
-                  <Check size={32} />
-                </div>
-              </div>
-            )}
-
-            {/* Badges statut (haut-droite) */}
-            <div style={{
-              position: 'absolute', top: 10, right: 10,
-              display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'flex-end',
-            }}>
-              {!audioOn && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 4,
-                  background: 'rgba(239,68,68,0.82)', borderRadius: 6,
-                  padding: '3px 8px', fontSize: 11, color: '#fff', fontWeight: 600,
-                }}>
-                  <Mic on={false} size={11} /> Muet
-                </div>
-              )}
-              {!videoOn && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 4,
-                  background: 'rgba(239,68,68,0.82)', borderRadius: 6,
-                  padding: '3px 8px', fontSize: 11, color: '#fff', fontWeight: 600,
-                }}>
-                  <Cam on={false} size={11} /> Cam off
-                </div>
-              )}
-            </div>
-
-            {/* Nom bas-gauche */}
-            <div style={{
-              position: 'absolute', bottom: 10, left: 10,
-              background: 'rgba(0,0,0,0.58)', backdropFilter: 'blur(6px)',
-              borderRadius: 8, padding: '4px 10px',
-              fontSize: 12, color: 'rgba(255,255,255,0.9)', fontWeight: 600,
-            }}>
-              {userName}{isHost && ' 👑'}
-            </div>
-          </div>
-
-          {/* Erreur média */}
-          {mediaError && (
-            <div style={{
-              margin: '12px 14px 0',
-              background: 'rgba(239,68,68,0.1)',
-              border: '1px solid rgba(248,113,113,0.25)',
-              borderRadius: 10, padding: '9px 13px',
-              fontSize: 12, color: '#f87171', lineHeight: 1.5,
-            }}>
-              ⚠ {mediaError}
-            </div>
-          )}
-
-          {/* Contrôles micro / cam */}
-          <div style={{ display: 'flex', gap: 10, padding: '13px 14px' }}>
-            <ToggleBtn on={audioOn} onToggle={toggleAudio} Icon={Mic} label="Micro" />
-            <ToggleBtn on={videoOn} onToggle={toggleVideo} Icon={Cam} label="Caméra" />
-          </div>
-
-          {/* Indicateur connexion */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            gap: 6, padding: '0 14px 14px',
-          }}>
-            <div style={{
-              width: 6, height: 6, borderRadius: '50%',
-              background: stream ? '#4ade80' : '#6b7280',
-              boxShadow: stream ? '0 0 6px rgba(74,222,128,0.7)' : 'none',
-              animation: stream ? 'breathe 2.2s ease-in-out infinite' : 'none',
-            }} />
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)', fontWeight: 500 }}>
-              {stream
-                ? `Micro ${audioOn ? 'actif' : 'coupé'} · Cam ${videoOn ? 'active' : 'en pause'}`
-                : 'Périphériques non disponibles'}
-            </span>
           </div>
         </div>
+    );
+  }
 
-        {/* ══════════════════════════════════════════════════
-            COLONNE 2 — Participants + bouton rejoindre
-        ══════════════════════════════════════════════════ */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-          {/* Info réunion */}
-          <div style={{
-            background: 'rgba(255,255,255,0.025)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: 16, padding: '14px 16px',
-          }}>
-            <div style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
-              color: 'rgba(255,255,255,0.28)', textTransform: 'uppercase', marginBottom: 6,
-            }}>
-              Réunion en cours
-            </div>
-            <div style={{
-              fontSize: 15, fontWeight: 700, color: '#e2e8f0',
-              fontFamily: "'DM Mono', monospace", letterSpacing: '-0.01em', marginBottom: 4,
-            }}>
-              {roomId?.slice(0, 8).toUpperCase()}…
-            </div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)' }}>
-              Connecté en tant que{' '}
-              <span style={{ color: '#93c5fd', fontWeight: 600 }}>{userName}</span>
-            </div>
+  // ── Vue attente ─────────────────────────────────────────────────────────────
+  return (
+      <div style={styles.overlay}>
+        <div style={styles.card}>
+          {/* Avatar utilisateur */}
+          <div style={styles.avatar}>
+            {userName.slice(0, 2).toUpperCase()}
           </div>
 
-          {/* Liste participants dans la salle */}
-          <div style={{
-            background: 'rgba(255,255,255,0.025)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: 16, padding: '14px 14px 6px', flex: 1,
-          }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10,
-            }}>
-              <span style={{
-                fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
-                color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase',
-              }}>
-                Dans la salle
-              </span>
-              <div style={{
-                marginLeft: 'auto',
-                background: participants.length > 0
-                  ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.06)',
-                border: `1px solid ${participants.length > 0
-                  ? 'rgba(96,165,250,0.3)' : 'rgba(255,255,255,0.1)'}`,
-                borderRadius: 20, padding: '1px 8px',
-                fontSize: 11, fontWeight: 700,
-                color: participants.length > 0 ? '#93c5fd' : 'rgba(255,255,255,0.3)',
-              }}>
-                {participants.length}
-              </div>
-            </div>
-
-            {participants.length === 0 ? (
-              <div style={{
-                textAlign: 'center', padding: '22px 0',
-                color: 'rgba(255,255,255,0.2)', fontSize: 13, lineHeight: 1.7,
-              }}>
-                <div style={{ fontSize: 26, marginBottom: 8 }}>{isHost ? '🏁' : '🛎'}</div>
-                {isHost ? 'Vous serez le premier.' : "L'hôte n'a pas encore rejoint la salle."}<br/>
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.13)' }}>
-                  {isHost ? 'Démarrez la réunion pour inviter.' : "Votre demande restera en attente jusqu'à son arrivée."}
-                </span>
-              </div>
-            ) : (
-              participants.map((p, i) => (
-                <PeerRow
-                  key={p.socketId} p={p}
-                  isHost={p.socketId === hostId}
-                  last={i === participants.length - 1}
-                />
-              ))
-            )}
-            <div style={{ height: 8 }} />
+          {/* Spinner */}
+          <div style={styles.spinnerWrap}>
+            <SpinnerRing />
           </div>
 
-          {/* Message rejet */}
-          {rejected && (
-            <div style={{
-              background: 'rgba(239,68,68,0.1)',
-              border: '1px solid rgba(248,113,113,0.3)',
-              borderRadius: 12, padding: '10px 14px',
-              fontSize: 12, color: '#f87171', lineHeight: 1.5,
-              animation: 'slideIn 0.25s ease-out',
-            }}>
-              ⛔ {rejected}
-            </div>
-          )}
-
-          {/* Bouton principal */}
-          <button
-            onClick={handleJoin}
-            disabled={joining || admitted || needsAdmission}
-            style={{
-              width: '100%', padding: '14px',
-              borderRadius: 14, border: 'none',
-              cursor: (joining || admitted || needsAdmission) ? 'not-allowed' : 'pointer',
-              fontSize: 14, fontWeight: 700, letterSpacing: '0.02em',
-              background: (joining || admitted || needsAdmission)
-                ? 'rgba(255,255,255,0.06)'
-                : isHost
-                  ? 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)'
-                  : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-              color: (joining || admitted || needsAdmission)
-                ? 'rgba(255,255,255,0.3)' : '#fff',
-              boxShadow: (joining || admitted || needsAdmission) ? 'none'
-                : isHost
-                  ? '0 6px 22px rgba(245,158,11,0.35)'
-                  : '0 6px 22px rgba(59,130,246,0.35)',
-              transition: 'all 0.2s', fontFamily: 'inherit',
-            }}
-            onMouseEnter={e => {
-              if (!joining && !admitted && !needsAdmission)
-                e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; }}
-            onMouseDown={e => { e.currentTarget.style.transform = 'translateY(1px)'; }}
-            onMouseUp={e => { e.currentTarget.style.transform = 'none'; }}
-          >
-            {admitted  ? '✓ Admis — redirection…'
-             : needsAdmission ? '🛎 En attente d’admission par l’hôte'
-             : joining ? '⏳ Connexion…'
-             : isHost
-               ? '🚀 Démarrer la réunion'
-               : `✓ Rejoindre (${participants.length} présent${participants.length > 1 ? 's' : ''})`}
-          </button>
-
-          <p style={{
-            textAlign: 'center', fontSize: 11, margin: 0,
-            color: 'rgba(255,255,255,0.16)', lineHeight: 1.6,
-          }}>
-            {needsAdmission
-              ? (requestSent
-                ? "Votre demande a été envoyée. L'hôte recevra une alerte dès maintenant."
-                : "Préparation de votre demande d'accès.")
-              : isHost
-              ? "Vous démarrez en tant qu'hôte. Partagez le lien pour inviter."
-              : 'Votre statut micro/cam est préservé à l\'entrée dans la salle.'}
+          <h2 style={styles.title}>Salle d'attente</h2>
+          <p style={styles.sub}>
+            Bonjour <strong style={{ color: '#fff' }}>{userName}</strong>, votre demande d'accès a été envoyée à l'hôte{dots}
           </p>
+          <p style={styles.hint}>
+            Vous serez admis automatiquement lorsque l'hôte approuvera votre demande.
+          </p>
+
+          {/* Info salle */}
+          <div style={styles.roomBadge}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <span style={{ color: '#818cf8', fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.15em' }}>
+            {roomId}
+          </span>
+          </div>
+
+          <button style={styles.btnGhost} onClick={onDenied}>
+            Annuler et quitter
+          </button>
         </div>
 
-        {/* ══════════════════════════════════════════════════
-            COLONNE 3 (hôte seulement) — File d'attente
-        ══════════════════════════════════════════════════ */}
-        {isHost && (
-          <div style={{
-            background: 'rgba(255,255,255,0.025)',
-            border: '1px solid rgba(59,130,246,0.2)',
-            borderRadius: 16, padding: '14px',
-            display: 'flex', flexDirection: 'column', gap: 10,
-          }}>
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <div style={{
-                width: 7, height: 7, borderRadius: '50%',
-                background: waitingList.length > 0 ? '#f59e0b' : '#374151',
-                boxShadow: waitingList.length > 0
-                  ? '0 0 8px rgba(245,158,11,0.7)' : 'none',
-                animation: waitingList.length > 0
-                  ? 'breathe 1.5s ease-in-out infinite' : 'none',
-              }} />
-              <span style={{
-                fontSize: 11, fontWeight: 700, letterSpacing: '0.07em',
-                color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase',
-              }}>
-                File d'attente
-              </span>
-              {waitingList.length > 0 && (
-                <div style={{
-                  marginLeft: 'auto',
-                  background: 'rgba(245,158,11,0.2)',
-                  border: '1px solid rgba(245,158,11,0.4)',
-                  borderRadius: 20, padding: '1px 8px',
-                  fontSize: 11, fontWeight: 700, color: '#fbbf24',
-                  animation: 'pulse 1.5s ease-in-out infinite',
-                }}>
-                  {waitingList.length}
-                </div>
-              )}
-            </div>
-
-            {/* Liste d'attente */}
-            {waitingList.length === 0 ? (
-              <div style={{
-                textAlign: 'center', padding: '28px 0',
-                color: 'rgba(255,255,255,0.18)', fontSize: 12, lineHeight: 1.7,
-              }}>
-                <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.5 }}>🔔</div>
-                Aucun participant<br/>en attente d'admission.
-              </div>
-            ) : (
-              <div>
-                {waitingList.map(person => (
-                  <WaitingRow
-                    key={person.socketId}
-                    person={person}
-                    onAdmit={admit}
-                    onReject={reject}
-                  />
-                ))}
-
-                {/* Admettre tout */}
-                {waitingList.length > 1 && (
-                  <button onClick={admitAll} style={{
-                    width: '100%', marginTop: 6,
-                    padding: '9px', borderRadius: 10,
-                    border: '1px solid rgba(74,222,128,0.3)',
-                    background: 'rgba(74,222,128,0.1)',
-                    color: '#4ade80', fontSize: 12, fontWeight: 600,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                    transition: 'all 0.15s',
-                  }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(74,222,128,0.2)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(74,222,128,0.1)'; }}
-                  >
-                    ✓ Admettre tout le monde ({waitingList.length})
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Note hôte */}
-            <div style={{
-              marginTop: 'auto',
-              background: 'rgba(59,130,246,0.08)',
-              border: '1px solid rgba(59,130,246,0.15)',
-              borderRadius: 10, padding: '9px 12px',
-              fontSize: 11, color: 'rgba(255,255,255,0.35)', lineHeight: 1.5,
-            }}>
-              💡 En tant qu'hôte, vous contrôlez qui entre dans la réunion.
-            </div>
-          </div>
-        )}
-      </div>
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500;700&display=swap');
-        @keyframes breathe {
-          0%,100%{ opacity:1; transform:scale(1); }
-          50%    { opacity:0.45; transform:scale(0.82); }
-        }
-        @keyframes pulse {
-          0%,100%{ opacity:1; }
-          50%    { opacity:0.5; }
-        }
-        @keyframes fadeIn {
-          from{ opacity:0; } to{ opacity:1; }
-        }
-        @keyframes popIn {
-          0%  { transform:scale(0); }
-          70% { transform:scale(1.15); }
-          100%{ transform:scale(1); }
-        }
-        @keyframes slideIn {
-          from{ opacity:0; transform:translateY(-6px); }
-          to  { opacity:1; transform:translateY(0); }
-        }
-        * { box-sizing:border-box; }
-        @media(max-width:680px){
-          div[style*="grid-template-columns"]{
-            grid-template-columns:1fr !important;
-          }
-        }
+        <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
       `}</style>
-    </div>
+      </div>
   );
 }
+
+// Spinner animé
+function SpinnerRing() {
+  return (
+      <svg width="56" height="56" viewBox="0 0 56 56" style={{ animation: 'spin 1.2s linear infinite' }}>
+        <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(99,102,241,0.15)" strokeWidth="4" />
+        <circle cx="28" cy="28" r="22" fill="none" stroke="#6366f1" strokeWidth="4"
+                strokeDasharray="138" strokeDashoffset="100" strokeLinecap="round" />
+      </svg>
+  );
+}
+
+// ── Styles inline (pas de dépendance Tailwind nécessaire) ────────────────────
+const styles = {
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(99,102,241,0.1) 0%, transparent 70%), #050810',
+    zIndex: 100,
+    fontFamily: "'DM Sans', system-ui, sans-serif",
+  },
+  card: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '16px',
+    background: 'linear-gradient(160deg, #111827, #0d1322)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '24px',
+    padding: '48px 40px',
+    maxWidth: '420px',
+    width: '90%',
+    boxShadow: '0 40px 80px rgba(0,0,0,0.6)',
+    animation: 'fadeUp 0.4s ease-out',
+    textAlign: 'center',
+  },
+  avatar: {
+    width: '64px',
+    height: '64px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '22px',
+    fontWeight: 900,
+    color: 'white',
+    marginBottom: '4px',
+  },
+  iconCircle: {
+    width: '64px',
+    height: '64px',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '4px',
+  },
+  spinnerWrap: {
+    marginTop: '-8px',
+    marginBottom: '-4px',
+  },
+  title: {
+    fontSize: '20px',
+    fontWeight: 800,
+    color: '#f1f5f9',
+    margin: 0,
+    letterSpacing: '-0.3px',
+  },
+  sub: {
+    fontSize: '14px',
+    color: '#64748b',
+    margin: 0,
+    lineHeight: 1.6,
+  },
+  hint: {
+    fontSize: '12px',
+    color: '#334155',
+    margin: 0,
+    lineHeight: 1.6,
+  },
+  roomBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    background: 'rgba(99,102,241,0.08)',
+    border: '1px solid rgba(99,102,241,0.2)',
+    borderRadius: '10px',
+    padding: '8px 16px',
+    marginTop: '4px',
+  },
+  btnGhost: {
+    background: 'transparent',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '10px',
+    padding: '10px 20px',
+    color: '#475569',
+    fontSize: '13px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    marginTop: '8px',
+    fontFamily: 'inherit',
+  },
+  btnDanger: {
+    background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+    border: 'none',
+    borderRadius: '10px',
+    padding: '12px 24px',
+    color: 'white',
+    fontSize: '14px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    marginTop: '8px',
+    fontFamily: 'inherit',
+  },
+};

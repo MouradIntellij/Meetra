@@ -1,0 +1,22 @@
+{
+  "roomId": "4bb74327-4e08-4d10-bb01-7a4b30e3fc45",
+  "locked": false,
+  "status": "idle",
+  "source": "api",
+  "createdAt": 1777521073419,
+  "updatedAt": 1777521163438,
+  "startedAt": 1777521075423,
+  "endedAt": 1777521163436,
+  "metadata": {
+    "title": "Réunion instantanée · Mourad Sehboub",
+    "scheduledFor": null,
+    "timezone": null,
+    "durationMinutes": 60,
+    "hostName": "Mourad Sehboub",
+    "hostEmail": "profmaths@hotmail.ca",
+    "hostPhone": null,
+    "createdByUserId": "97e976c7-6d4d-4ba4-8d53-046295f9a765",
+    "createdByEmail": "profmaths@hotmail.ca",
+    "createdByName": "Mourad Sehboub"
+  }
+}

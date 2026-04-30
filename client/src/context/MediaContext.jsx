@@ -59,7 +59,7 @@ export const useMedia = () => {
 
 export function MediaProvider({ children, initialStream = null }) {
   const { socket } = useSocket();
-  const { roomId, removeParticipant, setScreenSharingId } = useRoom();
+  const { roomId, participants, removeParticipant, setScreenSharingId } = useRoom();
 
   const [localStream, setLocalStream] = useState(initialStream);
   const [remoteStreams, setRemoteStreams] = useState(new Map());
@@ -90,6 +90,20 @@ export function MediaProvider({ children, initialStream = null }) {
   useEffect(() => {
     localStreamRef.current = localStream;
   }, [localStream]);
+
+  useEffect(() => {
+    if (!initialStream) return;
+
+    localStreamRef.current = initialStream;
+    setLocalStream(initialStream);
+
+    const audioTrack = initialStream.getAudioTracks()[0] || null;
+    const videoTrack = initialStream.getVideoTracks()[0] || null;
+
+    setAudioEnabled(Boolean(audioTrack?.enabled ?? true));
+    setVideoEnabled(Boolean(videoTrack?.enabled ?? true));
+    setMediaAccessError('');
+  }, [initialStream]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -266,6 +280,22 @@ export function MediaProvider({ children, initialStream = null }) {
       roomId
     });
   }, [socket, buildPC, roomId]);
+
+  useEffect(() => {
+    if (!socket?.id || !participants.length) return;
+
+    participants.forEach((participant) => {
+      const targetId = participant?.socketId;
+      if (!targetId || targetId === socket.id) return;
+      if (peerConnections.current.has(targetId)) return;
+
+      // Deterministic initiator selection avoids double offers:
+      // the lexicographically smaller socket id starts the negotiation.
+      if (socket.id < targetId) {
+        createAndSendOffer(targetId).catch(() => {});
+      }
+    });
+  }, [socket, participants, createAndSendOffer]);
 
   // ─────────────────────────────────────────────
   // GET MEDIA
@@ -620,32 +650,37 @@ export function MediaProvider({ children, initialStream = null }) {
       await createAndSendOffer(socketId);
     };
 
-    const onOffer = async ({ offer, fromUserId }) => {
-      const pc = buildPC(fromUserId);
+    const onOffer = async ({ offer, fromUserId, socketId }) => {
+      const peerId = fromUserId || socketId;
+      if (!peerId) return;
+      const pc = buildPC(peerId);
 
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
-      await flushIceCandidates(fromUserId, pc);
+      await flushIceCandidates(peerId, pc);
 
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
 
       socket.emit(EVENTS.ANSWER, {
         answer: pc.localDescription,
-        targetUserId: fromUserId,
+        targetUserId: peerId,
         roomId
       });
     };
 
-    const onAnswer = async ({ answer, fromUserId }) => {
-      const pc = peerConnections.current.get(fromUserId);
+    const onAnswer = async ({ answer, fromUserId, socketId }) => {
+      const peerId = fromUserId || socketId;
+      const pc = peerConnections.current.get(peerId);
       if (pc) {
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
-        await flushIceCandidates(fromUserId, pc);
+        await flushIceCandidates(peerId, pc);
       }
     };
 
-    const onIce = async ({ candidate, fromUserId }) => {
-      const pc = peerConnections.current.get(fromUserId);
+    const onIce = async ({ candidate, fromUserId, socketId }) => {
+      const peerId = fromUserId || socketId;
+      if (!peerId) return;
+      const pc = peerConnections.current.get(peerId);
       if (pc?.remoteDescription && candidate) {
         try {
           await pc.addIceCandidate(new RTCIceCandidate(candidate));
@@ -653,7 +688,7 @@ export function MediaProvider({ children, initialStream = null }) {
         return;
       }
 
-      queueIceCandidate(fromUserId, candidate);
+      queueIceCandidate(peerId, candidate);
     };
 
     const onUserLeft = ({ socketId }) => {
@@ -671,14 +706,14 @@ export function MediaProvider({ children, initialStream = null }) {
     socket.on(EVENTS.USER_JOINED, onUserJoined);
     socket.on(EVENTS.OFFER, onOffer);
     socket.on(EVENTS.ANSWER, onAnswer);
-    socket.on(EVENTS.ICE, onIce);
+    socket.on(EVENTS.ICE_CANDIDATE, onIce);
     socket.on(EVENTS.USER_LEFT, onUserLeft);
 
     return () => {
       socket.off(EVENTS.USER_JOINED, onUserJoined);
       socket.off(EVENTS.OFFER, onOffer);
       socket.off(EVENTS.ANSWER, onAnswer);
-      socket.off(EVENTS.ICE, onIce);
+      socket.off(EVENTS.ICE_CANDIDATE, onIce);
       socket.off(EVENTS.USER_LEFT, onUserLeft);
     };
   }, [socket, createAndSendOffer, buildPC, flushIceCandidates, queueIceCandidate, removeRemoteStream, removeParticipant]);

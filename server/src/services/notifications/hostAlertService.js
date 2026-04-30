@@ -1,28 +1,5 @@
-import { ENV } from '../../config/env.js';
-import { logger } from '../../utils/logger.js';
-
-async function postWebhook(url, payload) {
-  if (!url) return false;
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(ENV.HOST_ALERT_WEBHOOK_SECRET
-          ? { 'x-meetra-webhook-secret': ENV.HOST_ALERT_WEBHOOK_SECRET }
-          : {}),
-        'x-meetra-event': payload?.type || 'unknown',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    return response.ok;
-  } catch (error) {
-    logger.warn('Host alert webhook failed:', error?.message);
-    return false;
-  }
-}
+import { upsertHubProfile, appendHubActivity } from '../hub/hubStore.js';
+import { deliverEmailNotification } from './emailNotificationService.js';
 
 export async function notifyHostWaitingGuest({
   meeting,
@@ -52,14 +29,47 @@ export async function notifyHostWaitingGuest({
   };
 
   const tasks = [];
-  if (hostEmail && ENV.HOST_ALERT_EMAIL_WEBHOOK_URL) {
-    tasks.push(postWebhook(ENV.HOST_ALERT_EMAIL_WEBHOOK_URL, payload));
+  if (hostEmail) {
+    tasks.push(deliverEmailNotification({
+      type: payload.type,
+      to: hostEmail,
+      subject: `Meetra · ${guestName} attend votre admission`,
+      text: [
+        `Bonjour ${hostName || 'hôte'},`,
+        '',
+        `${guestName} attend dans la salle d'attente de "${title}".`,
+        `Lien de réunion: ${joinUrl}`,
+        scheduledFor ? `Horaire prévu: ${new Intl.DateTimeFormat('fr-CA', { dateStyle: 'full', timeStyle: 'short', timeZone: timezone || undefined }).format(new Date(scheduledFor))}` : null,
+        '',
+        'Ouvrez Meetra pour admettre ce participant.',
+      ].filter(Boolean).join('\n'),
+      meta: payload,
+    }));
   }
-  if (hostPhone && ENV.HOST_ALERT_SMS_WEBHOOK_URL) {
-    tasks.push(postWebhook(ENV.HOST_ALERT_SMS_WEBHOOK_URL, payload));
+
+  if (hostEmail) {
+    tasks.push((async () => {
+      try {
+        await upsertHubProfile({ email: hostEmail, name: hostName || hostEmail });
+        await appendHubActivity({
+          type: 'meeting_waiting_guest',
+          title: 'Participant en attente',
+          body: `${guestName} attend votre admission dans "${title}".`,
+          targetEmail: hostEmail,
+          actorEmail: '',
+          actorName: guestName,
+          meta: { roomId, joinUrl, scheduledFor },
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    })());
   }
 
   if (!tasks.length) return false;
   const results = await Promise.allSettled(tasks);
-  return results.some((result) => result.status === 'fulfilled' && result.value === true);
+  return results.some((result) => result.status === 'fulfilled' && (
+    result.value === true || result.value?.delivered || result.value?.simulated
+  ));
 }

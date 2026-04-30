@@ -1,0 +1,13 @@
+{
+  "roomId": "TDTKS1",
+  "locked": false,
+  "status": "idle",
+  "source": "socket-join",
+  "createdAt": 1777517793319,
+  "updatedAt": 1777517824588,
+  "startedAt": 1777517793322,
+  "endedAt": 1777517824587,
+  "metadata": {
+    "autoCreated": true
+  }
+}

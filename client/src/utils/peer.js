@@ -1,3 +1,5 @@
+import { EVENTS } from './events.js';
+
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -28,7 +30,7 @@ export function createPeerConnection({ targetId, socket, roomId, stream, onTrack
 
   pc.onicecandidate = (event) => {
     if (event.candidate) {
-      socket.emit('ice-candidate', {
+      socket.emit(EVENTS.ICE_CANDIDATE, {
         candidate: event.candidate,
         targetUserId: targetId,
         roomId,

@@ -1,0 +1,13 @@
+{
+  "roomId": "MXCLYD",
+  "locked": false,
+  "status": "idle",
+  "source": "socket-join",
+  "createdAt": 1777518701283,
+  "updatedAt": 1777519348780,
+  "startedAt": 1777518701286,
+  "endedAt": 1777519348779,
+  "metadata": {
+    "autoCreated": true
+  }
+}

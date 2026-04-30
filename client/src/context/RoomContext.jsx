@@ -8,12 +8,19 @@ export const useRoom = () => {
     return ctx;
 };
 
-export function RoomProvider({ children, initialRoomId = '' }) {
+export function RoomProvider({
+    children,
+    initialRoomId = '',
+    initialHostId = '',
+    initialCoHostIds = [],
+    initialLocked = false,
+    initialParticipants = [],
+}) {
     const [roomId, setRoomId] = useState(initialRoomId);
-    const [hostId, setHostId] = useState('');
-    const [coHostIds, setCoHostIds] = useState([]);
-    const [locked, setLocked] = useState(false);
-    const [participants, setParticipants] = useState([]);
+    const [hostId, setHostId] = useState(initialHostId);
+    const [coHostIds, setCoHostIds] = useState(initialCoHostIds);
+    const [locked, setLocked] = useState(initialLocked);
+    const [participants, setParticipants] = useState(initialParticipants);
     const [breakoutRooms, setBreakoutRooms] = useState([]);
     const [currentBreakout, setCurrentBreakout] = useState(null);
 
@@ -52,6 +59,22 @@ export function RoomProvider({ children, initialRoomId = '' }) {
     useEffect(() => {
         setRoomId(initialRoomId || '');
     }, [initialRoomId]);
+
+    useEffect(() => {
+        setHostId(initialHostId || '');
+    }, [initialHostId]);
+
+    useEffect(() => {
+        setCoHostIds(initialCoHostIds || []);
+    }, [initialCoHostIds]);
+
+    useEffect(() => {
+        setLocked(Boolean(initialLocked));
+    }, [initialLocked]);
+
+    useEffect(() => {
+        setParticipants(initialParticipants || []);
+    }, [initialParticipants]);
 
     return (
         <RoomContext.Provider
