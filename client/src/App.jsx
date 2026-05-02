@@ -108,7 +108,10 @@ export default function App() {
   }, []);
 
   const handleJoin = (rid, uname, options = {}) => {
-    if (screen === 'home' || screen === 'home-join') {
+    // Only the main Meetra home page opens a compact meeting window.
+    // A direct invitation link (/room/:id) must continue in the current window,
+    // otherwise the guest gets duplicated and the waiting-room request is lost.
+    if (screen === 'home' && !urlRoomId) {
       const popup = openMeetingWindow(rid, uname, options);
       if (popup) {
         popup.focus();
