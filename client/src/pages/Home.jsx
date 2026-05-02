@@ -1403,7 +1403,147 @@ function Stats() {
 // NAVBAR AVEC SOUS-MENUS
 // ═══════════════════════════════════════════════════════════
 
-function NavItem({ item }) {
+function getNavbarPanelSummary(panel, plannedMeetings, contacts) {
+  const title = panel?.label || "";
+  const meetingRows = plannedMeetings.map((meeting) => ({
+    title: meeting.title || "Réunion Meetra",
+    meta: `${getInviteeLabel(meeting)} · ${formatMeetingDate(meeting.scheduledFor, meeting.timezone)}`,
+  }));
+  const contactRows = contacts.map((contact) => ({
+    title: contact.name,
+    meta: `${contact.role} · ${contact.email}`,
+  }));
+
+  const content = {
+    "Mes réunions planifiées": {
+      intro: "Liste des réunions planifiées par votre compte administrateur, avec l'invité et la date prévue.",
+      rows: meetingRows,
+      empty: "Aucune réunion planifiée pour le moment.",
+    },
+    "Réunions enregistrées": {
+      intro: "Espace prévu pour afficher les enregistrements, les transcriptions et les fichiers exportés après une réunion.",
+      rows: [],
+      empty: "Aucun enregistrement disponible pour le moment.",
+    },
+    "Salles de groupe": {
+      intro: "Espace de gestion des breakout rooms: créer des groupes, répartir les participants et fermer les groupes.",
+      rows: [],
+      empty: "Aucune salle de groupe active.",
+    },
+    "Salles verrouillées": {
+      intro: "Affiche les réunions verrouillées où l'accès est limité aux personnes admises par l'hôte.",
+      rows: plannedMeetings.filter((meeting) => meeting.locked).map((meeting) => ({
+        title: meeting.title || "Réunion Meetra",
+        meta: `${getInviteeLabel(meeting)} · verrouillée`,
+      })),
+      empty: "Aucune salle verrouillée.",
+    },
+    "Mes contacts": {
+      intro: "Contacts issus de vos réunions, planifications et ajouts manuels.",
+      rows: contactRows,
+      empty: "Aucun contact disponible.",
+    },
+    "Inviter des membres": {
+      intro: "Préparez les personnes à inviter dans une réunion Meetra et gardez-les dans vos contacts.",
+      rows: contactRows.slice(0, 6),
+      empty: "Ajoutez d'abord des contacts depuis la carte Contacts.",
+    },
+    "Annuaire LaSalle": {
+      intro: "Annuaire de travail pour retrouver étudiants, enseignants, développeurs UI, programmeurs et administrateurs.",
+      rows: contactRows,
+      empty: "Aucune entrée d'annuaire locale.",
+    },
+    "Audio & Vidéo": {
+      intro: "Paramètres de caméra, micro et sortie audio avant d'entrer dans une réunion.",
+      rows: [
+        { title: "Caméra", meta: "Sélection et prévisualisation dans le lobby" },
+        { title: "Micro", meta: "Activation, coupure et choix du périphérique" },
+        { title: "Sortie audio", meta: "Disponible selon le navigateur" },
+      ],
+      empty: "",
+    },
+    "Arrière-plans virtuels": {
+      intro: "Espace prévu pour les arrière-plans, flous et scènes personnalisées.",
+      rows: [],
+      empty: "Aucun arrière-plan configuré.",
+    },
+    "Notifications": {
+      intro: "Suivi des alertes d'invitation, salle d'attente et activité de réunion.",
+      rows: [],
+      empty: "Aucune notification récente.",
+    },
+    "Sécurité & Confidentialité": {
+      intro: "Contrôles hôte: salle d'attente, verrouillage, admission, expulsion et accès sécurisé.",
+      rows: [
+        { title: "Salle d'attente", meta: "Les invités demandent l'admission avant d'entrer" },
+        { title: "Accès hôte", meta: "Réservé au compte qui a créé la réunion" },
+        { title: "Verrouillage", meta: "Empêche les nouvelles entrées non admises" },
+      ],
+      empty: "",
+    },
+    "Réseau & TURN": {
+      intro: "Informations réseau pour WebRTC, STUN/TURN et connectivité entre participants.",
+      rows: [
+        { title: "WebRTC", meta: "Connexion média pair à pair ou relayée" },
+        { title: "TURN", meta: "Relais utilisé si le réseau bloque la connexion directe" },
+      ],
+      empty: "",
+    },
+  };
+
+  return content[title] || {
+    intro: `Fenêtre de travail pour ${title}.`,
+    rows: [],
+    empty: "Aucune donnée à afficher.",
+  };
+}
+
+function NavbarChildWindow({ panel, onClose, plannedMeetings, contacts }) {
+  if (!panel) return null;
+  const summary = getNavbarPanelSummary(panel, plannedMeetings, contacts);
+
+  return (
+      <div className="fixed inset-0 z-[70] flex items-start justify-center px-4 py-20"
+           style={{ background: "rgba(2,6,23,0.52)", backdropFilter: "blur(6px)" }}
+           onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+        <div className="w-full max-w-4xl rounded-[28px] p-7 text-slate-950"
+             style={{ background: "linear-gradient(145deg,#fffaf0,#e0f2fe)", border: "1px solid rgba(15,23,42,0.12)", boxShadow: "0 34px 90px rgba(0,0,0,0.38)" }}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">{panel.parent}</div>
+              <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">{panel.label}</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-700">{summary.intro}</p>
+            </div>
+            <button onClick={onClose}
+                    className="rounded-full px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-900 hover:text-white"
+                    style={{ border: "1px solid rgba(15,23,42,0.16)" }}>
+              Fermer
+            </button>
+          </div>
+
+          <div className="mt-7 grid gap-3">
+            {summary.rows.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 px-5 py-8 text-sm text-slate-600">
+                  {summary.empty}
+                </div>
+            ) : summary.rows.map((row, index) => (
+                <div key={`${row.title}-${index}`} className="flex items-center justify-between gap-4 rounded-2xl bg-white/75 px-5 py-4 shadow-sm">
+                  <div>
+                    <div className="font-bold text-slate-950">{row.title}</div>
+                    <div className="mt-1 text-sm text-slate-600">{row.meta}</div>
+                  </div>
+                  <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-bold text-white">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                </div>
+            ))}
+          </div>
+        </div>
+      </div>
+  );
+}
+
+function NavItem({ item, onOpenPanel }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useClickOutside(ref, () => setOpen(false));
@@ -1441,6 +1581,10 @@ function NavItem({ item }) {
               {item.items.map((sub) => (
                   <button
                       key={sub.label}
+                      onClick={() => {
+                        onOpenPanel({ ...sub, parent: item.label });
+                        setOpen(false);
+                      }}
                       className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-left transition-colors"
                       style={{ color: "rgba(148,163,184,0.8)" }}
                       onMouseEnter={(e) => { e.currentTarget.style.color = "white"; e.currentTarget.style.background = "rgba(99,102,241,0.08)"; }}
@@ -1456,7 +1600,7 @@ function NavItem({ item }) {
   );
 }
 
-function Navbar({ time, search, setSearch, auth, onOpenAccount }) {
+function Navbar({ time, search, setSearch, auth, onOpenAccount, onOpenPanel }) {
   const [notif, setNotif] = useState(2);
   const initials = getInitials(auth.profile?.name, auth.profile?.email);
 
@@ -1483,7 +1627,7 @@ function Navbar({ time, search, setSearch, auth, onOpenAccount }) {
 
         {/* Nav links */}
         <div className="hidden md:flex items-center gap-0.5 flex-1">
-          {NAV_MENU.map((item) => <NavItem key={item.label} item={item} />)}
+          {NAV_MENU.map((item) => <NavItem key={item.label} item={item} onOpenPanel={onOpenPanel} />)}
         </div>
 
         {/* Recherche */}
@@ -1558,6 +1702,7 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
   const [accountMeetings, setAccountMeetings] = useState([]);
   const [manualContacts, setManualContacts] = useState(() => readStoredContacts());
   const [meetingsLoading, setMeetingsLoading] = useState(false);
+  const [navbarPanel, setNavbarPanel] = useState(null);
 
   // Horloge temps réel
   useEffect(() => {
@@ -1644,6 +1789,9 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
     const meeting = {
       ...data,
       joinUrl: data.joinUrl || buildPublicRoomUrl(data.roomId),
+      inviteeEmails: Array.isArray(data.inviteeEmails) && data.inviteeEmails.length > 0
+          ? data.inviteeEmails
+          : inviteeEmails,
     };
     if (meeting.scheduledFor) {
       setPlannedMeetings((current) => uniqueMeetingsByRoom([meeting, ...current]).slice(0, 12));
@@ -1805,7 +1953,14 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
         }} />
 
         {/* ── NAVBAR ──────────────────────────────────────────── */}
-        <Navbar time={fmtTime} search={search} setSearch={setSearch} auth={auth} onOpenAccount={() => setModal("account")} />
+        <Navbar
+            time={fmtTime}
+            search={search}
+            setSearch={setSearch}
+            auth={auth}
+            onOpenAccount={() => setModal("account")}
+            onOpenPanel={setNavbarPanel}
+        />
 
         {/* ── CONTENU ─────────────────────────────────────────── */}
         <main className="relative z-10 max-w-5xl mx-auto px-5 pb-20">
@@ -1898,6 +2053,12 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
             meeting={selectedMeeting}
             onHostMeeting={handleOpenScheduledMeeting}
             auth={auth}
+        />
+        <NavbarChildWindow
+            panel={navbarPanel}
+            onClose={() => setNavbarPanel(null)}
+            plannedMeetings={plannedMeetings}
+            contacts={contacts}
         />
       </div>
   );
