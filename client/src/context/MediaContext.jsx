@@ -287,15 +287,21 @@ export function MediaProvider({ children, initialStream = null }) {
     participants.forEach((participant) => {
       const targetId = participant?.socketId;
       if (!targetId || targetId === socket.id) return;
-      if (peerConnections.current.has(targetId)) return;
 
-      // Deterministic initiator selection avoids double offers:
-      // the lexicographically smaller socket id starts the negotiation.
+      const existing = peerConnections.current.get(targetId);
+      const hasRemoteStream = remoteStreams.has(targetId);
+      if (existing && hasRemoteStream) return;
+
+      // The host may emit USER_JOINED before the admitted guest has mounted
+      // its signaling listeners. A delayed offer from the deterministic side
+      // recovers that race without requiring UI changes.
       if (socket.id < targetId) {
-        createAndSendOffer(targetId).catch(() => {});
+        window.setTimeout(() => {
+          createAndSendOffer(targetId).catch(() => {});
+        }, existing ? 900 : 250);
       }
     });
-  }, [socket, participants, createAndSendOffer]);
+  }, [socket, participants, remoteStreams, createAndSendOffer]);
 
   // ─────────────────────────────────────────────
   // GET MEDIA
@@ -647,7 +653,11 @@ export function MediaProvider({ children, initialStream = null }) {
 
     const onUserJoined = async ({ socketId }) => {
       if (socketId === socket.id) return;
-      await createAndSendOffer(socketId);
+      if (socket.id < socketId) {
+        window.setTimeout(() => {
+          createAndSendOffer(socketId).catch(() => {});
+        }, 350);
+      }
     };
 
     const onOffer = async ({ offer, fromUserId, socketId }) => {
