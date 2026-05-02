@@ -125,9 +125,16 @@ function getInviteeLabel(meeting) {
 function uniqueMeetingsByRoom(meetings) {
   const seen = new Set();
   return (meetings || []).filter((meeting) => {
-    const key = meeting?.roomId || meeting?.id;
+    const roomKey = String(meeting?.roomId || meeting?.id || "").trim().toLowerCase();
+    const logicalKey = [
+      String(meeting?.title || "").trim().toLowerCase(),
+      String(meeting?.scheduledFor || "").trim(),
+      String(meeting?.inviteeEmails?.[0] || "").trim().toLowerCase(),
+    ].join("|");
+    const key = roomKey || logicalKey;
     if (!key || seen.has(key)) return false;
     seen.add(key);
+    if (logicalKey && !seen.has(logicalKey)) seen.add(logicalKey);
     return true;
   });
 }
@@ -796,6 +803,7 @@ function ScheduleModal({ open, onClose, auth, onOpenAccount, onCreateMeeting }) 
   }, [open]);
 
   const schedule = async () => {
+    if (loading || createdMeeting) return;
     if (!title.trim()) return;
     if (!auth.token) {
       setError("Connectez-vous avec votre accès Meetra pour planifier une réunion.");
