@@ -3,7 +3,7 @@
 // Props : roomId, userName, onAdmitted(stream), onDenied()
 // Ce composant écoute les événements GUEST_ADMITTED et GUEST_DENIED via le socket.
 
-import { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useSocket } from '../context/SocketContext.jsx'; // src/pages/ → ../
 import {
   GUEST_ADMITTED,
@@ -16,7 +16,8 @@ export default function WaitingRoom({ roomId, userName, onAdmitted, onDenied }) 
   const [dots, setDots] = useState('');
   const [denied, setDenied] = useState(false);
   const [deniedReason, setDeniedReason] = useState('');
-  const [admissionPayload, setAdmissionPayload] = useState(null);
+  const admissionPayloadRef = useRef(null);
+  const admittedRef = useRef(false);
 
   // Animation "..." sur le texte d'attente
   useEffect(() => {
@@ -28,13 +29,20 @@ export default function WaitingRoom({ roomId, userName, onAdmitted, onDenied }) 
   useEffect(() => {
     if (!socket) return;
 
+    const admitOnce = (payload = null) => {
+      if (admittedRef.current) return;
+      admittedRef.current = true;
+      onAdmitted(payload || admissionPayloadRef.current);
+    };
+
     const handleRoomJoined = (payload) => {
       if (payload?.roomId !== roomId) return;
-      setAdmissionPayload(payload);
+      admissionPayloadRef.current = payload;
+      admitOnce(payload);
     };
 
     const handleAdmitted = () => {
-      onAdmitted(admissionPayload);
+      admitOnce();
     };
 
     const handleDenied = ({ reason }) => {
@@ -51,7 +59,7 @@ export default function WaitingRoom({ roomId, userName, onAdmitted, onDenied }) 
       socket.off(GUEST_ADMITTED, handleAdmitted);
       socket.off(GUEST_DENIED,   handleDenied);
     };
-  }, [socket, roomId, onAdmitted, onDenied, admissionPayload]);
+  }, [socket, roomId, onAdmitted, onDenied]);
 
   // ── Vue refus ───────────────────────────────────────────────────────────────
   if (denied) {

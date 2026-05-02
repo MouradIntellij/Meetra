@@ -370,6 +370,15 @@ export function MediaProvider({ children, initialStream = null }) {
     }
   }, [audioEnabled, videoEnabled, socket, roomId, selectedAudioInputId, selectedVideoInputId, refreshAvailableDevices]);
 
+  useEffect(() => {
+    if (!roomId) return;
+    const stream = localStreamRef.current;
+    const hasLiveTrack = stream?.getTracks().some((track) => track.readyState === 'live');
+    if (!hasLiveTrack) {
+      getMedia().catch(() => {});
+    }
+  }, [roomId, getMedia]);
+
   const replaceMediaDevices = useCallback(async ({ audioDeviceId, videoDeviceId }) => {
     const wantsAudio = audioDeviceId !== undefined ? Boolean(audioDeviceId) : true;
     const wantsVideo = videoDeviceId !== undefined ? Boolean(videoDeviceId) : true;
@@ -449,7 +458,10 @@ export function MediaProvider({ children, initialStream = null }) {
   // ─────────────────────────────────────────────
   const toggleAudio = useCallback(() => {
     const track = localStreamRef.current?.getAudioTracks()[0];
-    if (!track) return;
+    if (!track || track.readyState === 'ended') {
+      getMedia().catch(() => {});
+      return;
+    }
 
     track.enabled = !track.enabled;
     setAudioEnabled(track.enabled);
@@ -459,11 +471,14 @@ export function MediaProvider({ children, initialStream = null }) {
       userId: socket.id,
       enabled: track.enabled
     });
-  }, [socket, roomId]);
+  }, [socket, roomId, getMedia]);
 
   const toggleVideo = useCallback(() => {
     const track = localStreamRef.current?.getVideoTracks()[0];
-    if (!track) return;
+    if (!track || track.readyState === 'ended') {
+      getMedia().catch(() => {});
+      return;
+    }
 
     track.enabled = !track.enabled;
     setVideoEnabled(track.enabled);
@@ -473,7 +488,7 @@ export function MediaProvider({ children, initialStream = null }) {
       userId: socket.id,
       enabled: track.enabled
     });
-  }, [socket, roomId]);
+  }, [socket, roomId, getMedia]);
 
   // ─────────────────────────────────────────────
   // SCREEN SHARE
