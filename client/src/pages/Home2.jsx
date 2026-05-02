@@ -323,119 +323,29 @@ const NAV_MENU = [
   { label: "Accueil", active: true, items: [] },
   {
     label: "Réunions",
-    featured: {
-      title: "Salles de réunion Meetra",
-      desc: "Démarrez, planifiez et gérez toutes vos visioconférences depuis un seul endroit. Jusqu'à 100 participants en qualité HD.",
-      img: "https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=420&q=75",
-      badge: "WebRTC P2P",
-    },
     items: [
-      {
-        icon: "📅",
-        label: "Mes réunions planifiées",
-        desc: "Consultez et gérez toutes vos réunions à venir avec date, heure et invités.",
-        img: "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=160&q=70",
-        color: "#6366f1",
-      },
-      {
-        icon: "⏺️",
-        label: "Réunions enregistrées",
-        desc: "Retrouvez vos enregistrements .webm et transcriptions IA post-réunion.",
-        img: "https://images.unsplash.com/photo-1536240478700-b869ad10e2b9?w=160&q=70",
-        color: "#ec4899",
-      },
-      {
-        icon: "👥",
-        label: "Salles de groupe",
-        desc: "Gérez les breakout rooms : créez des groupes et répartissez les participants.",
-        img: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=160&q=70",
-        color: "#10b981",
-      },
-      {
-        icon: "🔒",
-        label: "Salles verrouillées",
-        desc: "Accédez aux réunions sécurisées où l'entrée est contrôlée par l'hôte.",
-        img: "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=160&q=70",
-        color: "#f59e0b",
-      },
+      { icon: "📅", label: "Mes réunions planifiées" },
+      { icon: "⏺️", label: "Réunions enregistrées" },
+      { icon: "👥", label: "Salles de groupe" },
+      { icon: "🔒", label: "Salles verrouillées" },
     ],
   },
   {
     label: "Contacts",
-    featured: {
-      title: "Réseau & Collaborateurs",
-      desc: "Gérez vos contacts LaSalle, invitez des membres et appelez-les directement en vidéo en un clic.",
-      img: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=420&q=75",
-      badge: "50 000+ membres",
-    },
     items: [
-      {
-        icon: "👤",
-        label: "Mes contacts",
-        desc: "Vos collègues, étudiants et enseignants enregistrés avec statut de présence.",
-        img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=160&q=70",
-        color: "#818cf8",
-      },
-      {
-        icon: "✉️",
-        label: "Inviter des membres",
-        desc: "Envoyez un lien Meetra à n'importe quel email pour rejoindre votre réunion.",
-        img: "https://images.unsplash.com/photo-1586336153815-a67d9b55d68c?w=160&q=70",
-        color: "#34d399",
-      },
-      {
-        icon: "📋",
-        label: "Annuaire LaSalle",
-        desc: "Retrouvez étudiants, enseignants, développeurs et administrateurs du collège.",
-        img: "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=160&q=70",
-        color: "#f472b6",
-      },
+      { icon: "👤", label: "Mes contacts" },
+      { icon: "✉️", label: "Inviter des membres" },
+      { icon: "📋", label: "Annuaire LaSalle" },
     ],
   },
   {
     label: "Paramètres",
-    featured: {
-      title: "Configuration & Sécurité",
-      desc: "Personnalisez votre expérience Meetra : qualité audio/vidéo, sécurité avancée et paramètres réseau WebRTC.",
-      img: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=420&q=75",
-      badge: "TURN / STUN",
-    },
     items: [
-      {
-        icon: "🎙️",
-        label: "Audio & Vidéo",
-        desc: "Choisissez votre caméra, micro et sortie audio avant d'entrer.",
-        img: "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=160&q=70",
-        color: "#6366f1",
-      },
-      {
-        icon: "🖼️",
-        label: "Arrière-plans virtuels",
-        desc: "Scènes, flous et images personnalisées pour votre caméra.",
-        img: "https://images.unsplash.com/photo-1611532736576-a2a96a2af99c?w=160&q=70",
-        color: "#a78bfa",
-      },
-      {
-        icon: "🔔",
-        label: "Notifications",
-        desc: "Alertes d'invitation, salle d'attente et activité de réunion.",
-        img: "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=160&q=70",
-        color: "#fbbf24",
-      },
-      {
-        icon: "🛡️",
-        label: "Sécurité & Confidentialité",
-        desc: "Salle d'attente, verrouillage, admission et accès hôte sécurisé.",
-        img: "https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=160&q=70",
-        color: "#ef4444",
-      },
-      {
-        icon: "🌐",
-        label: "Réseau & TURN",
-        desc: "Configuration WebRTC, STUN/TURN pour les réseaux restrictifs.",
-        img: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=160&q=70",
-        color: "#06b6d4",
-      },
+      { icon: "🎙️", label: "Audio & Vidéo" },
+      { icon: "🖼️", label: "Arrière-plans virtuels" },
+      { icon: "🔔", label: "Notifications" },
+      { icon: "🛡️", label: "Sécurité & Confidentialité" },
+      { icon: "🌐", label: "Réseau & TURN" },
     ],
   },
 ];
@@ -1592,72 +1502,37 @@ function NavbarChildWindow({ panel, onClose, plannedMeetings, contacts }) {
   if (!panel) return null;
   const summary = getNavbarPanelSummary(panel, plannedMeetings, contacts);
 
-  // Retrouver la couleur & image du menu item pour l'en-tête
-  const menuItem = NAV_MENU.flatMap((m) => m.items || []).find((it) => it.label === panel.label);
-  const accentColor = menuItem?.color || "#6366f1";
-  const thumbImg    = menuItem?.img   || null;
-
   return (
-      <div className="fixed inset-0 z-[70] flex items-start justify-center px-4 py-16"
-           style={{ background: "rgba(2,6,23,0.6)", backdropFilter: "blur(8px)" }}
+      <div className="fixed inset-0 z-[70] flex items-start justify-center px-4 py-20"
+           style={{ background: "rgba(2,6,23,0.52)", backdropFilter: "blur(6px)" }}
            onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-        <div className="w-full max-w-3xl rounded-[24px] overflow-hidden"
-             style={{ background: "#0b1022", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(99,102,241,0.08)", animation: "modalIn 0.22s cubic-bezier(0.34,1.56,0.64,1)" }}>
-
-          {/* En-tête avec photo */}
-          <div className="relative overflow-hidden" style={{ minHeight: 120 }}>
-            {thumbImg && (
-                <img src={thumbImg} alt="" aria-hidden
-                     style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", opacity:0.18, filter:"saturate(0.6)" }} />
-            )}
-            <div className="relative flex items-start justify-between gap-4 px-7 pt-6 pb-5"
-                 style={{ background: `linear-gradient(135deg, ${accentColor}18 0%, transparent 70%)` }}>
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-lg leading-none">{menuItem?.icon || "⚙️"}</span>
-                  <span className="text-xs font-black uppercase tracking-[0.22em]"
-                        style={{ color: accentColor, opacity:0.8 }}>{panel.parent}</span>
-                </div>
-                <h2 className="text-2xl font-black tracking-tight text-white">{panel.label}</h2>
-                <p className="mt-2 max-w-xl text-sm leading-relaxed" style={{ color: "rgba(148,163,184,0.8)" }}>{summary.intro}</p>
-              </div>
-              <button onClick={onClose}
-                      className="flex-shrink-0 rounded-xl px-4 py-2 text-sm font-bold transition-all"
-                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8" }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background="rgba(255,255,255,0.12)"; e.currentTarget.style.color="#fff"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background="rgba(255,255,255,0.06)"; e.currentTarget.style.color="#94a3b8"; }}>
-                Fermer ✕
-              </button>
+        <div className="w-full max-w-4xl rounded-[28px] p-7 text-slate-950"
+             style={{ background: "linear-gradient(145deg,#fffaf0,#e0f2fe)", border: "1px solid rgba(15,23,42,0.12)", boxShadow: "0 34px 90px rgba(0,0,0,0.38)" }}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">{panel.parent}</div>
+              <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">{panel.label}</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-700">{summary.intro}</p>
             </div>
-            {/* Barre de couleur */}
-            <div style={{ height:2, background:`linear-gradient(90deg, ${accentColor}, transparent)` }} />
+            <button onClick={onClose}
+                    className="rounded-full px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-900 hover:text-white"
+                    style={{ border: "1px solid rgba(15,23,42,0.16)" }}>
+              Fermer
+            </button>
           </div>
 
-          {/* Contenu */}
-          <div className="p-6 grid gap-2.5" style={{ maxHeight:"60vh", overflowY:"auto" }}>
+          <div className="mt-7 grid gap-3">
             {summary.rows.length === 0 ? (
-                <div className="rounded-2xl px-5 py-10 text-sm text-center"
-                     style={{ border: "1px dashed rgba(255,255,255,0.08)", color: "#475569" }}>
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 px-5 py-8 text-sm text-slate-600">
                   {summary.empty}
                 </div>
             ) : summary.rows.map((row, index) => (
-                <div key={`${row.title}-${index}`}
-                     className="flex items-center justify-between gap-4 rounded-xl px-5 py-4 transition-all"
-                     style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }}
-                     onMouseEnter={(e) => e.currentTarget.style.background="rgba(255,255,255,0.05)"}
-                     onMouseLeave={(e) => e.currentTarget.style.background="rgba(255,255,255,0.025)"}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                         style={{ background: `${accentColor}18` }}>
-                      <span style={{ width:6, height:6, borderRadius:"50%", background:accentColor, display:"block" }} />
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-white">{row.title}</div>
-                      <div className="text-xs mt-0.5" style={{ color: "#64748b" }}>{row.meta}</div>
-                    </div>
+                <div key={`${row.title}-${index}`} className="flex items-center justify-between gap-4 rounded-2xl bg-white/75 px-5 py-4 shadow-sm">
+                  <div>
+                    <div className="font-bold text-slate-950">{row.title}</div>
+                    <div className="mt-1 text-sm text-slate-600">{row.meta}</div>
                   </div>
-                  <span className="rounded-lg px-2.5 py-1 text-xs font-black flex-shrink-0"
-                        style={{ background: `${accentColor}15`, color: accentColor }}>
+                  <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-bold text-white">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                 </div>
@@ -1766,194 +1641,57 @@ function SearchResultsWindow({ query, results, onClose, onSelectResult }) {
   );
 }
 
-// ── CSS injecté une seule fois pour les mega-menus ──────────────────────────
-const MEGA_CSS = `
-@keyframes megaIn {
-  from { opacity:0; transform:translateY(-8px) scale(0.98); }
-  to   { opacity:1; transform:translateY(0)    scale(1);    }
-}
-@keyframes fadeD {
-  from { opacity:0; transform:translateY(-6px); }
-  to   { opacity:1; transform:translateY(0); }
-}
-.mega-wrap {
-  position:fixed; left:0; right:0;
-  top:53px; /* hauteur navbar */
-  display:flex; justify-content:center;
-  z-index:200; pointer-events:none;
-}
-.mega-box {
-  pointer-events:all;
-  width:min(860px, calc(100vw - 32px));
-  border-radius:20px;
-  overflow:hidden;
-  background:#0b1022;
-  border:1px solid rgba(255,255,255,0.08);
-  box-shadow:0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(99,102,241,0.1);
-  animation:megaIn 0.2s cubic-bezier(0.34,1.3,0.64,1);
-  display:grid; grid-template-columns:240px 1fr;
-}
-.mega-feat {
-  background:linear-gradient(170deg,#13184a 0%,#0d0f24 100%);
-  padding:22px; display:flex; flex-direction:column; gap:14px;
-}
-.mega-feat-img { width:100%; aspect-ratio:16/9; border-radius:12px; overflow:hidden; position:relative; }
-.mega-feat-img img { width:100%; height:100%; object-fit:cover; transition:transform 0.4s; }
-.mega-feat-img:hover img { transform:scale(1.06); }
-.mega-feat-badge {
-  position:absolute; top:8px; right:8px;
-  background:rgba(99,102,241,0.85); color:#fff;
-  font-size:9px; font-weight:800; padding:3px 9px;
-  border-radius:20px; letter-spacing:0.06em; text-transform:uppercase;
-}
-.mega-feat-title { font-size:0.95rem; font-weight:800; color:#fff; letter-spacing:-0.02em; line-height:1.3; }
-.mega-feat-desc  { font-size:0.75rem; color:rgba(255,255,255,0.5); line-height:1.65; margin-top:4px; }
-.mega-feat-cta   {
-  font-size:0.78rem; font-weight:700; color:#818cf8;
-  background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.25);
-  border-radius:9px; padding:7px 14px; cursor:pointer; align-self:flex-start;
-  transition:background 0.2s, color 0.2s; font-family:inherit;
-}
-.mega-feat-cta:hover { background:rgba(99,102,241,0.28); color:#fff; }
-
-.mega-items { padding:16px 14px; display:flex; flex-direction:column; gap:3px; }
-.mega-item {
-  display:flex; align-items:center; gap:12px;
-  padding:9px 10px; border-radius:12px;
-  background:none; border:none; cursor:pointer;
-  text-align:left; width:100%;
-  transition:background 0.18s;
-  font-family:inherit;
-}
-.mega-item:hover { background:rgba(255,255,255,0.04); }
-.mega-thumb {
-  width:46px; height:46px; border-radius:10px; overflow:hidden;
-  flex-shrink:0; position:relative;
-}
-.mega-thumb img { width:100%; height:100%; object-fit:cover; transition:transform 0.3s; }
-.mega-item:hover .mega-thumb img { transform:scale(1.1); }
-.mega-thumb-overlay {
-  position:absolute; inset:0;
-  display:flex; align-items:center; justify-content:center;
-  background:rgba(0,0,0,0.35); font-size:1rem;
-  opacity:0; transition:opacity 0.2s;
-}
-.mega-item:hover .mega-thumb-overlay { opacity:1; }
-.mega-item-dot {
-  width:3px; height:3px; border-radius:50%; flex-shrink:0; margin-top:2px;
-}
-.mega-txt { display:flex; flex-direction:column; gap:2px; flex:1; }
-.mega-name { font-size:0.82rem; font-weight:700; color:rgba(226,232,240,0.95); line-height:1.25; }
-.mega-desc { font-size:0.72rem; color:rgba(100,116,139,0.9); line-height:1.4; }
-.mega-arrow { color:rgba(100,116,139,0.5); transition:transform 0.2s, color 0.2s; flex-shrink:0; }
-.mega-item:hover .mega-arrow { transform:translateX(3px); color:#818cf8; }
-
-/* Overlay sombre derrière */
-.mega-overlay {
-  position:fixed; inset:0; z-index:199;
-  background:rgba(2,6,23,0.45);
-  backdrop-filter:blur(3px);
-}
-`;
-
-function MegaMenu({ item, onOpenPanel, onClose }) {
-  if (!item || !item.featured) return null;
-  const cols = item.items.length <= 3 ? 1 : 2;
-  const half = Math.ceil(item.items.length / cols);
-  const col1 = item.items.slice(0, half);
-  const col2 = item.items.slice(half);
-
-  return (
-      <>
-        <div className="mega-overlay" onClick={onClose} />
-        <div className="mega-wrap">
-          <div className="mega-box">
-            {/* Panneau featured gauche */}
-            <div className="mega-feat">
-              <div className="mega-feat-img">
-                <img src={item.featured.img} alt={item.featured.title} />
-                <span className="mega-feat-badge">{item.featured.badge}</span>
-              </div>
-              <div>
-                <div className="mega-feat-title">{item.featured.title}</div>
-                <div className="mega-feat-desc">{item.featured.desc}</div>
-              </div>
-              <button className="mega-feat-cta" onClick={onClose}>Explorer →</button>
-            </div>
-
-            {/* Items droite */}
-            <div style={{ display: "grid", gridTemplateColumns: cols === 2 ? "1fr 1fr" : "1fr" }}>
-              {[col1, ...(cols === 2 ? [col2] : [])].map((col, ci) => (
-                  <div key={ci} className="mega-items"
-                       style={ci === 1 ? { borderLeft: "1px solid rgba(255,255,255,0.05)" } : {}}>
-                    {col.map((sub) => (
-                        <button
-                            key={sub.label}
-                            className="mega-item"
-                            onClick={() => { onOpenPanel({ ...sub, parent: item.label }); onClose(); }}
-                        >
-                          <div className="mega-thumb">
-                            <img src={sub.img} alt={sub.label} />
-                            <div className="mega-thumb-overlay">{sub.icon}</div>
-                          </div>
-                          <span className="mega-item-dot" style={{ background: sub.color }} />
-                          <div className="mega-txt">
-                            <span className="mega-name">{sub.label}</span>
-                            <span className="mega-desc">{sub.desc}</span>
-                          </div>
-                          <svg className="mega-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-                          </svg>
-                        </button>
-                    ))}
-                  </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </>
-  );
-}
-
 function NavItem({ item, onOpenPanel }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-  const closeTimer = useRef(null);
   useClickOutside(ref, () => setOpen(false));
 
-  const scheduleClose = () => { closeTimer.current = setTimeout(() => setOpen(false), 130); };
-  const cancelClose   = () => clearTimeout(closeTimer.current);
-
-  if (!item.items.length) {
-    return (
-        <button
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all"
-            style={{ color: item.active ? "#818cf8" : "rgba(148,163,184,0.85)", background: item.active ? "rgba(99,102,241,0.1)" : "transparent" }}
-        >
-          {item.label}
-        </button>
-    );
-  }
-
   return (
-      <div ref={ref} style={{ position: "relative" }}>
+      <div ref={ref} className="relative">
         <button
-            onMouseEnter={() => { cancelClose(); setOpen(true); }}
-            onMouseLeave={scheduleClose}
+            onMouseEnter={() => item.items.length && setOpen(true)}
+            onMouseLeave={() => item.items.length && setOpen(false)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all"
             style={{
-              color: open ? "#818cf8" : "rgba(148,163,184,0.85)",
-              background: open ? "rgba(99,102,241,0.1)" : "transparent",
+              color: item.active ? "#818cf8" : "rgba(148,163,184,0.85)",
+              background: item.active ? "rgba(99,102,241,0.1)" : "transparent",
             }}
         >
           {item.label}
-          <I.ChevronDown width={12} height={12}
-                         style={{ transition: "transform 0.22s", transform: open ? "rotate(180deg)" : "rotate(0deg)", opacity: 0.6 }} />
+          {item.items.length > 0 && (
+              <I.ChevronDown width={12} height={12}
+                             style={{ transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "rotate(0deg)" }} />
+          )}
         </button>
 
-        {open && (
-            <div onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
-              <MegaMenu item={item} onOpenPanel={onOpenPanel} onClose={() => setOpen(false)} />
+        {item.items.length > 0 && open && (
+            <div
+                onMouseEnter={() => setOpen(true)}
+                onMouseLeave={() => setOpen(false)}
+                className="absolute top-full left-0 mt-1 py-2 rounded-xl min-w-[200px] z-50"
+                style={{
+                  background: "rgba(11,16,30,0.98)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+                  animation: "fadeD 0.15s ease-out",
+                }}
+            >
+              {item.items.map((sub) => (
+                  <button
+                      key={sub.label}
+                      onClick={() => {
+                        onOpenPanel({ ...sub, parent: item.label });
+                        setOpen(false);
+                      }}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-left transition-colors"
+                      style={{ color: "rgba(148,163,184,0.8)" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = "white"; e.currentTarget.style.background = "rgba(99,102,241,0.08)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(148,163,184,0.8)"; e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <span className="text-base leading-none">{sub.icon}</span>
+                    {sub.label}
+                  </button>
+              ))}
             </div>
         )}
       </div>
@@ -1965,69 +1703,66 @@ function Navbar({ time, search, setSearch, auth, onOpenAccount, onOpenPanel }) {
   const initials = getInitials(auth.profile?.name, auth.profile?.email);
 
   return (
-      <>
-        <style>{MEGA_CSS}</style>
-        <nav
-            className="sticky top-0 z-40 flex items-center gap-4 px-6 py-3"
-            style={{
-              background: "rgba(5,8,16,0.92)",
-              backdropFilter: "blur(22px)",
-              borderBottom: "1px solid rgba(255,255,255,0.055)",
-            }}
-        >
-          {/* Logo */}
-          <div className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-white"
-                 style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)" }}>M</div>
-            <span className="text-base font-black tracking-tight hidden sm:block"
-                  style={{ background: "linear-gradient(135deg,#a5b4fc,#818cf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              Meetra
+      <nav
+          className="sticky top-0 z-40 flex items-center gap-4 px-6 py-3"
+          style={{
+            background: "rgba(5,8,16,0.88)",
+            backdropFilter: "blur(20px)",
+            borderBottom: "1px solid rgba(255,255,255,0.055)",
+          }}
+      >
+        {/* Logo */}
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-white"
+               style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)" }}>M</div>
+          <span className="text-base font-black tracking-tight hidden sm:block"
+                style={{ background: "linear-gradient(135deg,#a5b4fc,#818cf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+          Meetra
+        </span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-black"
+                style={{ background: "rgba(16,185,129,0.12)", color: "#34d399" }}>BETA</span>
+        </div>
+
+        {/* Nav links */}
+        <div className="hidden md:flex items-center gap-0.5 flex-1">
+          {NAV_MENU.map((item) => <NavItem key={item.label} item={item} onOpenPanel={onOpenPanel} />)}
+        </div>
+
+        {/* Recherche */}
+        <div className="relative hidden lg:block">
+          <I.Search width={14} height={14} style={{ color: "#475569", position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }} />
+          <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher une réunion…"
+              className="pl-8 pr-4 py-2 rounded-xl text-sm text-slate-300 placeholder-slate-600 outline-none transition-all w-52 focus:w-72"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+          />
+        </div>
+
+        {/* Actions droite */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="text-xs text-slate-600 hidden xl:block tabular-nums">{time}</span>
+          <button className="relative w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-all">
+            <I.Bell width={16} height={16} />
+            {notif > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full text-[9px] font-black text-white flex items-center justify-center"
+                      style={{ background: "#6366f1" }}
+                      onClick={() => setNotif(0)}>
+              {notif}
             </span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-black"
-                  style={{ background: "rgba(16,185,129,0.12)", color: "#34d399" }}>BETA</span>
-          </div>
-
-          {/* Nav links */}
-          <div className="hidden md:flex items-center gap-0.5 flex-1">
-            {NAV_MENU.map((item) => <NavItem key={item.label} item={item} onOpenPanel={onOpenPanel} />)}
-          </div>
-
-          {/* Recherche */}
-          <div className="relative hidden lg:block">
-            <I.Search width={14} height={14} style={{ color: "#475569", position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }} />
-            <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Rechercher une réunion…"
-                className="pl-8 pr-4 py-2 rounded-xl text-sm text-slate-300 placeholder-slate-600 outline-none transition-all w-52 focus:w-72"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-            />
-          </div>
-
-          {/* Actions droite */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-xs text-slate-600 hidden xl:block tabular-nums">{time}</span>
-            <button className="relative w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-all">
-              <I.Bell width={16} height={16} />
-              {notif > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full text-[9px] font-black text-white flex items-center justify-center"
-                        style={{ background: "#6366f1" }}
-                        onClick={() => setNotif(0)}>
-                {notif}
-              </span>
-              )}
-            </button>
-            <button
-                onClick={onOpenAccount}
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black text-white cursor-pointer hover:opacity-80 transition-opacity"
-                style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)" }}
-                title={auth.profile?.email ? `${auth.profile?.name || "Compte Meetra"} — ${auth.profile?.email}` : "Ouvrir l'accès Meetra"}>
-              {initials}
-            </button>
-          </div>
-        </nav>
-      </>
+            )}
+          </button>
+          <button
+               onClick={onOpenAccount}
+               className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black text-white cursor-pointer hover:opacity-80 transition-opacity"
+               style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)" }}
+               title={auth.profile?.email ? `${auth.profile?.name || "Compte Meetra"} — ${auth.profile?.email}` : "Ouvrir l'accès Meetra"}>
+            {initials}
+          </button>
+        </div>
+      </nav>
   );
 }
 
