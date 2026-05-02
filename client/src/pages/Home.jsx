@@ -4,7 +4,7 @@
 // ✅ Navbar avec sous-menus dropdown  ✅ Historique récent  ✅ Contacts rapides
 // ✅ Barre de recherche  ✅ Horloge live  ✅ Stats  ✅ Compatible Vite + Tailwind + React Router
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { buildPublicRoomUrl, getApiUrl } from "../utils/appConfig.js";
 
 // ═══════════════════════════════════════════════════════════
@@ -16,6 +16,8 @@ const generateRoomId = () =>
 
 const API_URL = getApiUrl();
 const AUTH_STORAGE_KEY = "meetra-auth-session";
+const CONTACTS_STORAGE_KEY = "meetra-contacts";
+const CONTACT_ROLES = ["Étudiant", "Enseignant", "Développeur UI", "Programmeur", "Administrateur"];
 
 function readStoredAuth() {
   if (typeof window === "undefined") return { token: "", profile: null };
@@ -42,6 +44,21 @@ function clearStoredAuth() {
   window.dispatchEvent(new CustomEvent("meetra-auth-changed", { detail: { token: "", profile: null } }));
 }
 
+function readStoredContacts() {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(CONTACTS_STORAGE_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistContacts(contacts) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(CONTACTS_STORAGE_KEY, JSON.stringify(contacts));
+}
+
 function getInitials(name = "", email = "") {
   const source = String(name || "").trim();
   if (source) {
@@ -49,6 +66,21 @@ function getInitials(name = "", email = "") {
     return parts.map((part) => part[0]?.toUpperCase() || "").join("") || "M";
   }
   return (String(email || "").trim().slice(0, 2) || "M").toUpperCase();
+}
+
+function colorFromText(value) {
+  const source = String(value || "M");
+  let hash = 0;
+  for (let i = 0; i < source.length; i += 1) hash = (hash * 31 + source.charCodeAt(i)) % 360;
+  return `hsl(${hash}, 58%, 42%)`;
+}
+
+function nameFromEmail(email) {
+  const local = String(email || "").split("@")[0] || "";
+  return local
+      .replace(/[._-]+/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+      .trim() || email;
 }
 
 function getAuthErrorMessage(errorCode) {
@@ -285,14 +317,6 @@ const RECENT_MEETINGS = [
   { id: "R02", title: "Planification sprint #11", date: "Lun 28 avr, 10h00", duration: "1h12", participants: 7, recorded: false },
   { id: "R03", title: "Entretien candidat UX", date: "Ven 25 avr, 14h30", duration: "45 min", participants: 3, recorded: true },
   { id: "R04", title: "Demo finale TT4", date: "Jeu 24 avr, 11h00", duration: "30 min", participants: 15, recorded: true },
-];
-
-const CONTACTS = [
-  { initials: "AL", name: "Alice Leblanc", role: "Dev Frontend", color: "#6366f1", online: true },
-  { initials: "JD", name: "Julien Dupont", role: "Dev Backend", color: "#10b981", online: true },
-  { initials: "KP", name: "Karine Petit", role: "Designer UI", color: "#f59e0b", online: false },
-  { initials: "RK", name: "Rania Khalil", role: "Chef de projet", color: "#ec4899", online: true },
-  { initials: "PW", name: "Pierre Walsh", role: "QA Engineer", color: "#14b8a6", online: false },
 ];
 
 const NAV_MENU = [
@@ -1259,23 +1283,83 @@ function RecentMeetings({ meetings, loading, signedIn, onSelect }) {
 // SECTION : CONTACTS RAPIDES
 // ═══════════════════════════════════════════════════════════
 
-function QuickContacts({ onHostMeeting }) {
+function QuickContacts({ contacts, onAddContact, onHostMeeting }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState(CONTACT_ROLES[0]);
+  const [status, setStatus] = useState("");
+
   const callContact = (c) => {
     onHostMeeting(`Appel avec ${c.name}`);
   };
 
+  const addContact = () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const displayName = name.trim() || nameFromEmail(normalizedEmail);
+    if (!displayName || !normalizedEmail.includes("@")) {
+      setStatus("Nom et courriel valide requis.");
+      return;
+    }
+    onAddContact({ name: displayName, email: normalizedEmail, role });
+    setName("");
+    setEmail("");
+    setRole(CONTACT_ROLES[0]);
+    setStatus("Contact ajouté.");
+    setTimeout(() => setStatus(""), 2200);
+  };
+
   return (
       <div>
-        <SectionHeader title="Contacts rapides" />
+        <SectionHeader title="Contacts" />
+        <div className="rounded-2xl p-4 mb-3"
+             style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
+          <div className="text-sm font-semibold text-white">Ajouter un contact</div>
+          <div className="mt-3 space-y-2">
+            <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Nom complet"
+                className="meetra-input"
+            />
+            <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="courriel@exemple.com"
+                className="meetra-input"
+            />
+            <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="meetra-input"
+                style={{ background: "#0d1322" }}
+            >
+              {CONTACT_ROLES.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+            {status && <div className="text-xs text-slate-400">{status}</div>}
+            <button
+                onClick={addContact}
+                className="w-full py-2 rounded-xl text-xs font-bold transition-all"
+                style={{ background: "rgba(16,185,129,0.12)", color: "#6ee7b7", border: "1px solid rgba(16,185,129,0.2)" }}
+            >
+              Ajouter le contact
+            </button>
+          </div>
+        </div>
+
         <div className="space-y-2">
-          {CONTACTS.map((c) => (
-              <div key={c.initials}
+          {contacts.length === 0 ? (
+              <div className="rounded-xl px-4 py-5 text-sm text-slate-500"
+                   style={{ border: "1px dashed rgba(255,255,255,0.08)" }}>
+                Aucun contact. Planifiez une réunion avec un invité ou ajoutez un contact.
+              </div>
+          ) : contacts.map((c) => (
+              <div key={c.email || c.name}
                    className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:bg-white/[0.03] group"
                    style={{ border: "1px solid rgba(255,255,255,0.05)" }}>
-                <Avatar initials={c.initials} color={c.color} online={c.online} size={36} showStatus />
+                <Avatar initials={getInitials(c.name, c.email)} color={c.color || colorFromText(c.email || c.name)} online={c.online} size={36} showStatus />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white leading-tight">{c.name}</p>
-                  <p className="text-xs text-slate-500">{c.role}</p>
+                  <p className="text-xs text-slate-500 truncate">{c.role} · {c.email}</p>
                 </div>
                 <button
                     onClick={() => callContact(c)}
@@ -1471,6 +1555,8 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
   const [time, setTime] = useState(new Date());
   const [auth, setAuth] = useState(() => readStoredAuth());
   const [plannedMeetings, setPlannedMeetings] = useState([]);
+  const [accountMeetings, setAccountMeetings] = useState([]);
+  const [manualContacts, setManualContacts] = useState(() => readStoredContacts());
   const [meetingsLoading, setMeetingsLoading] = useState(false);
 
   // Horloge temps réel
@@ -1497,6 +1583,7 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
   const loadPlannedMeetings = useCallback(async (tokenOverride = auth.token) => {
     if (!tokenOverride) {
       setPlannedMeetings([]);
+      setAccountMeetings([]);
       return;
     }
 
@@ -1508,11 +1595,15 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setPlannedMeetings([]);
+        setAccountMeetings([]);
         return;
       }
-      setPlannedMeetings(uniqueMeetingsByRoom(data.meetings).filter((meeting) => meeting.scheduledFor));
+      const meetings = uniqueMeetingsByRoom(data.meetings);
+      setAccountMeetings(meetings);
+      setPlannedMeetings(meetings.filter((meeting) => meeting.scheduledFor));
     } catch {
       setPlannedMeetings([]);
+      setAccountMeetings([]);
     } finally {
       setMeetingsLoading(false);
     }
@@ -1557,8 +1648,49 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
     if (meeting.scheduledFor) {
       setPlannedMeetings((current) => uniqueMeetingsByRoom([meeting, ...current]).slice(0, 12));
     }
+    setAccountMeetings((current) => uniqueMeetingsByRoom([meeting, ...current]).slice(0, 20));
     return meeting;
   }, [auth.token]);
+
+  const contacts = useMemo(() => {
+    const map = new Map();
+    const add = (contact) => {
+      const email = String(contact.email || "").trim().toLowerCase();
+      if (!email || email === auth.profile?.email) return;
+      map.set(email, {
+        name: contact.name || nameFromEmail(email),
+        email,
+        role: contact.role || "Invité de réunion",
+        online: Boolean(contact.online),
+        color: contact.color || colorFromText(email),
+      });
+    };
+
+    accountMeetings.forEach((meeting) => {
+      (meeting.inviteeEmails || []).forEach((email) => {
+        add({ email, role: meeting.scheduledFor ? "Invité planifié" : "Invité de réunion" });
+      });
+    });
+    manualContacts.forEach(add);
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "fr"));
+  }, [accountMeetings, manualContacts, auth.profile?.email]);
+
+  const handleAddContact = useCallback((contact) => {
+    setManualContacts((current) => {
+      const normalizedEmail = contact.email.trim().toLowerCase();
+      const next = [
+        {
+          ...contact,
+          email: normalizedEmail,
+          color: colorFromText(normalizedEmail),
+          online: false,
+        },
+        ...current.filter((item) => String(item.email || "").trim().toLowerCase() !== normalizedEmail),
+      ];
+      persistContacts(next);
+      return next;
+    });
+  }, []);
 
   const handleQuickHostMeeting = useCallback(async (title = "Réunion Meetra") => {
     if (!auth.token) {
@@ -1726,7 +1858,11 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
               />
             </div>
             <div className="lg:col-span-2">
-              <QuickContacts onHostMeeting={handleQuickHostMeeting} />
+              <QuickContacts
+                  contacts={contacts}
+                  onAddContact={handleAddContact}
+                  onHostMeeting={handleQuickHostMeeting}
+              />
             </div>
           </div>
 
