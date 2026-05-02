@@ -193,6 +193,17 @@ export default function Lobby({ roomId, userName, isHost = false, onJoin, onBack
   // ── Rejoindre ─────────────────────────────────────────────────────────────
   const handleJoin = () => {
     if (!socket || joining) return;
+    try {
+      const targetWidth = Math.min(window.screen.availWidth, 1280);
+      const targetHeight = Math.min(window.screen.availHeight, 860);
+      const left = Math.max(0, Math.round((window.screen.availWidth - targetWidth) / 2));
+      const top = Math.max(0, Math.round((window.screen.availHeight - targetHeight) / 2));
+      window.resizeTo(targetWidth, targetHeight);
+      window.moveTo(left, top);
+    } catch {
+      // Browsers may block resizing non-popup windows; the meeting still opens.
+    }
+
     preserveStreamRef.current = false;
     setJoining(true);
     setError('');
