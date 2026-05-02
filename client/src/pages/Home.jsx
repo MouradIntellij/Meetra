@@ -1794,10 +1794,6 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
   const [manualContacts, setManualContacts] = useState(() => readStoredContacts());
   const [meetingsLoading, setMeetingsLoading] = useState(false);
   const [navbarPanel, setNavbarPanel] = useState(null);
-  const searchResults = useMemo(
-      () => buildSearchResults(search, plannedMeetings, contacts),
-      [search, plannedMeetings, contacts]
-  );
 
   // Horloge temps réel
   useEffect(() => {
@@ -1917,6 +1913,11 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
     manualContacts.forEach(add);
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "fr"));
   }, [accountMeetings, manualContacts, auth.profile?.email]);
+
+  const searchResults = useMemo(
+      () => buildSearchResults(search, plannedMeetings, contacts),
+      [search, plannedMeetings, contacts]
+  );
 
   const handleAddContact = useCallback((contact) => {
     setManualContacts((current) => {
