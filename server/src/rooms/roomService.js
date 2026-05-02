@@ -8,6 +8,10 @@ export async function createRoom() {
 }
 
 export async function createScheduledRoom(options = {}) {
+  const inviteeEmails = Array.isArray(options.inviteeEmails)
+    ? Array.from(new Set(options.inviteeEmails.map((email) => String(email || '').trim()).filter(Boolean)))
+    : [];
+
   const metadata = {
     title: options.title || 'Réunion Meetra',
     scheduledFor: options.scheduledFor || null,
@@ -16,6 +20,7 @@ export async function createScheduledRoom(options = {}) {
     hostName: options.hostName || null,
     hostEmail: options.hostEmail || null,
     hostPhone: options.hostPhone || null,
+    inviteeEmails,
     createdByUserId: options.createdByUserId || null,
     createdByEmail: options.createdByEmail || null,
     createdByName: options.createdByName || null,
@@ -85,6 +90,7 @@ export async function getMeetingRoomInfo(roomId) {
     hostName: meeting?.metadata?.hostName || null,
     hostEmail: meeting?.metadata?.hostEmail || null,
     hostPhone: meeting?.metadata?.hostPhone || null,
+    inviteeEmails: meeting?.metadata?.inviteeEmails || [],
   };
 }
 
@@ -215,6 +221,7 @@ export async function getRecentMeetings(limit = 8) {
     hostName: meeting.metadata?.hostName || null,
     hostEmail: meeting.metadata?.hostEmail || null,
     hostPhone: meeting.metadata?.hostPhone || null,
+    inviteeEmails: meeting.metadata?.inviteeEmails || [],
     createdByUserId: meeting.metadata?.createdByUserId || null,
     createdByEmail: meeting.metadata?.createdByEmail || null,
     createdByName: meeting.metadata?.createdByName || null,

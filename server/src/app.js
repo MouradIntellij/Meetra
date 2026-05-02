@@ -56,6 +56,7 @@ export function createApp() {
       hostName: meeting.hostName || meeting.metadata?.hostName || null,
       hostEmail: meeting.hostEmail || meeting.metadata?.hostEmail || null,
       hostPhone: meeting.hostPhone || meeting.metadata?.hostPhone || null,
+      inviteeEmails: meeting.inviteeEmails || meeting.metadata?.inviteeEmails || [],
       status: meeting.status || 'scheduled',
       locked: Boolean(meeting.locked),
       createdAt: meeting.createdAt || null,
@@ -126,6 +127,7 @@ export function createApp() {
         hostName: authenticated.name || hostName,
         hostEmail: authenticated.email || hostEmail,
         hostPhone,
+        inviteeEmails,
         source: 'api',
         createdByUserId: authenticated.id,
         createdByEmail: authenticated.email,
@@ -172,6 +174,7 @@ export function createApp() {
         hostName: room.metadata?.hostName || authenticated.name || hostName || null,
         hostEmail: room.metadata?.hostEmail || authenticated.email || hostEmail || null,
         hostPhone: room.metadata?.hostPhone || hostPhone || null,
+        inviteeEmails: room.metadata?.inviteeEmails || [],
         invitations: invitationSummary,
       });
     } catch (err) {

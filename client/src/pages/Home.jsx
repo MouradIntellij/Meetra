@@ -82,6 +82,46 @@ function normalizeRoomInput(value) {
   }
 }
 
+function normalizeInviteeEmails(value) {
+  const source = Array.isArray(value) ? value.join(",") : value;
+  return Array.from(new Set(
+      String(source || "")
+          .split(/[,\n;]/)
+          .map((item) => item.trim())
+          .filter(Boolean)
+  ));
+}
+
+function formatMeetingDate(value, timezone) {
+  if (!value) return "Date à confirmer";
+  try {
+    return new Intl.DateTimeFormat("fr-CA", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: timezone || undefined,
+    }).format(new Date(value));
+  } catch {
+    return "Date à confirmer";
+  }
+}
+
+function formatDuration(minutes) {
+  const value = Number(minutes) || 60;
+  if (value < 60) return `${value} min`;
+  if (value % 60 === 0) return `${value / 60} h`;
+  return `${Math.floor(value / 60)} h ${value % 60}`;
+}
+
+function getInviteeLabel(meeting) {
+  const firstInvitee = meeting?.inviteeEmails?.[0];
+  if (!firstInvitee) return "Aucun invité indiqué";
+  const namePart = firstInvitee.split("@")[0]?.replace(/[._-]+/g, " ").trim();
+  return namePart || firstInvitee;
+}
+
 function useClickOutside(ref, cb) {
   useEffect(() => {
     const handler = (e) => {
@@ -761,7 +801,7 @@ function ScheduleModal({ open, onClose, auth, onOpenAccount, onCreateMeeting }) 
         title: title.trim(),
         scheduledFor,
         durationMinutes: Number(duration),
-        inviteeEmails: invitees.split(/[,\n;]/).map((value) => value.trim()).filter(Boolean),
+        inviteeEmails: normalizeInviteeEmails(invitees),
       });
       setCreatedMeeting(meeting);
       await navigator.clipboard.writeText(meeting.joinUrl);
@@ -810,12 +850,12 @@ function ScheduleModal({ open, onClose, auth, onOpenAccount, onCreateMeeting }) 
               <option value="120">2 heures</option>
             </select>
           </FormField>
-          <FormField label="Invités par courriel (optionnel)">
+          <FormField label="Personne à inviter par courriel">
             <textarea
                 rows={3}
                 value={invitees}
                 onChange={(e) => setInvitees(e.target.value)}
-                placeholder="alice@exemple.com, bob@exemple.com"
+                placeholder="nom@exemple.com, autre@exemple.com"
                 className="meetra-input"
                 style={{ resize: "vertical", minHeight: 92 }}
             />
@@ -854,7 +894,7 @@ function ScheduleModal({ open, onClose, auth, onOpenAccount, onCreateMeeting }) 
           <PrimaryBtn onClick={schedule} disabled={!title.trim() || loading} color="#f59e0b">
             {copied
                 ? <span className="flex items-center gap-2 justify-center"><I.Check width={16} height={16} /> Lien copié dans le presse-papier !</span>
-                : <span className="flex items-center gap-2 justify-center"><I.Copy width={16} height={16} /> {loading ? "Création..." : "Créer et copier le lien"}</span>
+                : <span className="flex items-center gap-2 justify-center"><I.Copy width={16} height={16} /> {loading ? "Création..." : "Créer, envoyer et copier le lien"}</span>
             }
           </PrimaryBtn>
         </div>
@@ -866,40 +906,122 @@ function ScheduleModal({ open, onClose, auth, onOpenAccount, onCreateMeeting }) 
 // MODAL : DÉTAIL RÉUNION RÉCENTE
 // ═══════════════════════════════════════════════════════════
 
-function RecentDetailModal({ open, onClose, meeting, onHostMeeting }) {
+function RecentDetailModal({ open, onClose, meeting, onHostMeeting, auth }) {
+  const [recipients, setRecipients] = useState("");
+  const [status, setStatus] = useState("");
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setRecipients((meeting?.inviteeEmails || []).join(", "));
+    setStatus("");
+    setSending(false);
+  }, [open, meeting]);
+
   if (!meeting) return null;
+
+  const copyLink = async () => {
+    await navigator.clipboard.writeText(meeting.joinUrl || buildPublicRoomUrl(meeting.roomId || meeting.id));
+    setStatus("Lien copié.");
+  };
+
+  const sendLink = async () => {
+    const normalizedRecipients = normalizeInviteeEmails(recipients);
+    if (!normalizedRecipients.length) {
+      setStatus("Ajoutez au moins une adresse courriel.");
+      return;
+    }
+    if (!auth.token) {
+      setStatus("Connectez-vous comme administrateur pour envoyer le lien.");
+      return;
+    }
+
+    setSending(true);
+    setStatus("");
+    try {
+      const roomId = meeting.roomId || meeting.id;
+      const res = await fetch(`${API_URL}/api/rooms/${encodeURIComponent(roomId)}/invitations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${auth.token}`,
+        },
+        body: JSON.stringify({ recipients: normalizedRecipients }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "INVITATIONS_FAILED");
+      }
+      setStatus("Lien envoyé aux invités.");
+    } catch {
+      setStatus("Impossible d'envoyer le lien. Copiez-le et envoyez-le manuellement.");
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
       <Modal open={open} onClose={onClose} title={meeting.title}>
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3 text-center">
             {[
-              { label: "Date", value: meeting.date },
-              { label: "Durée", value: meeting.duration },
-              { label: "Participants", value: meeting.participants },
+              { label: "Date", value: meeting.date || formatMeetingDate(meeting.scheduledFor, meeting.timezone) },
+              { label: "Durée", value: meeting.duration || formatDuration(meeting.durationMinutes) },
+              { label: "Invité", value: getInviteeLabel(meeting) },
             ].map((s) => (
                 <div key={s.label} className="py-3 rounded-xl"
                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <p className="text-lg font-black text-white">{s.value}</p>
+                  <p className="text-sm font-black text-white truncate px-2">{s.value}</p>
                   <p className="text-xs text-slate-500 mt-0.5">{s.label}</p>
                 </div>
             ))}
           </div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs"
+               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <span className="text-slate-500 flex-shrink-0">Lien :</span>
+            <span className="font-mono text-slate-400 truncate flex-1">
+              {meeting.joinUrl || buildPublicRoomUrl(meeting.roomId || meeting.id)}
+            </span>
+          </div>
+          <FormField label="Envoyer le lien à">
+            <textarea
+                rows={2}
+                value={recipients}
+                onChange={(e) => setRecipients(e.target.value)}
+                placeholder="invite@exemple.com"
+                className="meetra-input"
+                style={{ resize: "vertical", minHeight: 76 }}
+            />
+          </FormField>
+          {status && (
+              <div className="rounded-xl px-4 py-3 text-sm"
+                   style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.18)", color: "#c7d2fe" }}>
+                {status}
+              </div>
+          )}
           <div className="flex gap-3">
             <button
-                onClick={() => { onHostMeeting(meeting.title); onClose(); }}
+                onClick={() => { onHostMeeting(meeting); onClose(); }}
                 className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all"
                 style={{ background: "linear-gradient(135deg, #6366f1, #4f46e5)" }}
             >
-              Relancer cette salle
+              Ouvrir comme hôte
             </button>
-            {meeting.recorded && (
-                <button
-                    className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all"
-                    style={{ background: "rgba(255,255,255,0.05)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.07)" }}
-                >
-                  <I.Play width={15} height={15} /> Enregistrement
-                </button>
-            )}
+            <button
+                onClick={copyLink}
+                className="px-4 py-3 rounded-xl text-sm font-semibold transition-all"
+                style={{ background: "rgba(255,255,255,0.05)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.07)" }}
+            >
+              Copier
+            </button>
+            <button
+                onClick={sendLink}
+                disabled={sending}
+                className="px-4 py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
+                style={{ background: "rgba(16,185,129,0.12)", color: "#6ee7b7", border: "1px solid rgba(16,185,129,0.2)" }}
+            >
+              {sending ? "Envoi..." : "Envoyer"}
+            </button>
           </div>
         </div>
       </Modal>
@@ -1063,15 +1185,25 @@ function MeetingCard({ meeting, onJoin }) {
 // SECTION : HISTORIQUE RÉCENT
 // ═══════════════════════════════════════════════════════════
 
-function RecentMeetings({ onSelect }) {
+function RecentMeetings({ meetings, loading, signedIn, onSelect }) {
   return (
       <div>
-        <SectionHeader title="Réunions récentes" />
+        <SectionHeader title="Mes réunions planifiées" />
         <div className="rounded-2xl overflow-hidden divide-y"
              style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
-          {RECENT_MEETINGS.map((m) => (
+          {!signedIn ? (
+              <div className="px-5 py-6 text-sm text-slate-500">
+                Connectez-vous comme administrateur pour afficher vos réunions planifiées.
+              </div>
+          ) : loading ? (
+              <div className="px-5 py-6 text-sm text-slate-500">Chargement des réunions...</div>
+          ) : meetings.length === 0 ? (
+              <div className="px-5 py-6 text-sm text-slate-500">
+                Aucune réunion planifiée. Créez une réunion depuis le bouton Planifier.
+              </div>
+          ) : meetings.map((m) => (
               <button
-                  key={m.id}
+                  key={m.roomId || m.id}
                   onClick={() => onSelect(m)}
                   className="flex items-center gap-4 w-full px-5 py-4 text-left hover:bg-white/[0.03] transition-colors group"
               >
@@ -1080,16 +1212,19 @@ function RecentMeetings({ onSelect }) {
                   <I.Video width={16} height={16} style={{ color: "#818cf8" }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">{m.title}</p>
+                  <p className="text-sm font-semibold text-white truncate">
+                    {getInviteeLabel(m)}
+                    <span className="text-slate-500 font-medium"> · {m.title}</span>
+                  </p>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {m.date} · {m.duration} · {m.participants} participants
+                    {formatMeetingDate(m.scheduledFor, m.timezone)} · {formatDuration(m.durationMinutes)} · {m.status || "scheduled"}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {m.recorded && (
+                  {m.joinUrl && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
-                            style={{ background: "rgba(239,68,68,0.12)", color: "#f87171" }}>
-                  ⏺ REC
+                            style={{ background: "rgba(16,185,129,0.12)", color: "#6ee7b7" }}>
+                  LIEN PRÊT
                 </span>
                   )}
                   <I.Arrow width={14} height={14} style={{ color: "#475569" }}
@@ -1317,6 +1452,8 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
   const [search, setSearch] = useState("");
   const [time, setTime] = useState(new Date());
   const [auth, setAuth] = useState(() => readStoredAuth());
+  const [plannedMeetings, setPlannedMeetings] = useState([]);
+  const [meetingsLoading, setMeetingsLoading] = useState(false);
 
   // Horloge temps réel
   useEffect(() => {
@@ -1338,6 +1475,34 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
     setSelectedMeeting(m);
     setModal("recent");
   }, []);
+
+  const loadPlannedMeetings = useCallback(async (tokenOverride = auth.token) => {
+    if (!tokenOverride) {
+      setPlannedMeetings([]);
+      return;
+    }
+
+    setMeetingsLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/meetings?limit=12`, {
+        headers: { authorization: `Bearer ${tokenOverride}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPlannedMeetings([]);
+        return;
+      }
+      setPlannedMeetings((data.meetings || []).filter((meeting) => meeting.scheduledFor));
+    } catch {
+      setPlannedMeetings([]);
+    } finally {
+      setMeetingsLoading(false);
+    }
+  }, [auth.token]);
+
+  useEffect(() => {
+    loadPlannedMeetings(auth.token);
+  }, [auth.token, loadPlannedMeetings]);
 
   const createMeetingRequest = useCallback(async ({ title, scheduledFor = null, durationMinutes = 60, inviteeEmails = [] }) => {
     if (!auth.token) {
@@ -1367,10 +1532,14 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
       );
     }
 
-    return {
+    const meeting = {
       ...data,
       joinUrl: data.joinUrl || buildPublicRoomUrl(data.roomId),
     };
+    if (meeting.scheduledFor) {
+      setPlannedMeetings((current) => [meeting, ...current.filter((item) => item.roomId !== meeting.roomId)].slice(0, 12));
+    }
+    return meeting;
   }, [auth.token]);
 
   const handleQuickHostMeeting = useCallback(async (title = "Réunion Meetra") => {
@@ -1386,6 +1555,12 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
       setModal("account");
     }
   }, [auth, createMeetingRequest, onJoin]);
+
+  const handleOpenScheduledMeeting = useCallback((meeting) => {
+    const roomId = meeting?.roomId || meeting?.id;
+    if (!roomId) return;
+    onJoin(roomId, auth.profile?.name || "Administrateur Meetra", { asHost: true });
+  }, [auth.profile?.name, onJoin]);
 
   const fmtTime = time.toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const fmtDate = time.toLocaleDateString("fr-CA", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -1525,7 +1700,12 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
           {/* HISTORIQUE + CONTACTS (2 colonnes sur grand écran) */}
           <div className="mt-8 grid lg:grid-cols-5 gap-6 hero-animate">
             <div className="lg:col-span-3">
-              <RecentMeetings onSelect={openRecent} />
+              <RecentMeetings
+                  meetings={plannedMeetings}
+                  loading={meetingsLoading}
+                  signedIn={Boolean(auth.token)}
+                  onSelect={openRecent}
+              />
             </div>
             <div className="lg:col-span-2">
               <QuickContacts onHostMeeting={handleQuickHostMeeting} />
@@ -1562,7 +1742,8 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
             open={modal === "recent"}
             onClose={() => setModal(null)}
             meeting={selectedMeeting}
-            onHostMeeting={handleQuickHostMeeting}
+            onHostMeeting={handleOpenScheduledMeeting}
+            auth={auth}
         />
       </div>
   );

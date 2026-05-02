@@ -15,7 +15,7 @@ VITE_TURN_CREDENTIAL=videoconf123!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ⚠️  IMPORTANT: Remplacez "YOUR_PUBLIC_IP" par votre adresse IP publique
-  - Pour trouver votre IP: https://whatismyipaddress.com/
+  - Pour trouver votre IP: https://whatismyipaddress.com/   24.200.106.149
   - Exemple: VITE_TURN_URL=turn:203.0.113.45:3478
 
 📝 Credentials locaux (pour développement):
