@@ -1543,6 +1543,97 @@ function NavbarChildWindow({ panel, onClose, plannedMeetings, contacts }) {
   );
 }
 
+function buildSearchResults(query, plannedMeetings, contacts) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return [];
+
+  const results = [];
+  plannedMeetings.forEach((meeting) => {
+    const invitee = getInviteeLabel(meeting);
+    const haystack = [
+      meeting.title,
+      meeting.roomId,
+      meeting.joinUrl,
+      meeting.status,
+      invitee,
+      ...(meeting.inviteeEmails || []),
+      formatMeetingDate(meeting.scheduledFor, meeting.timezone),
+    ].join(" ").toLowerCase();
+    if (haystack.includes(q)) {
+      results.push({
+        type: "Réunion",
+        title: meeting.title || "Réunion Meetra",
+        meta: `${invitee} · ${formatMeetingDate(meeting.scheduledFor, meeting.timezone)}`,
+      });
+    }
+  });
+
+  contacts.forEach((contact) => {
+    const haystack = [contact.name, contact.email, contact.role].join(" ").toLowerCase();
+    if (haystack.includes(q)) {
+      results.push({
+        type: "Contact",
+        title: contact.name,
+        meta: `${contact.role} · ${contact.email}`,
+      });
+    }
+  });
+
+  NAV_MENU.forEach((menu) => {
+    menu.items.forEach((item) => {
+      const haystack = [menu.label, item.label].join(" ").toLowerCase();
+      if (haystack.includes(q)) {
+        results.push({
+          type: "Menu",
+          title: item.label,
+          meta: `Navbar · ${menu.label}`,
+        });
+      }
+    });
+  });
+
+  return results.slice(0, 20);
+}
+
+function SearchResultsWindow({ query, results, onClose }) {
+  if (!query) return null;
+
+  return (
+      <div className="fixed inset-0 z-[65] flex items-start justify-center px-4 py-24"
+           style={{ background: "rgba(2,6,23,0.42)", backdropFilter: "blur(5px)" }}
+           onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+        <div className="w-full max-w-3xl rounded-[26px] p-6 text-slate-950"
+             style={{ background: "linear-gradient(145deg,#f8fafc,#fef3c7)", border: "1px solid rgba(15,23,42,0.12)", boxShadow: "0 30px 80px rgba(0,0,0,0.34)" }}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">Recherche Meetra</div>
+              <h2 className="mt-2 text-2xl font-black text-slate-950">Résultats pour “{query}”</h2>
+            </div>
+            <button onClick={onClose}
+                    className="rounded-full px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-900 hover:text-white"
+                    style={{ border: "1px solid rgba(15,23,42,0.16)" }}>
+              Fermer
+            </button>
+          </div>
+
+          <div className="mt-6 grid gap-3">
+            {results.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white/70 px-5 py-8 text-sm text-slate-600">
+                  Aucun résultat. Essayez un nom, un courriel, un titre de réunion ou un menu.
+                </div>
+            ) : results.map((result, index) => (
+                <div key={`${result.type}-${result.title}-${index}`} className="rounded-2xl bg-white/80 px-5 py-4 shadow-sm">
+                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">{result.type}</div>
+                  <div className="mt-1 font-bold text-slate-950">{result.title}</div>
+                  <div className="mt-1 text-sm text-slate-600">{result.meta}</div>
+                </div>
+            ))}
+          </div>
+        </div>
+      </div>
+  );
+}
+
 function NavItem({ item, onOpenPanel }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -1703,6 +1794,10 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
   const [manualContacts, setManualContacts] = useState(() => readStoredContacts());
   const [meetingsLoading, setMeetingsLoading] = useState(false);
   const [navbarPanel, setNavbarPanel] = useState(null);
+  const searchResults = useMemo(
+      () => buildSearchResults(search, plannedMeetings, contacts),
+      [search, plannedMeetings, contacts]
+  );
 
   // Horloge temps réel
   useEffect(() => {
@@ -2059,6 +2154,11 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
             onClose={() => setNavbarPanel(null)}
             plannedMeetings={plannedMeetings}
             contacts={contacts}
+        />
+        <SearchResultsWindow
+            query={search.trim()}
+            results={searchResults}
+            onClose={() => setSearch("")}
         />
       </div>
   );
