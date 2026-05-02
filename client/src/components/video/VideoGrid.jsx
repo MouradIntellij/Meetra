@@ -427,7 +427,7 @@ const ScreenShareFullscreen = ({ screenStream, localStream, participants, remote
     }, [screenShareMeta?.startedAt]);
 
     useEffect(() => {
-        setHideRecursivePreview(false);
+        setHideRecursivePreview(isEntireScreenShare);
     }, [screenStream, screenShareMeta?.displaySurface]);
 
     useEffect(() => {
@@ -552,22 +552,24 @@ const ScreenShareFullscreen = ({ screenStream, localStream, participants, remote
                                 gap: 12,
                                 flexWrap: 'wrap',
                             }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setHideRecursivePreview(false)}
-                                    style={{
-                                        border: '1px solid rgba(255,255,255,0.14)',
-                                        background: 'rgba(255,255,255,0.06)',
-                                        color: '#e2e8f0',
-                                        borderRadius: 14,
-                                        padding: '11px 16px',
-                                        fontSize: 13,
-                                        fontWeight: 700,
-                                        cursor: 'pointer',
-                                    }}
-                                >
-                                    Revenir a l’aperçu
-                                </button>
+                                {!isEntireScreenShare && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setHideRecursivePreview(false)}
+                                        style={{
+                                            border: '1px solid rgba(255,255,255,0.14)',
+                                            background: 'rgba(255,255,255,0.06)',
+                                            color: '#e2e8f0',
+                                            borderRadius: 14,
+                                            padding: '11px 16px',
+                                            fontSize: 13,
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        Revenir a l’aperçu
+                                    </button>
+                                )}
                                 <button
                                     type="button"
                                     onClick={stopScreenShare}

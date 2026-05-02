@@ -445,17 +445,20 @@ const CamOffIcon = () => <svg width={20} height={20} viewBox="0 0 24 24" fill="n
 const styles = {
   page: {
     minHeight: '100vh',
+    maxHeight: '100vh',
+    overflowY: 'auto',
     background: 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99,102,241,0.12), transparent 60%), #050810',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
     padding: '24px', fontFamily: "'DM Sans', system-ui, sans-serif",
   },
   card: {
     background: 'linear-gradient(160deg,#111827,#0d1322)',
     border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '24px', padding: '32px',
+    borderRadius: '24px', padding: '24px',
     width: '100%', maxWidth: '480px',
+    margin: '0 auto 24px',
     boxShadow: '0 40px 80px rgba(0,0,0,0.6)',
-    display: 'flex', flexDirection: 'column', gap: '20px',
+    display: 'flex', flexDirection: 'column', gap: '14px',
   },
   header: {
     display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px',
@@ -475,6 +478,7 @@ const styles = {
   videoWrap: {
     position: 'relative', borderRadius: '16px', overflow: 'hidden',
     background: '#0d1322', aspectRatio: '16/9',
+    maxHeight: '220px',
     border: '1px solid rgba(255,255,255,0.07)',
   },
   video: { width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' },
@@ -525,7 +529,9 @@ const styles = {
     gap: '10px',
   },
   statusCol: {
-    minHeight: '104px',
+    minHeight: '80px',
+    maxHeight: '132px',
+    overflowY: 'auto',
     background: 'rgba(255,255,255,0.025)',
     border: '1px solid rgba(255,255,255,0.06)',
     borderRadius: '14px',

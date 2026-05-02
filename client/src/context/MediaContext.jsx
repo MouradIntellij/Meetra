@@ -59,7 +59,7 @@ export const useMedia = () => {
 
 export function MediaProvider({ children, initialStream = null }) {
   const { socket } = useSocket();
-  const { roomId, participants, removeParticipant, setScreenSharingId } = useRoom();
+  const { roomId, participants, removeParticipant, setScreenSharingId, screenSharingId } = useRoom();
 
   const [localStream, setLocalStream] = useState(initialStream);
   const [remoteStreams, setRemoteStreams] = useState(new Map());
@@ -717,6 +717,10 @@ export function MediaProvider({ children, initialStream = null }) {
     };
 
     const onUserLeft = ({ socketId }) => {
+      if (socketId === screenSharingId) {
+        setScreenSharingId(null);
+      }
+
       const pc = peerConnections.current.get(socketId);
       if (pc) {
         pc.close();
@@ -741,7 +745,7 @@ export function MediaProvider({ children, initialStream = null }) {
       socket.off(EVENTS.ICE_CANDIDATE, onIce);
       socket.off(EVENTS.USER_LEFT, onUserLeft);
     };
-  }, [socket, createAndSendOffer, buildPC, flushIceCandidates, queueIceCandidate, removeRemoteStream, removeParticipant]);
+  }, [socket, createAndSendOffer, buildPC, flushIceCandidates, queueIceCandidate, removeRemoteStream, removeParticipant, screenSharingId, setScreenSharingId]);
 
   return (
       <MediaContext.Provider value={{
