@@ -1564,6 +1564,7 @@ function buildSearchResults(query, plannedMeetings, contacts) {
         type: "Réunion",
         title: meeting.title || "Réunion Meetra",
         meta: `${invitee} · ${formatMeetingDate(meeting.scheduledFor, meeting.timezone)}`,
+        target: { kind: "meeting", meeting },
       });
     }
   });
@@ -1575,6 +1576,7 @@ function buildSearchResults(query, plannedMeetings, contacts) {
         type: "Contact",
         title: contact.name,
         meta: `${contact.role} · ${contact.email}`,
+        target: { kind: "contact", contact },
       });
     }
   });
@@ -1587,6 +1589,7 @@ function buildSearchResults(query, plannedMeetings, contacts) {
           type: "Menu",
           title: item.label,
           meta: `Navbar · ${menu.label}`,
+          target: { kind: "menu", panel: { ...item, parent: menu.label } },
         });
       }
     });
@@ -1595,7 +1598,7 @@ function buildSearchResults(query, plannedMeetings, contacts) {
   return results.slice(0, 20);
 }
 
-function SearchResultsWindow({ query, results, onClose }) {
+function SearchResultsWindow({ query, results, onClose, onSelectResult }) {
   if (!query) return null;
 
   return (
@@ -1622,11 +1625,15 @@ function SearchResultsWindow({ query, results, onClose }) {
                   Aucun résultat. Essayez un nom, un courriel, un titre de réunion ou un menu.
                 </div>
             ) : results.map((result, index) => (
-                <div key={`${result.type}-${result.title}-${index}`} className="rounded-2xl bg-white/80 px-5 py-4 shadow-sm">
+                <button
+                    key={`${result.type}-${result.title}-${index}`}
+                    onClick={() => onSelectResult(result)}
+                    className="rounded-2xl bg-white/80 px-5 py-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:bg-white"
+                >
                   <div className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">{result.type}</div>
                   <div className="mt-1 font-bold text-slate-950">{result.title}</div>
                   <div className="mt-1 text-sm text-slate-600">{result.meta}</div>
-                </div>
+                </button>
             ))}
           </div>
         </div>
@@ -1936,6 +1943,22 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
     });
   }, []);
 
+  const handleSearchResult = useCallback((result) => {
+    setSearch("");
+    if (result?.target?.kind === "meeting") {
+      setSelectedMeeting(result.target.meeting);
+      setModal("recent");
+      return;
+    }
+    if (result?.target?.kind === "contact") {
+      setNavbarPanel({ icon: "👤", label: "Mes contacts", parent: "Contacts" });
+      return;
+    }
+    if (result?.target?.kind === "menu") {
+      setNavbarPanel(result.target.panel);
+    }
+  }, []);
+
   const handleQuickHostMeeting = useCallback(async (title = "Réunion Meetra") => {
     if (!auth.token) {
       setModal("account");
@@ -2160,6 +2183,7 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
             query={search.trim()}
             results={searchResults}
             onClose={() => setSearch("")}
+            onSelectResult={handleSearchResult}
         />
       </div>
   );
