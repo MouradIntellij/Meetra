@@ -122,6 +122,16 @@ function getInviteeLabel(meeting) {
   return namePart || firstInvitee;
 }
 
+function uniqueMeetingsByRoom(meetings) {
+  const seen = new Set();
+  return (meetings || []).filter((meeting) => {
+    const key = meeting?.roomId || meeting?.id;
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function useClickOutside(ref, cb) {
   useEffect(() => {
     const handler = (e) => {
@@ -1492,7 +1502,7 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
         setPlannedMeetings([]);
         return;
       }
-      setPlannedMeetings((data.meetings || []).filter((meeting) => meeting.scheduledFor));
+      setPlannedMeetings(uniqueMeetingsByRoom(data.meetings).filter((meeting) => meeting.scheduledFor));
     } catch {
       setPlannedMeetings([]);
     } finally {
@@ -1537,7 +1547,7 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
       joinUrl: data.joinUrl || buildPublicRoomUrl(data.roomId),
     };
     if (meeting.scheduledFor) {
-      setPlannedMeetings((current) => [meeting, ...current.filter((item) => item.roomId !== meeting.roomId)].slice(0, 12));
+      setPlannedMeetings((current) => uniqueMeetingsByRoom([meeting, ...current]).slice(0, 12));
     }
     return meeting;
   }, [auth.token]);

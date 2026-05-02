@@ -17,6 +17,35 @@ function getRouteRoomId() {
   return match ? match[1] : null;
 }
 
+function getRouteMeetingLaunch() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    autoLobby: params.get('meetraLobby') === '1',
+    userName: params.get('name') || '',
+    asHost: params.get('host') === '1',
+  };
+}
+
+function buildMeetingWindowUrl(roomId, userName, options = {}) {
+  const params = new URLSearchParams();
+  params.set('meetraLobby', '1');
+  if (userName) params.set('name', userName);
+  if (options.asHost) params.set('host', '1');
+  return `/room/${encodeURIComponent(roomId)}?${params.toString()}`;
+}
+
+function openMeetingWindow(roomId, userName, options = {}) {
+  const width = 560;
+  const height = 760;
+  const left = Math.max(0, Math.round((window.screen.availWidth - width) / 2));
+  const top = Math.max(0, Math.round((window.screen.availHeight - height) / 2));
+  const popup = window.open(
+    buildMeetingWindowUrl(roomId, userName, options),
+    `meetra-${roomId}`,
+    `popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+  );
+  return popup;
+}
 
 function ConnectionBanner() {
   const { connected, connectionError, apiUrl } = useSocket();
@@ -59,12 +88,13 @@ function ConnectionBanner() {
 export default function App() {
   const { socket } = useSocket();
   const urlRoomId = getRouteRoomId();
+  const launch = getRouteMeetingLaunch();
 
-  const [screen,   setScreen]   = useState(urlRoomId ? 'home-join' : 'home');
+  const [screen,   setScreen]   = useState(urlRoomId && launch.autoLobby ? 'lobby' : urlRoomId ? 'home-join' : 'home');
   const [roomId,   setRoomId]   = useState(urlRoomId || '');
-  const [userName, setUserName] = useState('');
-  const [isHost,   setIsHost]   = useState(false);
-  const [requestedHostJoin, setRequestedHostJoin] = useState(false);
+  const [userName, setUserName] = useState(launch.userName || '');
+  const [isHost,   setIsHost]   = useState(Boolean(launch.asHost));
+  const [requestedHostJoin, setRequestedHostJoin] = useState(Boolean(launch.asHost));
   const [roomSession, setRoomSession] = useState({
     hostSocketId: '',
     participants: [],
@@ -78,6 +108,14 @@ export default function App() {
   }, []);
 
   const handleJoin = (rid, uname, options = {}) => {
+    if (screen === 'home' || screen === 'home-join') {
+      const popup = openMeetingWindow(rid, uname, options);
+      if (popup) {
+        popup.focus();
+        return;
+      }
+    }
+
     const wantsHostAccess = Boolean(options.asHost);
     setRoomId(rid);
     setUserName(uname);

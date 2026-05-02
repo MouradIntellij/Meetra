@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSocket } from '../context/SocketContext.jsx';
+import { getApiUrl } from '../utils/appConfig.js';
 import {
   JOIN_ROOM,
   ROOM_JOINED,
@@ -18,6 +19,7 @@ import {
 // ─── Contraintes média ────────────────────────────────────────────────────────
 const MEDIA_CONSTRAINTS = { video: true, audio: true };
 const AUTH_STORAGE_KEY = 'meetra-auth-session';
+const API_URL = getApiUrl();
 
 function readStoredAuthToken() {
   if (typeof window === 'undefined') return '';
@@ -37,22 +39,52 @@ export default function Lobby({ roomId, userName, isHost = false, onJoin, onBack
   const [joining,  setJoining]  = useState(false);
   const [error,    setError]    = useState('');
   const [denied,   setDenied]   = useState(false);
+  const [devices, setDevices] = useState({ audioinput: [], videoinput: [], audiooutput: [] });
+  const [selectedAudioInput, setSelectedAudioInput] = useState('');
+  const [selectedVideoInput, setSelectedVideoInput] = useState('');
+  const [selectedAudioOutput, setSelectedAudioOutput] = useState('');
+  const [waitingGuests, setWaitingGuests] = useState([]);
+  const [participants, setParticipants] = useState([]);
 
   const videoRef   = useRef(null);
   const streamRef  = useRef(null);
   const preserveStreamRef = useRef(false);
 
+  const refreshDevices = async () => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    const list = await navigator.mediaDevices.enumerateDevices();
+    const grouped = {
+      audioinput: list.filter((device) => device.kind === 'audioinput'),
+      videoinput: list.filter((device) => device.kind === 'videoinput'),
+      audiooutput: list.filter((device) => device.kind === 'audiooutput'),
+    };
+    setDevices(grouped);
+    setSelectedAudioInput((current) => current || grouped.audioinput[0]?.deviceId || '');
+    setSelectedVideoInput((current) => current || grouped.videoinput[0]?.deviceId || '');
+    setSelectedAudioOutput((current) => current || grouped.audiooutput[0]?.deviceId || '');
+  };
+
   // ── Démarrer la prévisualisation caméra ───────────────────────────────────
   useEffect(() => {
     let active = true;
+    const constraints = {
+      audio: selectedAudioInput ? { deviceId: { exact: selectedAudioInput } } : MEDIA_CONSTRAINTS.audio,
+      video: selectedVideoInput ? { deviceId: { exact: selectedVideoInput } } : MEDIA_CONSTRAINTS.video,
+    };
+
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+
     navigator.mediaDevices
-      .getUserMedia(MEDIA_CONSTRAINTS)
+      .getUserMedia(constraints)
       .then((stream) => {
         if (!active) { stream.getTracks().forEach((t) => t.stop()); return; }
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
+        stream.getAudioTracks().forEach((t) => { t.enabled = micOn; });
+        stream.getVideoTracks().forEach((t) => { t.enabled = camOn; });
+        refreshDevices().catch(() => {});
       })
       .catch(() => setError("Caméra ou micro inaccessible. Vérifiez vos permissions."));
 
@@ -62,7 +94,12 @@ export default function Lobby({ roomId, userName, isHost = false, onJoin, onBack
         streamRef.current?.getTracks().forEach((t) => t.stop());
       }
     };
-  }, []);
+  }, [selectedAudioInput, selectedVideoInput]);
+
+  useEffect(() => {
+    if (!selectedAudioOutput || !videoRef.current?.setSinkId) return;
+    videoRef.current.setSinkId(selectedAudioOutput).catch(() => {});
+  }, [selectedAudioOutput]);
 
   // ── Sync toggle micro ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -73,6 +110,40 @@ export default function Lobby({ roomId, userName, isHost = false, onJoin, onBack
   useEffect(() => {
     streamRef.current?.getVideoTracks().forEach((t) => { t.enabled = camOn; });
   }, [camOn]);
+
+  useEffect(() => {
+    if (!isHost || !roomId) return;
+    let active = true;
+
+    const loadRoomState = async () => {
+      const token = readStoredAuthToken();
+      try {
+        const [participantsRes, waitingRes] = await Promise.all([
+          fetch(`${API_URL}/api/rooms/${encodeURIComponent(roomId)}/participants`),
+          token
+            ? fetch(`${API_URL}/api/rooms/${encodeURIComponent(roomId)}/waiting`, {
+                headers: { authorization: `Bearer ${token}` },
+              })
+            : Promise.resolve(null),
+        ]);
+
+        const participantsData = participantsRes.ok ? await participantsRes.json() : {};
+        const waitingData = waitingRes?.ok ? await waitingRes.json() : {};
+        if (!active) return;
+        setParticipants(Array.isArray(participantsData.participants) ? participantsData.participants : []);
+        setWaitingGuests(Array.isArray(waitingData.queue) ? waitingData.queue : []);
+      } catch {
+        // Le lobby reste utilisable même si l'état temps réel n'est pas disponible.
+      }
+    };
+
+    loadRoomState();
+    const intervalId = window.setInterval(loadRoomState, 2000);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [isHost, roomId]);
 
   // ── Écouter les réponses du serveur ───────────────────────────────────────
   useEffect(() => {
@@ -158,7 +229,7 @@ export default function Lobby({ roomId, userName, isHost = false, onJoin, onBack
           </div>
           {/* Badge hôte / invité */}
           <span style={isHost ? styles.badgeHost : styles.badgeGuest}>
-            {isHost ? '👑 Vous êtes lhôte' : '👤 Invité'}
+            {isHost ? 'Hôte' : 'Invité'}
           </span>
         </div>
 
@@ -197,6 +268,33 @@ export default function Lobby({ roomId, userName, isHost = false, onJoin, onBack
           />
         </div>
 
+        <div style={styles.deviceGrid}>
+          <DeviceSelect
+            label="Caméra"
+            value={selectedVideoInput}
+            devices={devices.videoinput}
+            onChange={setSelectedVideoInput}
+          />
+          <DeviceSelect
+            label="Micro"
+            value={selectedAudioInput}
+            devices={devices.audioinput}
+            onChange={setSelectedAudioInput}
+          />
+          {devices.audiooutput.length > 0 && (
+            <DeviceSelect
+              label="Sortie audio"
+              value={selectedAudioOutput}
+              devices={devices.audiooutput}
+              onChange={setSelectedAudioOutput}
+            />
+          )}
+        </div>
+
+        {isHost && (
+          <RoomStatusPreview waitingGuests={waitingGuests} participants={participants} />
+        )}
+
         {/* ── Message d'erreur ─────────────────────────────────────────────── */}
         {error && (
           <div style={styles.errorBox}>
@@ -217,7 +315,7 @@ export default function Lobby({ roomId, userName, isHost = false, onJoin, onBack
               {joining
                 ? <><Spinner /> {isHost ? 'Création…' : 'Connexion…'}</>
                 : isHost
-                  ? 'Démarrer la réunion →'
+                  ? 'Commencer la réunion →'
                   : 'Rejoindre →'
               }
             </button>
@@ -233,9 +331,71 @@ export default function Lobby({ roomId, userName, isHost = false, onJoin, onBack
         {/* ── Info salle d'attente ─────────────────────────────────────────── */}
         {!isHost && !denied && (
           <p style={styles.hint}>
-            ℹ️ L'hôte devra approuver votre admission avant que vous n'entriez dans la salle.
+            L'hôte devra approuver votre admission avant que vous n'entriez dans la salle.
           </p>
         )}
+        {isHost && !denied && (
+          <p style={styles.hint}>
+            Vous pouvez vérifier caméra, micro et personnes en attente avant de commencer.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DeviceSelect({ label, value, devices, onChange }) {
+  return (
+    <label style={styles.deviceLabel}>
+      <span>{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)} style={styles.deviceSelect}>
+        {devices.length === 0 ? (
+          <option value="">Détection...</option>
+        ) : devices.map((device, index) => (
+          <option key={device.deviceId || `${device.kind}-${index}`} value={device.deviceId}>
+            {device.label || `${label} ${index + 1}`}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function RoomStatusPreview({ waitingGuests, participants }) {
+  return (
+    <div style={styles.statusPanel}>
+      <div style={styles.statusCol}>
+        <div style={styles.statusTitle}>En attente ({waitingGuests.length})</div>
+        {waitingGuests.length === 0 ? (
+          <div style={styles.emptyState}>Personne en attente.</div>
+        ) : waitingGuests.map((guest) => (
+          <PersonRow key={guest.socketId} name={guest.userName} sub="Attend votre démarrage" />
+        ))}
+      </div>
+      <div style={styles.statusCol}>
+        <div style={styles.statusTitle}>Dans la réunion ({participants.length})</div>
+        {participants.length === 0 ? (
+          <div style={styles.emptyState}>La réunion n'a pas commencé.</div>
+        ) : participants.map((participant) => (
+          <PersonRow
+            key={participant.socketId}
+            name={participant.name}
+            sub={participant.isHost ? 'Hôte connecté' : 'Participant connecté'}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PersonRow({ name, sub }) {
+  const safeName = name || 'Participant';
+  return (
+    <div style={styles.personRow}>
+      <div style={styles.personAvatar}>{safeName.slice(0, 2).toUpperCase()}</div>
+      <div style={{ minWidth: 0 }}>
+        <div style={styles.personName}>{safeName}</div>
+        <div style={styles.personSub}>{sub}</div>
       </div>
     </div>
   );
@@ -335,6 +495,86 @@ const styles = {
     fontSize: '12px', fontWeight: 600, color: 'white',
   },
   controls: { display: 'flex', gap: '12px', justifyContent: 'center' },
+  deviceGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr',
+    gap: '10px',
+  },
+  deviceLabel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    color: '#94a3b8',
+    fontSize: '11px',
+    fontWeight: 700,
+  },
+  deviceSelect: {
+    width: '100%',
+    border: '1px solid rgba(255,255,255,0.08)',
+    background: 'rgba(255,255,255,0.04)',
+    color: '#e2e8f0',
+    borderRadius: '10px',
+    padding: '9px 10px',
+    fontSize: '12px',
+    fontFamily: 'inherit',
+    outline: 'none',
+  },
+  statusPanel: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '10px',
+  },
+  statusCol: {
+    minHeight: '104px',
+    background: 'rgba(255,255,255,0.025)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: '14px',
+    padding: '12px',
+  },
+  statusTitle: {
+    color: '#f1f5f9',
+    fontSize: '12px',
+    fontWeight: 800,
+    marginBottom: '10px',
+  },
+  emptyState: {
+    color: '#475569',
+    fontSize: '11px',
+    lineHeight: 1.5,
+  },
+  personRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px 0',
+    borderTop: '1px solid rgba(255,255,255,0.05)',
+  },
+  personAvatar: {
+    width: '28px',
+    height: '28px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg,#6366f1,#4f46e5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'white',
+    fontSize: '10px',
+    fontWeight: 900,
+    flexShrink: 0,
+  },
+  personName: {
+    color: '#e2e8f0',
+    fontSize: '12px',
+    fontWeight: 700,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  personSub: {
+    color: '#475569',
+    fontSize: '10px',
+    marginTop: '1px',
+  },
   errorBox: {
     display: 'flex', alignItems: 'center', gap: '8px',
     background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
