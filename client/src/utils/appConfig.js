@@ -52,6 +52,16 @@ export function buildPublicRoomUrl(roomId) {
   return `${baseUrl}/room/${encodeURIComponent(normalizedRoomId)}`;
 }
 
+export function getMediaBackend() {
+  const electronMediaBackend = getElectronRuntimeConfig().mediaBackend;
+  const value = electronMediaBackend || import.meta.env.VITE_MEDIA_BACKEND || 'p2p';
+  return String(value || 'p2p').trim().toLowerCase();
+}
+
+export function isLiveKitMediaEnabled() {
+  return getMediaBackend() === 'livekit';
+}
+
 export function isLocalHostName(hostname) {
   return isLocalHostname(hostname);
 }

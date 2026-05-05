@@ -308,6 +308,7 @@ Socket.IO est utilise pour tous les evenements temps reel qui ne sont pas les fl
 | WebRTC | audio/video peer-to-peer | offer/answer, ICE, STUN/TURN, tracks media |
 | Socket.IO | temps reel et signalisation | rooms, broadcast, evenements client/serveur |
 | Redis | adapter Socket.IO multi-instance | diffusion temps reel entre plusieurs serveurs |
+| LiveKit | SFU optionnelle | scalabilite video au-dela du mesh P2P |
 | Node.js | runtime backend | modules ES, services, configuration |
 | Express | API REST | routes, middleware, JSON, CORS |
 | PostgreSQL / Neon | persistance production | stockage utilisateurs, reunions, hub, transcripts |
@@ -446,6 +447,7 @@ npm run build:desktop
 ```env
 VITE_API_URL=http://localhost:4000
 VITE_PUBLIC_JOIN_BASE_URL=http://localhost:5173
+VITE_MEDIA_BACKEND=p2p
 ```
 
 ### Serveur local
@@ -469,6 +471,11 @@ DATABASE_URL=postgresql://user:password@ep-example.us-east-1.aws.neon.tech/dbnam
 DATABASE_SSL=require
 REDIS_URL=redis://default:password@your-redis-host:6379
 REDIS_SOCKET_ADAPTER=auto
+LIVEKIT_ENABLED=false
+LIVEKIT_URL=wss://your-livekit-project.livekit.cloud
+LIVEKIT_API_KEY=
+LIVEKIT_API_SECRET=
+LIVEKIT_TOKEN_TTL_SECONDS=3600
 SESSION_SECRET=change-me
 
 OPENAI_API_KEY=
@@ -490,6 +497,7 @@ NOTIFICATION_WEBHOOK_SECRET=
 ```env
 VITE_API_URL=https://votre-serveur.onrender.com
 VITE_PUBLIC_JOIN_BASE_URL=https://votre-client.vercel.app
+VITE_MEDIA_BACKEND=p2p
 ```
 
 ## Deploiement
@@ -509,6 +517,7 @@ Variables Vercel:
 ```env
 VITE_API_URL=https://votre-serveur.onrender.com
 VITE_PUBLIC_JOIN_BASE_URL=https://votre-client.vercel.app
+VITE_MEDIA_BACKEND=p2p
 ```
 
 ### Serveur sur Render
@@ -530,6 +539,11 @@ DATABASE_URL=postgresql://user:password@ep-example.us-east-1.aws.neon.tech/dbnam
 DATABASE_SSL=require
 REDIS_URL=redis://default:password@your-redis-host:6379
 REDIS_SOCKET_ADAPTER=auto
+LIVEKIT_ENABLED=false
+LIVEKIT_URL=wss://your-livekit-project.livekit.cloud
+LIVEKIT_API_KEY=
+LIVEKIT_API_SECRET=
+LIVEKIT_TOKEN_TTL_SECONDS=3600
 SESSION_SECRET=change-me
 ```
 
@@ -558,6 +572,43 @@ Fournisseurs possibles:
 - autre Redis managé compatible URL Redis.
 
 Prochaine evolution possible: deplacer la presence live, les waiting rooms et l'etat runtime des rooms dans Redis, tout en gardant Neon pour la persistance longue duree.
+
+### SFU LiveKit optionnelle
+
+Le mode video actuel reste WebRTC P2P. LiveKit est ajoute comme fondation SFU optionnelle pour supporter plus de participants plus tard, sans supprimer le fonctionnement actuel.
+
+Ce qui est deja prepare:
+
+- `livekit-server-sdk` cote serveur;
+- `livekit-client` cote client;
+- `GET /api/livekit/status` pour connaitre l'etat de la SFU;
+- `POST /api/livekit/token` pour generer un token participant;
+- `VITE_MEDIA_BACKEND=p2p` par defaut;
+- `LIVEKIT_ENABLED=false` par defaut.
+
+Variables backend:
+
+```env
+LIVEKIT_ENABLED=false
+LIVEKIT_URL=wss://your-livekit-project.livekit.cloud
+LIVEKIT_API_KEY=
+LIVEKIT_API_SECRET=
+LIVEKIT_TOKEN_TTL_SECONDS=3600
+```
+
+Variable frontend:
+
+```env
+VITE_MEDIA_BACKEND=p2p
+```
+
+Mode de fonctionnement:
+
+- `p2p`: Meetra utilise le WebRTC mesh actuel;
+- `livekit`: le client peut demander un token LiveKit et se connecter a une SFU;
+- si LiveKit n'est pas configure, l'API renvoie une erreur claire et le mode P2P reste disponible.
+
+La prochaine etape technique sera de brancher une vue video LiveKit complete dans la room, puis de choisir le mode par reunion ou par variable d'environnement.
 
 ### Base de donnees Neon
 

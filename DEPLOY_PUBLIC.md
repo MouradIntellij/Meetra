@@ -8,6 +8,7 @@ Objectif: permettre à un testeur distant de créer une salle, inviter des perso
 - `API + Socket.IO`: Render
 - `Base de données`: Neon Postgres
 - `Redis temps réel`: Upstash Redis, Redis Cloud ou Render Key Value
+- `SFU optionnelle`: LiveKit Cloud ou LiveKit self-hosted
 - `TURN public`: VPS Ubuntu avec coturn
 - `Electron`: optionnel, en mode hybride seulement
 
@@ -44,6 +45,7 @@ VITE_PUBLIC_JOIN_BASE_URL=https://your-vercel-frontend.vercel.app
 VITE_TURN_URL=turn:turn.example.com:3478
 VITE_TURN_USERNAME=videoconf
 VITE_TURN_CREDENTIAL=replace-with-your-turn-password
+VITE_MEDIA_BACKEND=p2p
 ```
 
 Notes:
@@ -51,6 +53,7 @@ Notes:
 - `VITE_API_URL` doit pointer vers Render
 - `VITE_PUBLIC_JOIN_BASE_URL` doit correspondre au domaine public du frontend
 - `VITE_TURN_*` est indispensable pour les médias entre réseaux différents
+- `VITE_MEDIA_BACKEND=p2p` garde le mode actuel; `livekit` préparera le client au mode SFU quand l'intégration UI sera activée
 
 ## Variables Render
 
@@ -77,6 +80,11 @@ DATABASE_URL=postgresql://user:password@ep-example.us-east-1.aws.neon.tech/dbnam
 DATABASE_SSL=require
 REDIS_URL=redis://default:password@your-redis-host:6379
 REDIS_SOCKET_ADAPTER=auto
+LIVEKIT_ENABLED=false
+LIVEKIT_URL=wss://your-livekit-project.livekit.cloud
+LIVEKIT_API_KEY=
+LIVEKIT_API_SECRET=
+LIVEKIT_TOKEN_TTL_SECONDS=3600
 ```
 
 Notes:
@@ -86,6 +94,8 @@ Notes:
 - `DATABASE_SSL=require` force SSL si l'URL fournie ne contient pas explicitement `sslmode=require`
 - `REDIS_URL` active le Redis adapter Socket.IO; sans cette variable, Meetra garde l'adapter mémoire local
 - `REDIS_SOCKET_ADAPTER=auto` active Redis seulement quand `REDIS_URL` existe; utilisez `disabled` pour forcer le mode mémoire
+- `LIVEKIT_ENABLED=false` garde la vidéo P2P actuelle; passez à `true` seulement quand le projet LiveKit est prêt
+- `LIVEKIT_URL`, `LIVEKIT_API_KEY` et `LIVEKIT_API_SECRET` viennent de LiveKit Cloud ou d'un serveur LiveKit self-hosted
 - sans `DATABASE_URL`, l'inscription et la connexion hôte ne seront pas fiables en public
 - `NOTIFICATION_EMAIL_WEBHOOK_URL` est optionnel; sans lui, les invitations sont journalisées localement mais pas réellement envoyées
 
@@ -117,6 +127,49 @@ Fournisseurs possibles:
 - Redis Cloud;
 - Render Key Value;
 - un Redis managé équivalent.
+
+## SFU LiveKit optionnelle
+
+Le mode vidéo actuel reste WebRTC P2P. LiveKit est ajouté comme fondation SFU optionnelle pour supporter plus de participants plus tard, sans supprimer ce qui fonctionne.
+
+Ce qui est préparé:
+
+- SDK serveur `livekit-server-sdk`;
+- route `GET /api/livekit/status`;
+- route `POST /api/livekit/token`;
+- SDK client `livekit-client`, chargé dynamiquement seulement si demandé;
+- variable frontend `VITE_MEDIA_BACKEND`;
+- variables backend LiveKit.
+
+Ce qui reste volontairement inchangé:
+
+- les réunions utilisent encore le mode P2P par défaut;
+- la salle actuelle, le lobby, la waiting room, les contrôles hôte et le chat ne sont pas remplacés;
+- `LIVEKIT_ENABLED=false` empêche l'utilisation accidentelle d'une SFU non configurée.
+
+Variables backend Render:
+
+```env
+LIVEKIT_ENABLED=false
+LIVEKIT_URL=wss://your-livekit-project.livekit.cloud
+LIVEKIT_API_KEY=
+LIVEKIT_API_SECRET=
+LIVEKIT_TOKEN_TTL_SECONDS=3600
+```
+
+Variable frontend Vercel:
+
+```env
+VITE_MEDIA_BACKEND=p2p
+```
+
+Pour activer réellement le mode SFU dans une prochaine étape:
+
+1. créer un projet LiveKit Cloud ou déployer LiveKit;
+2. remplir les variables `LIVEKIT_*` dans Render;
+3. passer `LIVEKIT_ENABLED=true`;
+4. passer `VITE_MEDIA_BACKEND=livekit` dans Vercel;
+5. brancher progressivement une vue vidéo LiveKit dédiée, avec fallback vers P2P.
 
 ## Base de données Neon
 

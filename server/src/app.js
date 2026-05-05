@@ -7,6 +7,7 @@ import { logger } from './utils/logger.js';
 import { createTranscriptionRouter } from './routes/transcriptionRoutes.js';
 import { createHubRouter } from './routes/hubRoutes.js';
 import { createAuthRouter, getBearerToken } from './routes/authRoutes.js';
+import { createLiveKitRouter } from './routes/livekitRoutes.js';
 import { purgeExpiredTranscriptFiles } from './services/transcription/transcriptPersistenceService.js';
 import { appendHubActivity, upsertHubProfile } from './services/hub/hubStore.js';
 import { resolveAuthenticatedUserFromToken } from './services/auth/authService.js';
@@ -86,6 +87,7 @@ export function createApp() {
   app.use(cors(corsOptions));
   app.use(express.json());
   app.use('/api', createAuthRouter());
+  app.use('/api', createLiveKitRouter());
   app.use('/api', createTranscriptionRouter());
   app.use('/api', createHubRouter());
 
