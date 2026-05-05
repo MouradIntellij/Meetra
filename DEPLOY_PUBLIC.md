@@ -6,7 +6,7 @@ Objectif: permettre à un testeur distant de créer une salle, inviter des perso
 
 - `Frontend web`: Vercel
 - `API + Socket.IO`: Render
-- `Base de données`: Postgres Render
+- `Base de données`: Neon Postgres
 - `TURN public`: VPS Ubuntu avec coturn
 - `Electron`: optionnel, en mode hybride seulement
 
@@ -72,14 +72,44 @@ NOTIFICATION_EMAIL_WEBHOOK_URL=
 NOTIFICATION_WEBHOOK_SECRET=
 NOTIFICATION_FROM_NAME=Meetra
 NOTIFICATION_FROM_EMAIL=
-DATABASE_URL=postgres://...
+DATABASE_URL=postgresql://user:password@ep-example.us-east-1.aws.neon.tech/dbname?sslmode=require
+DATABASE_SSL=require
 ```
 
 Notes:
 
 - `DATABASE_URL` est requis pour l'authentification hôte en production
+- utilisez l'URL Neon avec `sslmode=require`, par exemple `postgresql://...neon.tech/...?...sslmode=require`
+- `DATABASE_SSL=require` force SSL si l'URL fournie ne contient pas explicitement `sslmode=require`
 - sans `DATABASE_URL`, l'inscription et la connexion hôte ne seront pas fiables en public
 - `NOTIFICATION_EMAIL_WEBHOOK_URL` est optionnel; sans lui, les invitations sont journalisées localement mais pas réellement envoyées
+
+## Base de données Neon
+
+Neon remplace Render Postgres sans changer le code applicatif: Meetra reste une application Postgres standard via `DATABASE_URL`.
+
+Procédure conseillée:
+
+1. Créer un projet Neon.
+2. Créer ou garder la base par défaut.
+3. Copier la connection string Node.js depuis Neon, idéalement l'URL pooled si le backend peut ouvrir plusieurs connexions.
+4. Vérifier que l'URL contient `sslmode=require`.
+5. Dans Render, remplacer l'ancienne variable `DATABASE_URL` Render par l'URL Neon.
+6. Ajouter `DATABASE_SSL=require`.
+7. Redéployer le backend Render.
+8. Tester inscription, connexion, création de réunion, historique, Hub et transcription.
+
+Les tables sont créées automatiquement au premier accès par les stores Postgres du serveur:
+
+- `users`
+- `meetings`
+- `hub_profiles`
+- `hub_messages`
+- `hub_activities`
+- `meeting_transcripts`
+- `transcript_segments`
+
+Si vous aviez déjà des données importantes dans Render Postgres, exportez-les avant suppression avec `pg_dump`, puis importez-les dans Neon avec `psql`.
 
 ## TURN public avec coturn
 
@@ -153,7 +183,7 @@ APP_TURN_CREDENTIAL=replace-with-your-turn-password
 - créer un service web sur le dossier `server`
 - build command: `npm install`
 - start command: `npm start`
-- rattacher une base Postgres
+- configurer `DATABASE_URL` avec l'URL Neon
 - injecter les variables Render ci-dessus
 
 ### 2. Frontend Vercel

@@ -1,24 +1,20 @@
 import { Pool } from 'pg';
 import { ENV } from '../../config/env.js';
+import { createPostgresPoolConfig, hasDatabaseUrl } from '../../config/postgres.js';
 import { logger } from '../../utils/logger.js';
 
 let pool = null;
 let initialized = false;
 
 function hasDatabase() {
-  return Boolean(process.env.DATABASE_URL);
+  return hasDatabaseUrl();
 }
 
 function getPool() {
   if (!hasDatabase()) return null;
 
   if (!pool) {
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.DATABASE_URL?.includes('render.com')
-        ? { rejectUnauthorized: false }
-        : undefined,
-    });
+    pool = new Pool(createPostgresPoolConfig());
   }
 
   return pool;
