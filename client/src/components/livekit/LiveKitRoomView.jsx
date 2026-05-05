@@ -167,14 +167,19 @@ export default function LiveKitRoomView({ roomId, userName, onFallback, onLeave 
   const [localVideoEnabled, setLocalVideoEnabled] = useState(true);
   const roomRef = useRef(null);
   const fallbackCalledRef = useRef(false);
+  const onFallbackRef = useRef(onFallback);
+
+  useEffect(() => {
+    onFallbackRef.current = onFallback;
+  }, [onFallback]);
 
   const bump = useCallback(() => setVersion((current) => current + 1), []);
 
   const triggerFallback = useCallback((reason) => {
     if (fallbackCalledRef.current) return;
     fallbackCalledRef.current = true;
-    onFallback?.(reason);
-  }, [onFallback]);
+    onFallbackRef.current?.(reason);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

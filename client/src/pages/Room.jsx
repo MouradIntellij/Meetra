@@ -611,6 +611,10 @@ export default function Room({ roomId, userName, onLeave }) {
     onLeave();
   }, [leaveRoom, onLeave]);
 
+  const handleLiveKitFallback = useCallback((reason) => {
+    setLiveKitFallbackReason(reason || 'LIVEKIT_FALLBACK');
+  }, []);
+
   // ── KICKED ────────────────────────────────────────────────
   if (kicked) {
     return (
@@ -923,7 +927,7 @@ export default function Room({ roomId, userName, onLeave }) {
                       <LiveKitRoomView
                         roomId={roomId}
                         userName={userName}
-                        onFallback={(reason) => setLiveKitFallbackReason(reason || 'LIVEKIT_FALLBACK')}
+                        onFallback={handleLiveKitFallback}
                         onLeave={handleLeave}
                       />
                     </Suspense>
