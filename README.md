@@ -583,6 +583,7 @@ Ce qui est deja prepare:
 - `livekit-client` cote client;
 - `GET /api/livekit/status` pour connaitre l'etat de la SFU;
 - `POST /api/livekit/token` pour generer un token participant;
+- `client/src/components/livekit/LiveKitRoomView.jsx` comme vue video SFU separee;
 - `VITE_MEDIA_BACKEND=p2p` par defaut;
 - `LIVEKIT_ENABLED=false` par defaut.
 
@@ -605,10 +606,11 @@ VITE_MEDIA_BACKEND=p2p
 Mode de fonctionnement:
 
 - `p2p`: Meetra utilise le WebRTC mesh actuel;
-- `livekit`: le client peut demander un token LiveKit et se connecter a une SFU;
-- si LiveKit n'est pas configure, l'API renvoie une erreur claire et le mode P2P reste disponible.
+- `livekit`: `Room.jsx` charge la vue `LiveKitRoomView` et se connecte a la SFU;
+- si LiveKit n'est pas configure ou si la connexion echoue, la room revient automatiquement a `VideoGrid` en mode P2P;
+- la vue LiveKit possede ses propres boutons micro, camera, partage ecran, retour P2P et quitter.
 
-La prochaine etape technique sera de brancher une vue video LiveKit complete dans la room, puis de choisir le mode par reunion ou par variable d'environnement.
+La prochaine evolution possible sera de choisir le mode par reunion, puis d'unifier progressivement les controles avances entre P2P et LiveKit.
 
 ### Base de donnees Neon
 

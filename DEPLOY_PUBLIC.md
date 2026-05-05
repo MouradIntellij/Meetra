@@ -138,13 +138,14 @@ Ce qui est préparé:
 - route `GET /api/livekit/status`;
 - route `POST /api/livekit/token`;
 - SDK client `livekit-client`, chargé dynamiquement seulement si demandé;
+- vue séparée `LiveKitRoomView` avec fallback vers `VideoGrid` P2P;
 - variable frontend `VITE_MEDIA_BACKEND`;
 - variables backend LiveKit.
 
 Ce qui reste volontairement inchangé:
 
 - les réunions utilisent encore le mode P2P par défaut;
-- la salle actuelle, le lobby, la waiting room, les contrôles hôte et le chat ne sont pas remplacés;
+- le lobby, la waiting room, les contrôles hôte et le chat ne sont pas remplacés;
 - `LIVEKIT_ENABLED=false` empêche l'utilisation accidentelle d'une SFU non configurée.
 
 Variables backend Render:
@@ -169,7 +170,7 @@ Pour activer réellement le mode SFU dans une prochaine étape:
 2. remplir les variables `LIVEKIT_*` dans Render;
 3. passer `LIVEKIT_ENABLED=true`;
 4. passer `VITE_MEDIA_BACKEND=livekit` dans Vercel;
-5. brancher progressivement une vue vidéo LiveKit dédiée, avec fallback vers P2P.
+5. tester la vue LiveKit dédiée; si elle échoue, Meetra revient automatiquement vers P2P.
 
 ## Base de données Neon
 

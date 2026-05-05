@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { Suspense, lazy, useEffect, useState, useCallback, useRef } from 'react';
 import { useSocket }     from '../context/SocketContext.jsx';
 import { useRoom }       from '../context/RoomContext.jsx';
 import { useUI }         from '../context/UIContext.jsx';
@@ -20,6 +20,9 @@ import CaptionsOverlay   from '../components/transcription/CaptionsOverlay.jsx';
 import TranscriptPanel   from '../components/transcription/TranscriptPanel.jsx';
 import { BanIcon, CalendarIcon, CloseIcon, GridIcon, HandIcon, LaunchIcon, LinkIcon, MailIcon, SpotlightIcon, UsersIcon, VideoAppIcon } from '../components/common/AppIcons.jsx';
 import ModalFrame from '../components/common/ModalFrame.jsx';
+import { isLiveKitMediaEnabled } from '../utils/appConfig.js';
+
+const LiveKitRoomView = lazy(() => import('../components/livekit/LiveKitRoomView.jsx'));
 
 const PUBLIC_JOIN_BASE_URL = getPublicJoinBaseUrl();
 const API_URL = getApiUrl();
@@ -560,11 +563,13 @@ export default function Room({ roomId, userName, onLeave }) {
   const [showInvite,  setShowInvite]  = useState(false);
   const [handRaised,  setHandRaised]  = useState(false);
   const [showHands,   setShowHands]   = useState(false);
+  const [liveKitFallbackReason, setLiveKitFallbackReason] = useState('');
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
     //ajout pour resolution du problem effet miroir lors  du full sharing screen
   const [isScreenShareActive, setIsScreenShareActive] = useState(false);
   const isCompact = viewportWidth < 1180;
   const isMobile = viewportWidth < 760;
+  const useLiveKitView = isLiveKitMediaEnabled() && !liveKitFallbackReason;
 
   // Auto-show raised hands panel when someone raises hand
   const raisedCount = participants.filter(p => p.handRaised).length;
@@ -875,6 +880,21 @@ export default function Room({ roomId, userName, onLeave }) {
             </div>
         )}
 
+        {liveKitFallbackReason && (
+            <div style={{
+              margin: '10px 16px 0',
+              borderRadius: 14,
+              border: '1px solid rgba(96,165,250,0.18)',
+              background: 'rgba(30,64,175,0.18)',
+              color: '#dbeafe',
+              padding: '10px 14px',
+              fontSize: 13,
+              boxShadow: '0 12px 30px rgba(2,6,23,0.18)',
+            }}>
+              Mode P2P actif. LiveKit indisponible ou desactive: {liveKitFallbackReason}
+            </div>
+        )}
+
         {/* ── RAISED HANDS FLOATING PANEL ── */}
         {showHands && raisedCount > 0 && (
             <div style={{ position: 'absolute', top: 54, right: 12, zIndex: 40 }}>
@@ -885,7 +905,31 @@ export default function Room({ roomId, userName, onLeave }) {
         {/* ── MAIN AREA ── */}
           <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0, position: 'relative' }}>
               <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-                  <VideoGrid isScreenShareActive={isScreenShareActive} />
+                  {useLiveKitView ? (
+                    <Suspense fallback={
+                      <div style={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: '#080c14',
+                        color: 'rgba(226,232,240,0.72)',
+                        fontSize: 14,
+                      }}>
+                        Chargement du mode LiveKit...
+                      </div>
+                    }>
+                      <LiveKitRoomView
+                        roomId={roomId}
+                        userName={userName}
+                        onFallback={(reason) => setLiveKitFallbackReason(reason || 'LIVEKIT_FALLBACK')}
+                        onLeave={handleLeave}
+                      />
+                    </Suspense>
+                  ) : (
+                    <VideoGrid isScreenShareActive={isScreenShareActive} />
+                  )}
                   <ReactionsOverlay />
                   <CaptionsOverlay />
               </div>
@@ -910,14 +954,14 @@ export default function Room({ roomId, userName, onLeave }) {
 
         {/* ── CONTROL BAR ── */}
           <div style={{ flexShrink: 0 }}>
-              <ControlBar
+              {!useLiveKitView && <ControlBar
                   roomId={roomId}
                   userName={userName}
                   onLeave={handleLeave}
                   toggleHand={handleToggleHand}
                   handRaised={handRaised}
                   onScreenShareChange={setIsScreenShareActive}
-              />
+              />}
           </div>
 
         <Whiteboard roomId={roomId} />
