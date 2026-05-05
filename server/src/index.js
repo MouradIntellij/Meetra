@@ -2,6 +2,7 @@ import { createServer } from 'http';
 import { createApp } from './app.js';
 import { initSocket } from './socket/index.js';
 import { ENV } from './config/env.js';
+import { closeSocketRedisAdapter } from './config/redis.js';
 import { logger } from './utils/logger.js';
 
 const app        = createApp();
@@ -15,5 +16,8 @@ httpServer.listen(ENV.PORT, () => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received — shutting down');
-  httpServer.close(() => process.exit(0));
+  httpServer.close(async () => {
+    await closeSocketRedisAdapter();
+    process.exit(0);
+  });
 });

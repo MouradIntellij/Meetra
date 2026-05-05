@@ -25,6 +25,8 @@ export const ENV = {
   isDev: (process.env.NODE_ENV || 'development') === 'development',
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
   CORS_ALLOWED_ORIGINS: process.env.CORS_ALLOWED_ORIGINS || '',
+  REDIS_URL: process.env.REDIS_URL || '',
+  REDIS_SOCKET_ADAPTER: process.env.REDIS_SOCKET_ADAPTER || 'auto',
   MEETING_STORE_BACKEND: process.env.MEETING_STORE_BACKEND || 'auto',
   MEETING_STORE_DIR: process.env.MEETING_STORE_DIR || 'server/data/meetings',
   TRANSCRIPT_STORE_DIR: process.env.TRANSCRIPT_STORE_DIR || 'server/data/transcripts',

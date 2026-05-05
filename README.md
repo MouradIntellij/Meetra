@@ -42,7 +42,7 @@ Meetra est une application de visioconference moderne qui reproduit les fonction
 | IA | transcription OpenAI optionnelle, resume de reunion, extraction decisions/actions/risques, traduction |
 | Campus Hub | profils, presence, activite, conversations et messages |
 | Desktop | application Electron avec preload securise et configuration runtime |
-| Deploiement | Vercel pour le client, Render pour le serveur, Neon Postgres, coturn, Docker Compose |
+| Deploiement | Vercel pour le client, Render pour le serveur, Neon Postgres, Redis, coturn, Docker Compose |
 
 ## Parcours utilisateur
 
@@ -58,20 +58,146 @@ Meetra est une application de visioconference moderne qui reproduit les fonction
 
 ## Architecture generale
 
-Meetra est organise en monorepo npm avec deux workspaces principaux:
+Meetra est organise en monorepo npm. Les deux workspaces actifs sont `client` et `server`, avec des dossiers complementaires pour Electron, coturn, les scripts et les exemples de webhooks.
 
 ```text
 videoconf-step7/
-├── client/                  # Frontend React + Vite + Tailwind
-├── server/                  # Backend Node.js + Express + Socket.IO
-├── electron/                # Shell desktop Electron
-├── coturn/                  # Configuration TURN/STUN
-├── examples/                # Exemple de webhook d'alerte hote
-├── scripts/                 # Scripts de developpement
-├── docker-compose.coturn.yml
-├── render.yaml
-├── vercel.json
-└── package.json             # Workspaces et scripts racine
+|-- client/                         # Frontend web React
+|   |-- package.json                # Scripts Vite du client
+|   |-- index.html                  # Entree HTML Vite
+|   |-- vite.config.js              # Configuration Vite
+|   |-- tailwind.config.js          # Configuration Tailwind
+|   |-- postcss.config.js           # Pipeline CSS
+|   |-- vercel.json                 # Rewrite SPA pour Vercel
+|   |-- dist/                       # Build genere par Vite
+|   `-- src/
+|       |-- main.jsx                # Bootstrap React
+|       |-- App.jsx                 # Orchestrateur principal Meetra
+|       |-- App1.jsx, App2.jsx      # Versions/essais conserves
+|       |-- app/
+|       |   `-- _App.jsx            # Ancienne variante d'orchestration
+|       |-- pages/
+|       |   |-- Home.jsx            # Accueil, compte, creation, planning
+|       |   |-- Lobby.jsx           # Preview camera/micro
+|       |   |-- WaitingRoom.jsx     # Salle d'attente invite
+|       |   `-- Room.jsx            # Salle de visioconference
+|       |-- context/
+|       |   |-- SocketContext.jsx   # Connexion Socket.IO
+|       |   |-- RoomContext.jsx     # Participants, hote, lock, breakout
+|       |   |-- MediaContext.jsx    # Streams, WebRTC, enregistrement
+|       |   |-- UIContext.jsx       # Panneaux et etat UI
+|       |   `-- TranscriptionContext.jsx
+|       |-- hooks/
+|       |   |-- useWebRTC.js
+|       |   |-- useScreenShare.js
+|       |   |-- useRecording.js
+|       |   |-- useActiveSpeaker.js
+|       |   `-- useVirtualBackground.js
+|       |-- components/
+|       |   |-- video/              # VideoGrid, VideoTile, ScreenShareView
+|       |   |-- controls/           # ControlBar, HostControls, settings
+|       |   |-- chat/               # ChatSidebar
+|       |   |-- participants/       # ParticipantsPanel
+|       |   |-- layout/             # Whiteboard, Breakout, WaitingRoomPanel
+|       |   |-- transcription/      # Captions, Transcript, Summary
+|       |   |-- hub/                # CampusHub
+|       |   `-- common/             # Icons, ModalFrame
+|       |-- services/
+|       |   `-- platform/           # Abstraction browser/Electron
+|       |-- utils/                  # events, peer, appConfig, audioLevel
+|       `-- styles/
+|           `-- index.css
+|
+|-- server/                         # Backend API + Socket.IO
+|   |-- package.json
+|   |-- server.env.local            # Exemple/env local serveur
+|   |-- src/
+|   |   |-- index.js                # Demarrage HTTP + Socket.IO
+|   |   |-- app.js                  # Express, routes REST, CORS
+|   |   |-- config/
+|   |   |   |-- env.js              # Variables d'environnement
+|   |   |   |-- cors.js             # Origines autorisees
+|   |   |   |-- postgres.js         # Config Postgres/Neon
+|   |   |   `-- redis.js            # Config Redis Socket.IO
+|   |   |-- constants/
+|   |   |   `-- events.js           # Evenements Socket.IO partages
+|   |   |-- routes/
+|   |   |   |-- authRoutes.js
+|   |   |   |-- hubRoutes.js
+|   |   |   `-- transcriptionRoutes.js
+|   |   |-- rooms/
+|   |   |   |-- roomStore.js         # Etat runtime des salles
+|   |   |   `-- roomService.js       # Logique metier reunion
+|   |   |-- socket/
+|   |   |   |-- index.js             # Initialisation Socket.IO
+|   |   |   `-- handlers/
+|   |   |       |-- roomHandler.js
+|   |   |       |-- mediaHandler.js
+|   |   |       |-- chatHandler.js
+|   |   |       |-- hostHandler.js
+|   |   |       |-- reactionHandler.js
+|   |   |       |-- recordingHandler.js
+|   |   |       |-- breakoutHandler.js
+|   |   |       |-- hubHandler.js
+|   |   |       `-- transcriptionHandler.js
+|   |   |-- services/
+|   |   |   |-- auth/                # Auth locale + Postgres
+|   |   |   |-- meetings/            # Persistance reunions
+|   |   |   |-- hub/                 # Profils, presence, messages
+|   |   |   |-- notifications/       # Invitations et alertes webhook
+|   |   |   `-- transcription/       # Transcript, resume, traduction IA
+|   |   `-- utils/
+|   |       |-- logger.js
+|   |       `-- uuid.js
+|   `-- server/data/                # Donnees JSON locales dev
+|       |-- auth/
+|       |-- hub/
+|       |-- meetings/
+|       `-- transcripts/
+|
+|-- electron/                       # Application desktop optionnelle
+|   |-- main/main.cjs               # Processus principal Electron
+|   |-- preload/preload.cjs         # API securisee exposee au client
+|   |-- presenter/toolbar.html
+|   `-- reactions/overlay.html
+|
+|-- coturn/                         # TURN/STUN pour reseaux restrictifs
+|   |-- turnserver.conf
+|   `-- users.txt
+|
+|-- examples/
+|   `-- host-alert-webhook/         # Exemple webhook email/SMS
+|
+|-- scripts/                        # Scripts dev desktop/webhook
+|-- package.json                    # Workspaces + scripts racine
+|-- package-lock.json
+|-- docker-compose.coturn.yml
+|-- render.yaml
+|-- vercel.json
+|-- DEPLOY_PUBLIC.md
+|-- VERCEL_TURN_CONFIG.txt
+|-- .env.example
+|-- .env.production.example
+`-- .env.desktop.example
+```
+
+Architecture de deploiement reelle:
+
+```text
+Navigateur / Electron
+  |-- HTTPS REST -------------> Backend Render / Express
+  |-- WebSocket Socket.IO ----> Backend Render / Socket.IO
+  |-- WebRTC media P2P ------> Autres participants
+  `-- WebRTC relay optionnel -> coturn
+
+Backend Render
+  |-- persistance SQL -------> Neon Postgres
+  |-- temps reel multi-node -> Redis adapter Socket.IO
+  |-- IA optionnelle --------> OpenAI API
+  `-- notifications ---------> webhooks email/SMS
+
+Frontend web
+  `-- hebergement -----------> Vercel
 ```
 
 ### Client React
@@ -181,6 +307,7 @@ Socket.IO est utilise pour tous les evenements temps reel qui ne sont pas les fl
 | Custom Hooks | logique reutilisable | `useWebRTC`, `useScreenShare`, `useRecording`, `useActiveSpeaker` |
 | WebRTC | audio/video peer-to-peer | offer/answer, ICE, STUN/TURN, tracks media |
 | Socket.IO | temps reel et signalisation | rooms, broadcast, evenements client/serveur |
+| Redis | adapter Socket.IO multi-instance | diffusion temps reel entre plusieurs serveurs |
 | Node.js | runtime backend | modules ES, services, configuration |
 | Express | API REST | routes, middleware, JSON, CORS |
 | PostgreSQL / Neon | persistance production | stockage utilisateurs, reunions, hub, transcripts |
@@ -200,6 +327,7 @@ Socket.IO est utilise pour tous les evenements temps reel qui ne sont pas les fl
 | Vercel | deploiement client | SPA React, rewrites |
 | Render | deploiement serveur | Node service, variables d'environnement |
 | Neon | base Postgres managée | stockage persistant separe du serveur Render |
+| Upstash/Redis Cloud/Render Key Value | Redis managé | adapter Socket.IO et temps reel multi-instance |
 | Webhooks | notifications | alertes hote email/SMS, exemple Brevo/Resend |
 | LocalStorage | session client | token, profil, contacts |
 | ICS / mailto | invitations | calendrier et email depuis le navigateur |
@@ -339,6 +467,8 @@ CLIENT_URL=https://votre-client.vercel.app
 CORS_ALLOWED_ORIGINS=https://votre-client.vercel.app
 DATABASE_URL=postgresql://user:password@ep-example.us-east-1.aws.neon.tech/dbname?sslmode=require
 DATABASE_SSL=require
+REDIS_URL=redis://default:password@your-redis-host:6379
+REDIS_SOCKET_ADAPTER=auto
 SESSION_SECRET=change-me
 
 OPENAI_API_KEY=
@@ -398,8 +528,36 @@ NODE_ENV=production
 CLIENT_URL=https://votre-client.vercel.app
 DATABASE_URL=postgresql://user:password@ep-example.us-east-1.aws.neon.tech/dbname?sslmode=require
 DATABASE_SSL=require
+REDIS_URL=redis://default:password@your-redis-host:6379
+REDIS_SOCKET_ADAPTER=auto
 SESSION_SECRET=change-me
 ```
+
+### Redis temps reel
+
+Redis est optionnel mais recommande si le backend Render doit pouvoir tourner avec plusieurs instances ou si l'on veut preparer une architecture temps reel plus robuste.
+
+Dans cette etape, Redis est branche comme adapter Socket.IO:
+
+- si `REDIS_URL` existe, Socket.IO utilise Redis pour propager les evenements entre instances serveur;
+- si `REDIS_URL` est absent ou inaccessible, Meetra continue avec l'adapter memoire local;
+- Neon reste responsable des donnees durables: comptes, reunions, hub, transcriptions et historiques.
+
+Variables:
+
+```env
+REDIS_URL=redis://default:password@your-redis-host:6379
+REDIS_SOCKET_ADAPTER=auto
+```
+
+Fournisseurs possibles:
+
+- Upstash Redis;
+- Redis Cloud;
+- Render Key Value;
+- autre Redis managé compatible URL Redis.
+
+Prochaine evolution possible: deplacer la presence live, les waiting rooms et l'etat runtime des rooms dans Redis, tout en gardant Neon pour la persistance longue duree.
 
 ### Base de donnees Neon
 

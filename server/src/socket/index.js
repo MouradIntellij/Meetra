@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import { socketCorsOptions } from '../config/cors.js';
+import { configureSocketRedisAdapter } from '../config/redis.js';
 import { logger } from '../utils/logger.js';
 
 import { registerRoomHandlers }     from './handlers/roomHandler.js';
@@ -21,6 +22,10 @@ export function initSocket(httpServer) {
     cors: socketCorsOptions,
     pingTimeout: 60000,
     pingInterval: 25000,
+  });
+
+  configureSocketRedisAdapter(io).catch((error) => {
+    logger.error('Socket.IO Redis adapter setup failed:', error?.message || error);
   });
 
   io.on('connection', (socket) => {

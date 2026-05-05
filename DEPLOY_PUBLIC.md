@@ -7,6 +7,7 @@ Objectif: permettre à un testeur distant de créer une salle, inviter des perso
 - `Frontend web`: Vercel
 - `API + Socket.IO`: Render
 - `Base de données`: Neon Postgres
+- `Redis temps réel`: Upstash Redis, Redis Cloud ou Render Key Value
 - `TURN public`: VPS Ubuntu avec coturn
 - `Electron`: optionnel, en mode hybride seulement
 
@@ -74,6 +75,8 @@ NOTIFICATION_FROM_NAME=Meetra
 NOTIFICATION_FROM_EMAIL=
 DATABASE_URL=postgresql://user:password@ep-example.us-east-1.aws.neon.tech/dbname?sslmode=require
 DATABASE_SSL=require
+REDIS_URL=redis://default:password@your-redis-host:6379
+REDIS_SOCKET_ADAPTER=auto
 ```
 
 Notes:
@@ -81,8 +84,39 @@ Notes:
 - `DATABASE_URL` est requis pour l'authentification hôte en production
 - utilisez l'URL Neon avec `sslmode=require`, par exemple `postgresql://...neon.tech/...?...sslmode=require`
 - `DATABASE_SSL=require` force SSL si l'URL fournie ne contient pas explicitement `sslmode=require`
+- `REDIS_URL` active le Redis adapter Socket.IO; sans cette variable, Meetra garde l'adapter mémoire local
+- `REDIS_SOCKET_ADAPTER=auto` active Redis seulement quand `REDIS_URL` existe; utilisez `disabled` pour forcer le mode mémoire
 - sans `DATABASE_URL`, l'inscription et la connexion hôte ne seront pas fiables en public
 - `NOTIFICATION_EMAIL_WEBHOOK_URL` est optionnel; sans lui, les invitations sont journalisées localement mais pas réellement envoyées
+
+## Redis temps réel
+
+Redis sert au temps réel applicatif, pas au stockage permanent. Neon garde les données durables, tandis que Redis permet à Socket.IO de partager ses événements entre plusieurs instances backend.
+
+Ce qui est activé dans cette étape:
+
+- adapter Redis Socket.IO via `@socket.io/redis-adapter`;
+- diffusion des événements entre instances Render;
+- fallback automatique vers l'adapter mémoire si `REDIS_URL` est absent ou inaccessible.
+
+Ce qui reste en évolution:
+
+- déplacer progressivement la présence live, la waiting room et l'état runtime des rooms vers Redis;
+- garder Neon pour les comptes, meetings, hub, transcripts et historiques.
+
+Variables Render:
+
+```env
+REDIS_URL=redis://default:password@your-redis-host:6379
+REDIS_SOCKET_ADAPTER=auto
+```
+
+Fournisseurs possibles:
+
+- Upstash Redis;
+- Redis Cloud;
+- Render Key Value;
+- un Redis managé équivalent.
 
 ## Base de données Neon
 
