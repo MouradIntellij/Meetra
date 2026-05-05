@@ -5,6 +5,10 @@ function isTruthy(value) {
   return ['1', 'true', 'yes', 'on', 'enabled'].includes(String(value || '').trim().toLowerCase());
 }
 
+function cleanEnvValue(value) {
+  return String(value || '').trim().replace(/^['"]|['"]$/g, '');
+}
+
 function normalizeRoomName(roomId) {
   return String(roomId || '').trim().toLowerCase();
 }
@@ -22,11 +26,14 @@ function normalizeDisplayName(value) {
 }
 
 export function getLiveKitStatus() {
-  const configured = Boolean(ENV.LIVEKIT_URL && ENV.LIVEKIT_API_KEY && ENV.LIVEKIT_API_SECRET);
+  const livekitUrl = cleanEnvValue(ENV.LIVEKIT_URL);
+  const apiKey = cleanEnvValue(ENV.LIVEKIT_API_KEY);
+  const apiSecret = cleanEnvValue(ENV.LIVEKIT_API_SECRET);
+  const configured = Boolean(livekitUrl && apiKey && apiSecret);
   return {
     enabled: isTruthy(ENV.LIVEKIT_ENABLED) && configured,
     configured,
-    url: configured ? ENV.LIVEKIT_URL : '',
+    url: configured ? livekitUrl : '',
   };
 }
 
@@ -41,7 +48,11 @@ export async function createLiveKitParticipantToken({ roomId, userName, userId, 
   const identityBase = normalizeIdentity(userId || userName || `guest-${Date.now()}`);
   const identity = `${identityBase || 'guest'}-${Math.random().toString(36).slice(2, 8)}`;
 
-  const token = new AccessToken(ENV.LIVEKIT_API_KEY, ENV.LIVEKIT_API_SECRET, {
+  const livekitUrl = cleanEnvValue(ENV.LIVEKIT_URL);
+  const apiKey = cleanEnvValue(ENV.LIVEKIT_API_KEY);
+  const apiSecret = cleanEnvValue(ENV.LIVEKIT_API_SECRET);
+
+  const token = new AccessToken(apiKey, apiSecret, {
     identity,
     name,
     ttl: ENV.LIVEKIT_TOKEN_TTL_SECONDS,
@@ -62,7 +73,7 @@ export async function createLiveKitParticipantToken({ roomId, userName, userId, 
 
   return {
     token: await token.toJwt(),
-    url: ENV.LIVEKIT_URL,
+    url: livekitUrl,
     room,
     identity,
     name,
