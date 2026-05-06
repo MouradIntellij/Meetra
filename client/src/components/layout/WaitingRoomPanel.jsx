@@ -97,7 +97,11 @@ export default function WaitingRoomPanel({ roomId }) {
   const admit = (guest) => {
     if (!socket) return;
     setProcessing((p) => ({ ...p, [guest.socketId]: 'admitting' }));
-    socket.emit(ADMIT_GUEST, { roomId, guestSocketId: guest.socketId });
+    socket.emit(ADMIT_GUEST, {
+      roomId,
+      guestSocketId: guest.socketId,
+      authToken: readStoredAuthToken(),
+    });
     // Retirer de la liste locale après un délai
     setTimeout(() => {
       setQueue((q) => q.filter((g) => g.socketId !== guest.socketId));
@@ -108,7 +112,11 @@ export default function WaitingRoomPanel({ roomId }) {
   const deny = (guest) => {
     if (!socket) return;
     setProcessing((p) => ({ ...p, [guest.socketId]: 'denying' }));
-    socket.emit(DENY_GUEST, { roomId, guestSocketId: guest.socketId });
+    socket.emit(DENY_GUEST, {
+      roomId,
+      guestSocketId: guest.socketId,
+      authToken: readStoredAuthToken(),
+    });
     setTimeout(() => {
       setQueue((q) => q.filter((g) => g.socketId !== guest.socketId));
       setProcessing((p) => { const n = { ...p }; delete n[guest.socketId]; return n; });

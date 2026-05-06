@@ -62,6 +62,20 @@ function canManageMeeting(meeting, user) {
   );
 }
 
+async function canManageWaitingRoom(roomId, socket, authToken = '') {
+  if (roomService.isModerator(roomId, socket.id)) return true;
+
+  if (socket._meetraCanManageMeeting && socket._meetraRoom === roomId) {
+    return true;
+  }
+
+  if (!authToken) return false;
+
+  const meetingInfo = await roomService.getMeetingRoomInfo(roomId);
+  const authenticated = await resolveAuthenticatedUserFromToken(authToken);
+  return Boolean(authenticated && canManageMeeting(meetingInfo, authenticated));
+}
+
 function normalizeRoomId(value) {
   return String(value || '').trim().toLowerCase();
 }
@@ -95,6 +109,7 @@ export function registerRoomHandlers(io, socket) {
           return;
         }
 
+        socket._meetraCanManageMeeting = true;
         await _admitToRoom(io, socket, roomId, userName, userId, true);
 
         // Si des invités attendaient avant l'arrivée de l'hôte, les pousser au panneau d'attente.
@@ -157,13 +172,14 @@ export function registerRoomHandlers(io, socket) {
   });
 
   // ── ADMIT_GUEST ─────────────────────────────────────────────────────────────
-  socket.on(ADMIT_GUEST, async ({ roomId, guestSocketId, targetSocketId }) => {
+  socket.on(ADMIT_GUEST, async ({ roomId, guestSocketId, targetSocketId, authToken = '' }) => {
     roomId = normalizeRoomId(roomId);
     guestSocketId = guestSocketId || targetSocketId;
 
     // Vérifier que c'est bien l'hôte qui admet
-    if (!roomService.isModerator(roomId, socket.id)) {
-      logger.warn(`[ADMIT_GUEST] socket ${socket.id} n'est pas modérateur de ${roomId}`);
+    if (!(await canManageWaitingRoom(roomId, socket, authToken))) {
+      logger.warn(`[ADMIT_GUEST] socket ${socket.id} n'est pas autorisé à gérer ${roomId}`);
+      socket.emit(WAITING_ROOM_UPDATE, { waitingList: listWaitingGuests(roomId) });
       return;
     }
 
@@ -188,11 +204,15 @@ export function registerRoomHandlers(io, socket) {
   });
 
   // ── DENY_GUEST ──────────────────────────────────────────────────────────────
-  socket.on(DENY_GUEST, ({ roomId, guestSocketId, targetSocketId }) => {
+  socket.on(DENY_GUEST, async ({ roomId, guestSocketId, targetSocketId, authToken = '' }) => {
     roomId = normalizeRoomId(roomId);
     guestSocketId = guestSocketId || targetSocketId;
 
-    if (!roomService.isModerator(roomId, socket.id)) return;
+    if (!(await canManageWaitingRoom(roomId, socket, authToken))) {
+      logger.warn(`[DENY_GUEST] socket ${socket.id} n'est pas autorisé à gérer ${roomId}`);
+      socket.emit(WAITING_ROOM_UPDATE, { waitingList: listWaitingGuests(roomId) });
+      return;
+    }
 
     removeFromQueue(roomId, guestSocketId);
     broadcastWaitingQueue(io, roomId);
@@ -305,11 +325,13 @@ async function _admitToRoom(io, socket, roomId, userName, userId, isHostFlag) {
     return;
   }
 
-  // Si c'est le premier arrivé (hôte), forcer hostId dans roomStore
+  // Un hôte authentifié reprend explicitement la main, même si un ancien socket
+  // est resté hostId après une reconnexion ou un déploiement partiel.
   if (isHostFlag) {
     const room = roomStore.getRoom(roomId);
-    if (room && !room.hostId) {
+    if (room) {
       room.hostId = socket.id;
+      room.coHostIds?.delete(socket.id);
     }
   }
 

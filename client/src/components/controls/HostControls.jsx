@@ -6,6 +6,18 @@ import { EVENTS }     from '../../utils/events.js';
 import { platform }   from '../../services/platform/index.js';
 import { CrownIcon, MuteGroupIcon, ShieldLockIcon, ShieldOpenIcon, SparkIcon } from '../common/AppIcons.jsx';
 
+const AUTH_STORAGE_KEY = 'meetra-auth-session';
+
+function readStoredAuthToken() {
+  if (typeof window === 'undefined') return '';
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(AUTH_STORAGE_KEY) || '{}');
+    return parsed.token || '';
+  } catch {
+    return '';
+  }
+}
+
 // ─── Icônes ───────────────────────────────────────────────────
 const CheckIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
@@ -150,15 +162,27 @@ export default function HostControls({ roomId }) {
   const toggleLock = () => socket.emit(EVENTS.LOCK_ROOM,   { roomId, locked: !locked });
   const admit      = (targetSocketId) => {
     setWaitingList((current) => current.filter((person) => person.socketId !== targetSocketId));
-    socket.emit(EVENTS.ADMIT_GUEST, { roomId, guestSocketId: targetSocketId });
+    socket.emit(EVENTS.ADMIT_GUEST, {
+      roomId,
+      guestSocketId: targetSocketId,
+      authToken: readStoredAuthToken(),
+    });
   };
   const reject     = (targetSocketId) => {
     setWaitingList((current) => current.filter((person) => person.socketId !== targetSocketId));
-    socket.emit(EVENTS.DENY_GUEST, { roomId, guestSocketId: targetSocketId });
+    socket.emit(EVENTS.DENY_GUEST, {
+      roomId,
+      guestSocketId: targetSocketId,
+      authToken: readStoredAuthToken(),
+    });
   };
   const admitAll   = () => {
     waitingList.forEach((person) => {
-      socket.emit(EVENTS.ADMIT_GUEST, { roomId, guestSocketId: person.socketId });
+      socket.emit(EVENTS.ADMIT_GUEST, {
+        roomId,
+        guestSocketId: person.socketId,
+        authToken: readStoredAuthToken(),
+      });
     });
     setWaitingList([]);
   };
