@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RoomEvent, Track } from 'livekit-client';
 import { connectLiveKitRoom } from '../../services/livekit/livekitClient.js';
+import { useLiveKitVirtualBackground } from '../../hooks/useLiveKitVirtualBackground.js';
 import LiveKitControlBar from './LiveKitControlBar.jsx';
 
 function initials(name = '') {
@@ -88,6 +89,20 @@ function collectTrackItems(room) {
   room.remoteParticipants.forEach((participant) => addParticipantTracks(participant, false));
 
   return items;
+}
+
+function getLocalCameraTrack(room) {
+  if (!room?.localParticipant) return null;
+  const publications = Array.from(room.localParticipant.trackPublications?.values?.() || []);
+  return publications.find((publication) =>
+    publication?.kind === Track.Kind.Video
+    && publication?.source !== Track.Source.ScreenShare
+    && publication?.track
+  )?.track || null;
+}
+
+function getTrackMediaStreamTrack(track) {
+  return track?.mediaStreamTrack || track?.mediaStreamTrack?.() || null;
 }
 
 function LiveKitTile({ item, compact = false }) {
@@ -246,9 +261,15 @@ export default function LiveKitRoomView({
   const [localAudioEnabled, setLocalAudioEnabled] = useState(true);
   const [localVideoEnabled, setLocalVideoEnabled] = useState(true);
   const [presentationMode, setPresentationMode] = useState(false);
+  const [localCameraTrack, setLocalCameraTrack] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
   const roomRef = useRef(null);
   const fallbackCalledRef = useRef(false);
   const onFallbackRef = useRef(onFallback);
+  const recorderRef = useRef(null);
+  const recordChunksRef = useRef([]);
+  const recordingCleanupRef = useRef(null);
+  const virtualBackground = useLiveKitVirtualBackground(localCameraTrack);
 
   useEffect(() => {
     onFallbackRef.current = onFallback;
@@ -329,6 +350,10 @@ export default function LiveKitRoomView({
   const localScreenShareActive = Boolean(screenShareItem?.isLocal);
   const screenShareOwnerName = screenShareItem?.isLocal ? 'Vous' : screenShareItem?.name || '';
 
+  useEffect(() => {
+    setLocalCameraTrack(getLocalCameraTrack(room));
+  }, [room, version]);
+
   const toggleAudio = async () => {
     if (!roomRef.current) return;
     const next = !localAudioEnabled;
@@ -356,6 +381,111 @@ export default function LiveKitRoomView({
     await roomRef.current.localParticipant.setScreenShareEnabled(false);
     bump();
   };
+
+  const stopLiveKitRecording = useCallback(() => {
+    if (!recorderRef.current) return;
+    recorderRef.current.stop();
+  }, []);
+
+  const startLiveKitRecording = useCallback(() => {
+    const activeRoom = roomRef.current;
+    if (!activeRoom || recorderRef.current) return;
+
+    const items = collectTrackItems(activeRoom);
+    const mainVideoTrack =
+      items.find((item) => item.screenTrack)?.screenTrack
+      || items.find((item) => item.isLocal && item.videoTrack)?.videoTrack
+      || items.find((item) => item.videoTrack)?.videoTrack;
+    const videoMediaTrack = getTrackMediaStreamTrack(mainVideoTrack);
+
+    if (!videoMediaTrack) {
+      window.alert("Aucune piste video LiveKit disponible pour l'enregistrement.");
+      return;
+    }
+
+    recordChunksRef.current = [];
+
+    const cleanupFns = [];
+    const recordStream = new MediaStream([videoMediaTrack]);
+    const audioTracks = items
+      .map((item) => item.audioTrack)
+      .map(getTrackMediaStreamTrack)
+      .filter(Boolean);
+
+    let audioContext = null;
+    if (audioTracks.length > 0 && window.AudioContext) {
+      audioContext = new AudioContext();
+      const destination = audioContext.createMediaStreamDestination();
+      audioTracks.forEach((audioTrack) => {
+        const source = audioContext.createMediaStreamSource(new MediaStream([audioTrack]));
+        source.connect(destination);
+        cleanupFns.push(() => source.disconnect());
+      });
+      destination.stream.getAudioTracks().forEach((track) => recordStream.addTrack(track));
+    } else {
+      audioTracks.slice(0, 1).forEach((track) => recordStream.addTrack(track));
+    }
+
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+      ? 'video/webm;codecs=vp9,opus'
+      : 'video/webm';
+    const recorder = new MediaRecorder(recordStream, { mimeType });
+
+    recorder.ondataavailable = (event) => {
+      if (event.data?.size > 0) {
+        recordChunksRef.current.push(event.data);
+      }
+    };
+
+    recorder.onstop = () => {
+      const blob = new Blob(recordChunksRef.current, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `meetra-livekit-${Date.now()}.webm`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+
+      cleanupFns.forEach((cleanup) => cleanup());
+      audioContext?.close?.().catch(() => {});
+      recorderRef.current = null;
+      recordingCleanupRef.current = null;
+      setIsRecording(false);
+    };
+
+    recorder.onerror = () => {
+      cleanupFns.forEach((cleanup) => cleanup());
+      audioContext?.close?.().catch(() => {});
+      recorderRef.current = null;
+      recordingCleanupRef.current = null;
+      setIsRecording(false);
+    };
+
+    recorderRef.current = recorder;
+    recordingCleanupRef.current = () => {
+      cleanupFns.forEach((cleanup) => cleanup());
+      audioContext?.close?.().catch(() => {});
+    };
+    recorder.start(1000);
+    setIsRecording(true);
+  }, []);
+
+  const toggleLiveKitRecording = useCallback(() => {
+    if (recorderRef.current) {
+      stopLiveKitRecording();
+      return;
+    }
+    startLiveKitRecording();
+  }, [startLiveKitRecording, stopLiveKitRecording]);
+
+  useEffect(() => () => {
+    if (recorderRef.current?.state === 'recording') {
+      recorderRef.current.stop();
+    }
+    recordingCleanupRef.current?.();
+  }, []);
 
   return (
     <div style={{
@@ -480,6 +610,9 @@ export default function LiveKitRoomView({
             screenShareOwnerName={screenShareOwnerName}
             presentationMode={presentationMode}
             onTogglePresentationMode={() => setPresentationMode((current) => !current)}
+            virtualBackgroundController={virtualBackground}
+            isRecording={isRecording}
+            onToggleRecording={toggleLiveKitRecording}
           />
         </>
       )}

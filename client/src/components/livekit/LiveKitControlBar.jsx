@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useUI } from '../../context/UIContext.jsx';
 import { useTranscription } from '../../context/TranscriptionContext.jsx';
 import ReactionBar from '../controls/ReactionBar.jsx';
 import SettingsPanel from '../controls/SettingsPanel.jsx';
+import VirtualBackground from '../layout/VirtualBackground.jsx';
 import {
   CameraOffIcon,
   ChatBubbleIcon,
@@ -122,7 +124,11 @@ export default function LiveKitControlBar({
   screenShareOwnerName,
   presentationMode,
   onTogglePresentationMode,
+  virtualBackgroundController,
+  isRecording,
+  onToggleRecording,
 }) {
+  const [bgOpen, setBgOpen] = useState(false);
   const {
     chatOpen,
     setChatOpen,
@@ -159,13 +165,6 @@ export default function LiveKitControlBar({
 
     setCaptionsEnabled(true);
     startTranscription();
-  };
-
-  const switchToP2PForFeature = (featureName) => {
-    const confirmed = window.confirm(
-      `${featureName} est encore lie au mode WebRTC P2P. Voulez-vous basculer vers le mode P2P pour l'utiliser ?`
-    );
-    if (confirmed) onFallbackToP2P();
   };
 
   return (
@@ -212,10 +211,13 @@ export default function LiveKitControlBar({
               title={screenShareActive ? 'Arreter le partage LiveKit' : 'Partager votre ecran avec LiveKit'}
             />
             <ControlButton
-              onClick={() => switchToP2PForFeature('Le fond virtuel')}
+              onClick={() => setBgOpen((open) => !open)}
+              active={bgOpen && !virtualBackgroundController?.active}
+              muted={!virtualBackgroundController}
+              disabled={!virtualBackgroundController}
               icon={<CameraOffIcon size={18} />}
-              label="Fond"
-              title="Fond virtuel disponible en mode P2P"
+              label={virtualBackgroundController?.active ? 'Fond on' : 'Fond'}
+              title="Fond virtuel LiveKit"
             />
           </div>
 
@@ -223,10 +225,11 @@ export default function LiveKitControlBar({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <ControlButton
-              onClick={() => switchToP2PForFeature("L'enregistrement")}
+              onClick={onToggleRecording}
+              active={isRecording}
               icon={<TranscriptIcon size={18} />}
-              label="Enregistrer"
-              title="Enregistrement disponible en mode P2P"
+              label={isRecording ? 'Stop rec' : 'Enregistrer'}
+              title={isRecording ? "Arreter l'enregistrement LiveKit" : 'Enregistrer la session LiveKit'}
             />
             <ControlButton
               onClick={handleTranscriptionToggle}
@@ -316,6 +319,12 @@ export default function LiveKitControlBar({
           </div>
         </div>
       </div>
+      {bgOpen && virtualBackgroundController && (
+        <VirtualBackground
+          onClose={() => setBgOpen(false)}
+          controller={virtualBackgroundController}
+        />
+      )}
       <SettingsPanel />
     </>
   );
