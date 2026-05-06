@@ -473,6 +473,20 @@ export function MediaProvider({ children, initialStream = null }) {
     });
   }, [socket, roomId, getMedia]);
 
+  const muteLocalAudioByHost = useCallback(() => {
+    const track = localStreamRef.current?.getAudioTracks()[0];
+    if (track && track.readyState !== 'ended') {
+      track.enabled = false;
+    }
+
+    setAudioEnabled(false);
+    socket?.emit(EVENTS.TOGGLE_AUDIO, {
+      roomId,
+      userId: socket.id,
+      enabled: false,
+    });
+  }, [socket, roomId]);
+
   const toggleVideo = useCallback(() => {
     const track = localStreamRef.current?.getVideoTracks()[0];
     if (!track || track.readyState === 'ended') {
@@ -737,6 +751,7 @@ export function MediaProvider({ children, initialStream = null }) {
     socket.on(EVENTS.ANSWER, onAnswer);
     socket.on(EVENTS.ICE_CANDIDATE, onIce);
     socket.on(EVENTS.USER_LEFT, onUserLeft);
+    socket.on(EVENTS.MUTED_BY_HOST, muteLocalAudioByHost);
 
     return () => {
       socket.off(EVENTS.USER_JOINED, onUserJoined);
@@ -744,8 +759,9 @@ export function MediaProvider({ children, initialStream = null }) {
       socket.off(EVENTS.ANSWER, onAnswer);
       socket.off(EVENTS.ICE_CANDIDATE, onIce);
       socket.off(EVENTS.USER_LEFT, onUserLeft);
+      socket.off(EVENTS.MUTED_BY_HOST, muteLocalAudioByHost);
     };
-  }, [socket, createAndSendOffer, buildPC, flushIceCandidates, queueIceCandidate, removeRemoteStream, removeParticipant, screenSharingId, setScreenSharingId]);
+  }, [socket, createAndSendOffer, buildPC, flushIceCandidates, queueIceCandidate, removeRemoteStream, removeParticipant, screenSharingId, setScreenSharingId, muteLocalAudioByHost]);
 
   return (
       <MediaContext.Provider value={{

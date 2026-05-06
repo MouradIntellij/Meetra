@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RoomEvent, Track } from 'livekit-client';
 import { connectLiveKitRoom } from '../../services/livekit/livekitClient.js';
 import { useLiveKitVirtualBackground } from '../../hooks/useLiveKitVirtualBackground.js';
+import { useSocket } from '../../context/SocketContext.jsx';
+import { EVENTS } from '../../utils/events.js';
 import LiveKitControlBar from './LiveKitControlBar.jsx';
 
 function initials(name = '') {
@@ -256,6 +258,7 @@ export default function LiveKitRoomView({
   canFallbackToP2P = false,
   onFallbackToP2P,
 }) {
+  const { socket } = useSocket();
   const [room, setRoom] = useState(null);
   const [status, setStatus] = useState('connecting');
   const [error, setError] = useState('');
@@ -272,6 +275,19 @@ export default function LiveKitRoomView({
   const recordChunksRef = useRef([]);
   const recordingCleanupRef = useRef(null);
   const virtualBackground = useLiveKitVirtualBackground(localCameraTrack);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const muteByHost = () => {
+      const activeRoom = roomRef.current;
+      activeRoom?.localParticipant?.setMicrophoneEnabled(false).catch(() => {});
+      setLocalAudioEnabled(false);
+    };
+
+    socket.on(EVENTS.MUTED_BY_HOST, muteByHost);
+    return () => socket.off(EVENTS.MUTED_BY_HOST, muteByHost);
+  }, [socket]);
 
   useEffect(() => {
     onFallbackRef.current = onFallback;

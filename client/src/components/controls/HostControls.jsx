@@ -142,7 +142,7 @@ export default function HostControls({ roomId }) {
 
     if (current > previous) {
       const latestPerson = waitingList[current - 1];
-      setShowPanel(true);
+      setShowPanel(false);
       platform.notify({
         title: 'Participant en attente',
         body: latestPerson?.userName
@@ -158,9 +158,16 @@ export default function HostControls({ roomId }) {
   if (!iAmHost && !iAmCoHost) return null;
 
   // ── Actions hôte ──────────────────────────────────────────
-  const muteAll    = () => socket.emit(EVENTS.MUTE_ALL,    { roomId });
-  const toggleLock = () => socket.emit(EVENTS.LOCK_ROOM,   { roomId, locked: !locked });
+  const muteAll    = () => {
+    setShowPanel(false);
+    socket.emit(EVENTS.MUTE_ALL, { roomId });
+  };
+  const toggleLock = () => {
+    setShowPanel(false);
+    socket.emit(EVENTS.LOCK_ROOM, { roomId, locked: !locked });
+  };
   const admit      = (targetSocketId) => {
+    setShowPanel(false);
     setWaitingList((current) => current.filter((person) => person.socketId !== targetSocketId));
     socket.emit(EVENTS.ADMIT_GUEST, {
       roomId,
@@ -169,6 +176,7 @@ export default function HostControls({ roomId }) {
     });
   };
   const reject     = (targetSocketId) => {
+    setShowPanel(false);
     setWaitingList((current) => current.filter((person) => person.socketId !== targetSocketId));
     socket.emit(EVENTS.DENY_GUEST, {
       roomId,
@@ -177,6 +185,7 @@ export default function HostControls({ roomId }) {
     });
   };
   const admitAll   = () => {
+    setShowPanel(false);
     waitingList.forEach((person) => {
       socket.emit(EVENTS.ADMIT_GUEST, {
         roomId,

@@ -23,9 +23,22 @@ export const MEDIA_BACKEND_CHANGE = 'media-backend-change';
 export const MEDIA_BACKEND_CHANGED = 'media-backend-changed';
 
 export const MUTE_ALL             = 'mute-all';
+export const MUTE_USER            = 'mute-user';
+export const MUTED_BY_HOST        = 'muted-by-host';
 export const KICK_USER            = 'kick-user';
+export const KICKED               = 'kicked';
 export const LOCK_ROOM            = 'lock-room';
+export const ROOM_LOCKED          = 'room-locked';
 export const ASSIGN_HOST          = 'assign-host';
+export const HOST_CHANGED         = 'host-changed';
+export const ASSIGN_COHOST        = 'assign-cohost';
+export const REMOVE_COHOST        = 'remove-cohost';
+export const COHOSTS_UPDATED      = 'cohosts-updated';
+
+export const TOGGLE_AUDIO         = 'toggle-audio';
+export const TOGGLE_VIDEO         = 'toggle-video';
+export const AUDIO_TOGGLED        = 'audio-toggled';
+export const VIDEO_TOGGLED        = 'video-toggled';
 
 export const SCREEN_SHARE_START   = 'screen-share-start';
 export const SCREEN_SHARE_STOP    = 'screen-share-stop';
@@ -77,9 +90,23 @@ export const EVENTS = {
 
   // Contrôles hôte
   MUTE_ALL,
+  MUTE_USER,
+  MUTED_BY_HOST,
   KICK_USER,
+  KICKED,
   LOCK_ROOM,
+  ROOM_LOCKED,
   ASSIGN_HOST,
+  HOST_CHANGED,
+  ASSIGN_COHOST,
+  REMOVE_COHOST,
+  COHOSTS_UPDATED,
+
+  // Etats médias
+  TOGGLE_AUDIO,
+  TOGGLE_VIDEO,
+  AUDIO_TOGGLED,
+  VIDEO_TOGGLED,
 
   // Partage d'écran  (noms courts utilisés dans MediaContext)
   SCREEN_START:  'screen-share-start',
