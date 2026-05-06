@@ -13,7 +13,11 @@ export const ICE_CANDIDATE        = 'ice-candidate';
 
 export const CHAT_MESSAGE         = 'chat-message';
 export const REACTION             = 'reaction';
+export const REACTION_BROADCAST   = 'reaction-broadcast';
 export const RAISE_HAND           = 'raise-hand';
+export const LOWER_HAND           = 'lower-hand';
+export const HAND_RAISED          = 'hand-raised';
+export const HAND_LOWERED         = 'hand-lowered';
 
 export const MUTE_ALL             = 'mute-all';
 export const KICK_USER            = 'kick-user';
@@ -59,7 +63,11 @@ export const EVENTS = {
   // Chat & interactions
   CHAT_MESSAGE,
   REACTION,
+  REACTION_BROADCAST,
   RAISE_HAND,
+  LOWER_HAND,
+  HAND_RAISED,
+  HAND_LOWERED,
 
   // Contrôles hôte
   MUTE_ALL,

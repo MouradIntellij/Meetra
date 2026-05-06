@@ -60,17 +60,16 @@ function EmojiButton({ emoji, label, onClick, tone = 'default' }) {
             title={label}
             style={{
                 ...toneStyles,
-                borderRadius: 14,
-                minHeight: 62,
+                borderRadius: 12,
+                minHeight: 48,
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 6,
+                gap: 8,
                 cursor: 'pointer',
                 transition: 'transform 0.15s ease, filter 0.15s ease, background 0.15s ease',
                 fontFamily: 'inherit',
-                padding: '8px 4px',
+                padding: '8px 10px',
             }}
             onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translateY(-1px)';
@@ -82,19 +81,19 @@ function EmojiButton({ emoji, label, onClick, tone = 'default' }) {
             }}
         >
             <span style={{ fontSize: 22, lineHeight: 1 }}>{emoji}</span>
-            <span style={{ fontSize: 10, fontWeight: 700, lineHeight: 1.1 }}>{label}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
         </button>
     );
 }
 
-function ActionButton({ label, onClick, active = false }) {
+function ActionButton({ label, onClick, active = false, icon = null }) {
     return (
         <button
             type="button"
             onClick={onClick}
             style={{
                 width: '100%',
-                borderRadius: 14,
+                borderRadius: 12,
                 border: `1px solid ${active ? 'rgba(245,158,11,0.22)' : 'rgba(255,255,255,0.1)'}`,
                 background: active ? 'rgba(245,158,11,0.14)' : 'rgba(255,255,255,0.05)',
                 color: active ? '#fde68a' : '#e2e8f0',
@@ -103,11 +102,30 @@ function ActionButton({ label, onClick, active = false }) {
                 cursor: 'pointer',
                 padding: '10px 12px',
                 fontFamily: 'inherit',
-                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
             }}
         >
+            {icon && <span style={{ display: 'inline-flex' }}>{icon}</span>}
             {label}
         </button>
+    );
+}
+
+function SectionTitle({ children, color }) {
+    return (
+        <p style={{
+            margin: '0 0 8px',
+            fontSize: 10,
+            fontWeight: 800,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            color,
+        }}>
+            {children}
+        </p>
     );
 }
 
@@ -126,6 +144,7 @@ export default function ReactionBar({
     const [panelPosition, setPanelPosition] = useState({ top: 0, left: 0 });
 
     const panelRef = useRef(null);
+    const rootRef = useRef(null);
     const buttonRef = useRef(null);
 
     useLayoutEffect(() => {
@@ -133,7 +152,7 @@ export default function ReactionBar({
 
         const updatePosition = () => {
             const rect = buttonRef.current.getBoundingClientRect();
-            const width = 320;
+            const width = Math.min(360, window.innerWidth - 32);
             const viewportPadding = 16;
             const centeredLeft = rect.left + (rect.width / 2) - (width / 2);
             const left = Math.min(
@@ -143,7 +162,7 @@ export default function ReactionBar({
 
             setPanelPosition({
                 left,
-                top: rect.top - 14,
+                top: Math.max(16, rect.top - 12),
             });
         };
 
@@ -162,7 +181,9 @@ export default function ReactionBar({
         if (!open) return;
 
         const handler = (e) => {
-            if (panelRef.current && !panelRef.current.contains(e.target)) {
+            const insidePanel = panelRef.current && panelRef.current.contains(e.target);
+            const insideButton = rootRef.current && rootRef.current.contains(e.target);
+            if (!insidePanel && !insideButton) {
                 setOpen(false);
             }
         };
@@ -213,7 +234,7 @@ export default function ReactionBar({
     };
 
     return (
-        <div style={{ position: 'relative' }} ref={panelRef}>
+        <div style={{ position: 'relative' }} ref={rootRef}>
 
             {/* ── bouton principal ── */}
             <button
@@ -256,9 +277,11 @@ export default function ReactionBar({
                         transform: 'translateY(-100%)',
                         background: 'linear-gradient(180deg, rgba(15,23,42,0.98) 0%, rgba(2,6,23,0.98) 100%)',
                         border: '1px solid rgba(255,255,255,0.12)',
-                        borderRadius: 22,
-                        padding: 16,
-                        width: 320,
+                        borderRadius: 18,
+                        padding: 14,
+                        width: 'min(360px, calc(100vw - 32px))',
+                        maxHeight: 'min(420px, calc(100vh - 96px))',
+                        overflowY: 'auto',
                         zIndex: 1400,
                         boxShadow: '0 30px 70px rgba(2,6,23,0.48)',
                         backdropFilter: 'blur(18px)',
@@ -266,38 +289,43 @@ export default function ReactionBar({
                 >
 
                     {/* EFFECT */}
-                    <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(251,191,36,0.86)' }}>Effets</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+                    <SectionTitle color="rgba(251,191,36,0.86)">Effets</SectionTitle>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
                         {EFFECT_REACTIONS.map(r => (
                             <EmojiButton key={r.emoji} emoji={r.emoji} label={r.label} tone="warm" onClick={() => send(r.emoji, true)} />
                         ))}
                     </div>
 
-                    <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '14px 0' }} />
+                    <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '12px 0' }} />
 
                     {/* QUICK */}
-                    <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(191,219,254,0.86)' }}>Réactions</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+                    <SectionTitle color="rgba(191,219,254,0.86)">Réactions</SectionTitle>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
                         {QUICK_REACTIONS.map(r => (
                             <EmojiButton key={r.emoji} emoji={r.emoji} label={r.label} tone="cool" onClick={() => send(r.emoji, false)} />
                         ))}
                     </div>
 
-                    <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '14px 0' }} />
+                    <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '12px 0' }} />
 
                     {/* STATUS */}
-                    <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(226,232,240,0.74)' }}>Statuts</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+                    <SectionTitle color="rgba(226,232,240,0.74)">Statuts</SectionTitle>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 8 }}>
                         {STATUS_BUTTONS.map(r => (
                             <EmojiButton key={r.key} emoji={r.emoji} label={r.label} onClick={() => send(r.emoji, false)} />
                         ))}
                     </div>
 
-                    <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '14px 0' }} />
+                    <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '12px 0' }} />
 
-                    <div style={{ display: 'grid', gap: 8 }}>
-                        <ActionButton onClick={handleRaiseHand} active={handRaised} label={handRaised ? 'Baisser la main' : 'Lever la main'} />
-                        <ActionButton onClick={handleBrb} active={brbActive} label={brbActive ? 'Je suis de retour' : 'Be right back'} />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <ActionButton
+                            onClick={handleRaiseHand}
+                            active={handRaised}
+                            label={handRaised ? 'Baisser' : 'Lever main'}
+                            icon={<HandIcon size={15} color="currentColor" />}
+                        />
+                        <ActionButton onClick={handleBrb} active={brbActive} label={brbActive ? 'Retour' : 'Pause'} />
                     </div>
 
                 </div>

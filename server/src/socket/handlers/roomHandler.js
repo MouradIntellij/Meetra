@@ -281,8 +281,9 @@ export function registerRoomHandlers(io, socket) {
   });
 
   socket.on(EV.RAISE_HAND, ({ roomId, raised }) => {
+    if (typeof raised !== 'boolean') return;
     roomService.updateParticipantStatus(socket.id, { handRaised: raised });
-    socket.to(roomId).emit(EV.RAISE_HAND, { socketId: socket.id, raised });
+    io.to(roomId).emit(raised ? EV.HAND_RAISED : EV.HAND_LOWERED, { userId: socket.id });
   });
 
   socket.on(EV.CHAT_MESSAGE, ({ roomId, message }) => {
@@ -294,6 +295,7 @@ export function registerRoomHandlers(io, socket) {
   });
 
   socket.on(EV.REACTION, ({ roomId, reaction }) => {
+    if (!reaction) return;
     io.to(roomId).emit(EV.REACTION, { socketId: socket.id, reaction });
   });
 

@@ -88,11 +88,18 @@ function ConnectionBanner() {
 function InviteOnlyJoin({ roomId, initialName = '', onJoin }) {
   const [name, setName] = useState(initialName);
   const [cancelled, setCancelled] = useState(false);
+  const [closed, setClosed] = useState(false);
 
   const join = () => {
     const safeName = name.trim();
     if (!safeName) return;
     onJoin(roomId, safeName, { asHost: false, sameWindow: true });
+  };
+
+  const closeInvitation = () => {
+    setCancelled(true);
+    window.close();
+    window.setTimeout(() => setClosed(true), 160);
   };
 
   return (
@@ -121,7 +128,9 @@ function InviteOnlyJoin({ roomId, initialName = '', onJoin }) {
           Rejoindre la réunion
         </h1>
         <p style={{ margin: '0 0 18px', color: '#94a3b8', fontSize: 14, lineHeight: 1.6 }}>
-          Vous avez reçu un lien d'invitation. Cette page permet uniquement d'entrer dans cette salle.
+          {closed
+            ? "L'invitation est mise de côté. Le lien reste utilisable si vous voulez rejoindre plus tard."
+            : "Vous avez reçu un lien d'invitation. Cette page permet uniquement d'entrer dans cette salle."}
         </p>
 
         <div style={{
@@ -135,32 +144,36 @@ function InviteOnlyJoin({ roomId, initialName = '', onJoin }) {
           <div style={{ fontFamily: 'monospace', color: '#fff', fontWeight: 800, wordBreak: 'break-all' }}>{roomId}</div>
         </div>
 
-        <label style={{ display: 'block', color: '#cbd5e1', fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
-          Votre nom d'affichage
-        </label>
-        <input
-          autoFocus
-          value={name}
-          onChange={(event) => {
-            setName(event.target.value);
-            setCancelled(false);
-          }}
-          onKeyDown={(event) => event.key === 'Enter' && join()}
-          placeholder="Ex : Mourad"
-          style={{
-            width: '100%',
-            border: '1px solid rgba(255,255,255,0.1)',
-            background: 'rgba(255,255,255,0.05)',
-            color: '#fff',
-            borderRadius: 12,
-            padding: '12px 14px',
-            fontSize: 14,
-            outline: 'none',
-            fontFamily: 'inherit',
-          }}
-        />
+        {!closed && (
+          <>
+            <label style={{ display: 'block', color: '#cbd5e1', fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
+              Votre nom d'affichage
+            </label>
+            <input
+              autoFocus
+              value={name}
+              onChange={(event) => {
+                setName(event.target.value);
+                setCancelled(false);
+              }}
+              onKeyDown={(event) => event.key === 'Enter' && join()}
+              placeholder="Ex : Mourad"
+              style={{
+                width: '100%',
+                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'rgba(255,255,255,0.05)',
+                color: '#fff',
+                borderRadius: 12,
+                padding: '12px 14px',
+                fontSize: 14,
+                outline: 'none',
+                fontFamily: 'inherit',
+              }}
+            />
+          </>
+        )}
 
-        {cancelled && (
+        {cancelled && !closed && (
           <div style={{
             marginTop: 14,
             borderRadius: 12,
@@ -170,16 +183,31 @@ function InviteOnlyJoin({ roomId, initialName = '', onJoin }) {
             padding: '10px 12px',
             fontSize: 13,
           }}>
-            Entrée annulée. Le lien reste ouvert si vous voulez rejoindre plus tard.
+            Entrée annulée. Vous pouvez fermer cet onglet ou rejoindre plus tard avec le même lien.
+          </div>
+        )}
+
+        {closed && (
+          <div style={{
+            marginTop: 14,
+            borderRadius: 12,
+            border: '1px solid rgba(34,197,94,0.18)',
+            background: 'rgba(6,78,59,0.24)',
+            color: '#bbf7d0',
+            padding: '10px 12px',
+            fontSize: 13,
+            lineHeight: 1.5,
+          }}>
+            Le navigateur bloque parfois la fermeture automatique. Cette page reste limitée à cette invitation et ne donne pas accès à la création de réunion.
           </div>
         )}
 
         <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
           <button
             type="button"
-            onClick={() => setCancelled(true)}
+            onClick={closed ? () => setClosed(false) : closeInvitation}
             style={{
-              flex: 0,
+              flex: closed ? 1 : 0,
               border: '1px solid rgba(255,255,255,0.1)',
               background: 'transparent',
               color: '#94a3b8',
@@ -190,26 +218,28 @@ function InviteOnlyJoin({ roomId, initialName = '', onJoin }) {
               fontWeight: 700,
             }}
           >
-            Annuler
+            {closed ? 'Revenir au lien' : 'Fermer'}
           </button>
-          <button
-            type="button"
-            onClick={join}
-            disabled={!name.trim()}
-            style={{
-              flex: 1,
-              border: 'none',
-              background: name.trim() ? 'linear-gradient(135deg,#10b981,#059669)' : 'rgba(255,255,255,0.06)',
-              color: name.trim() ? '#fff' : 'rgba(255,255,255,0.3)',
-              borderRadius: 12,
-              padding: '12px 18px',
-              cursor: name.trim() ? 'pointer' : 'not-allowed',
-              fontFamily: 'inherit',
-              fontWeight: 800,
-            }}
-          >
-            Demander l'admission
-          </button>
+          {!closed && (
+            <button
+              type="button"
+              onClick={join}
+              disabled={!name.trim()}
+              style={{
+                flex: 1,
+                border: 'none',
+                background: name.trim() ? 'linear-gradient(135deg,#10b981,#059669)' : 'rgba(255,255,255,0.06)',
+                color: name.trim() ? '#fff' : 'rgba(255,255,255,0.3)',
+                borderRadius: 12,
+                padding: '12px 18px',
+                cursor: name.trim() ? 'pointer' : 'not-allowed',
+                fontFamily: 'inherit',
+                fontWeight: 800,
+              }}
+            >
+              Demander l'admission
+            </button>
+          )}
         </div>
       </div>
     </div>
