@@ -60,4 +60,15 @@ export function registerHostHandlers(io, socket) {
     logger.socket(EVENTS.REMOVE_COHOST, { targetSocketId });
     io.to(roomId).emit(EVENTS.COHOSTS_UPDATED, { coHostIds: roomService.getCoHostIds(roomId) });
   });
+
+  socket.on(EVENTS.MEDIA_BACKEND_CHANGE, ({ roomId, backend, reason = '' }) => {
+    if (!roomService.isHost(roomId, socket.id)) return;
+    const nextBackend = backend === 'p2p' ? 'p2p' : 'livekit';
+    logger.socket(EVENTS.MEDIA_BACKEND_CHANGE, { roomId, backend: nextBackend, reason });
+    io.to(roomId).emit(EVENTS.MEDIA_BACKEND_CHANGED, {
+      backend: nextBackend,
+      reason: reason || (nextBackend === 'p2p' ? 'HOST_SWITCHED_TO_P2P' : 'HOST_SWITCHED_TO_LIVEKIT'),
+      by: socket.id,
+    });
+  });
 }

@@ -569,6 +569,7 @@ export default function Room({ roomId, userName, onLeave }) {
   const [isScreenShareActive, setIsScreenShareActive] = useState(false);
   const isCompact = viewportWidth < 1180;
   const isMobile = viewportWidth < 760;
+  const isCurrentHost = socket?.id === hostId;
   const useLiveKitView = isLiveKitMediaEnabled() && !liveKitFallbackReason;
 
   // Auto-show raised hands panel when someone raises hand
@@ -650,8 +651,48 @@ export default function Room({ roomId, userName, onLeave }) {
   }, []);
 
   const handleRetryLiveKit = useCallback(() => {
+    if (isCurrentHost && socket) {
+      socket.emit(EVENTS.MEDIA_BACKEND_CHANGE, {
+        roomId,
+        backend: 'livekit',
+        reason: 'HOST_SWITCHED_TO_LIVEKIT',
+      });
+      return;
+    }
+
     setLiveKitFallbackReason('');
-  }, []);
+  }, [isCurrentHost, roomId, socket]);
+
+  const handleHostFallbackToP2P = useCallback(() => {
+    if (!isCurrentHost || !socket) return;
+
+    const confirmed = window.confirm(
+      'Basculer toute la salle vers le mode P2P ? Les participants quitteront LiveKit et utiliseront la connexion directe WebRTC.'
+    );
+    if (!confirmed) return;
+
+    socket.emit(EVENTS.MEDIA_BACKEND_CHANGE, {
+      roomId,
+      backend: 'p2p',
+      reason: 'HOST_SWITCHED_TO_P2P',
+    });
+  }, [isCurrentHost, roomId, socket]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleMediaBackendChanged = ({ backend, reason }) => {
+      if (backend === 'p2p') {
+        setLiveKitFallbackReason(reason || 'HOST_SWITCHED_TO_P2P');
+        return;
+      }
+
+      setLiveKitFallbackReason('');
+    };
+
+    socket.on(EVENTS.MEDIA_BACKEND_CHANGED, handleMediaBackendChanged);
+    return () => socket.off(EVENTS.MEDIA_BACKEND_CHANGED, handleMediaBackendChanged);
+  }, [socket]);
 
   // ── KICKED ────────────────────────────────────────────────
   if (kicked) {
@@ -938,7 +979,7 @@ export default function Room({ roomId, userName, onLeave }) {
               gap: 12,
             }}>
               <span>Mode P2P actif. LiveKit indisponible ou desactive: {liveKitFallbackReason}</span>
-              {isLiveKitMediaEnabled() && (
+              {isLiveKitMediaEnabled() && (isCurrentHost || liveKitFallbackReason !== 'HOST_SWITCHED_TO_P2P') && (
                 <button
                   type="button"
                   onClick={handleRetryLiveKit}
@@ -955,7 +996,7 @@ export default function Room({ roomId, userName, onLeave }) {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  Revenir à LiveKit
+                  {isCurrentHost ? 'Revenir à LiveKit pour tous' : 'Revenir à LiveKit'}
                 </button>
               )}
             </div>
@@ -993,6 +1034,8 @@ export default function Room({ roomId, userName, onLeave }) {
                         onLeave={handleLeave}
                         toggleHand={handleToggleHand}
                         handRaised={handRaised}
+                        canFallbackToP2P={isCurrentHost}
+                        onFallbackToP2P={handleHostFallbackToP2P}
                       />
                     </Suspense>
                   ) : (

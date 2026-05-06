@@ -19,6 +19,8 @@ export const LOWER_HAND           = 'lower-hand';
 export const HAND_RAISED          = 'hand-raised';
 export const HAND_LOWERED         = 'hand-lowered';
 export const RAISED_HANDS_UPDATED = 'raised-hands-updated';
+export const MEDIA_BACKEND_CHANGE = 'media-backend-change';
+export const MEDIA_BACKEND_CHANGED = 'media-backend-changed';
 
 export const MUTE_ALL             = 'mute-all';
 export const KICK_USER            = 'kick-user';
@@ -70,6 +72,8 @@ export const EVENTS = {
   HAND_RAISED,
   HAND_LOWERED,
   RAISED_HANDS_UPDATED,
+  MEDIA_BACKEND_CHANGE,
+  MEDIA_BACKEND_CHANGED,
 
   // Contrôles hôte
   MUTE_ALL,

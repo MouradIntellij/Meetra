@@ -253,6 +253,8 @@ export default function LiveKitRoomView({
   onLeave,
   toggleHand,
   handRaised,
+  canFallbackToP2P = false,
+  onFallbackToP2P,
 }) {
   const [room, setRoom] = useState(null);
   const [status, setStatus] = useState('connecting');
@@ -603,6 +605,8 @@ export default function LiveKitRoomView({
             onToggleAudio={toggleAudio}
             onToggleVideo={toggleVideo}
             onToggleScreenShare={localScreenShareActive ? stopScreenShare : startScreenShare}
+            canFallbackToP2P={canFallbackToP2P}
+            onFallbackToP2P={onFallbackToP2P}
             onLeave={onLeave}
             toggleHand={toggleHand}
             handRaised={handRaised}
