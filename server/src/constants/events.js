@@ -20,6 +20,7 @@ export const RAISE_HAND           = 'raise-hand';
 export const LOWER_HAND           = 'lower-hand';
 export const HAND_RAISED          = 'hand-raised';
 export const HAND_LOWERED         = 'hand-lowered';
+export const RAISED_HANDS_UPDATED = 'raised-hands-updated';
 
 export const MUTE_ALL             = 'mute-all';
 export const KICK_USER            = 'kick-user';
@@ -71,6 +72,7 @@ export const EVENTS = {
     LOWER_HAND,
     HAND_RAISED,
     HAND_LOWERED,
+    RAISED_HANDS_UPDATED,
 
     // Contrôles hôte
     MUTE_ALL,

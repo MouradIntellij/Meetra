@@ -53,6 +53,13 @@ function broadcastWaitingQueue(io, roomId) {
   });
 }
 
+function broadcastRaisedHands(io, roomId) {
+  io.to(roomId).emit(EV.RAISED_HANDS_UPDATED, {
+    roomId,
+    raisedHands: roomService.getRaisedHands(roomId),
+  });
+}
+
 function canManageMeeting(meeting, user) {
   if (!meeting?.metadata || !user?.email) return false;
   return (
@@ -280,11 +287,7 @@ export function registerRoomHandlers(io, socket) {
     io.to(roomId).emit(EV.ASSIGN_HOST, { socketId: targetSocketId });
   });
 
-  socket.on(EV.RAISE_HAND, ({ roomId, raised }) => {
-    if (typeof raised !== 'boolean') return;
-    roomService.updateParticipantStatus(socket.id, { handRaised: raised });
-    io.to(roomId).emit(raised ? EV.HAND_RAISED : EV.HAND_LOWERED, { userId: socket.id });
-  });
+  socket.on(EV.RAISE_HAND, () => {});
 
   socket.on(EV.CHAT_MESSAGE, ({ roomId, message }) => {
     io.to(roomId).emit(EV.CHAT_MESSAGE, {
@@ -350,6 +353,10 @@ async function _admitToRoom(io, socket, roomId, userName, userId, isHostFlag) {
     participants,
     isHost: isHostFlag,
   });
+  socket.emit(EV.RAISED_HANDS_UPDATED, {
+    roomId,
+    raisedHands: roomService.getRaisedHands(roomId),
+  });
 
   // Si c'est un guest admis → lui envoyer GUEST_ADMITTED en plus
   if (!isHostFlag) {
@@ -362,6 +369,7 @@ async function _admitToRoom(io, socket, roomId, userName, userId, isHostFlag) {
     userName,
     isHost: isHostFlag,
   });
+  broadcastRaisedHands(io, roomId);
 
   logger.info(`[Room] "${userName}" (${socket.id}) a rejoint ${roomId} (isHost=${isHostFlag})`);
 }
@@ -375,6 +383,7 @@ async function _handleLeave(io, socket) {
 
   socket.leave(roomId);
   io.to(roomId).emit(EV.USER_LEFT, { socketId: socket.id });
+  broadcastRaisedHands(io, roomId);
 
   // Réassigner l'hôte si l'hôte est parti et qu'il reste des participants
   if (room && room.hostId === socket.id && room.participants.size > 0) {

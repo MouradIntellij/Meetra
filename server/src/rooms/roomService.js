@@ -193,6 +193,26 @@ export function updateParticipantStatus(socketId, updates) {
   return store.updateParticipant(socketId, updates);
 }
 
+export function getRaisedHands(roomId) {
+  return store.getParticipantsList(roomId)
+    .filter((participant) => participant.handRaised)
+    .sort((a, b) => {
+      const left = Number(a.handRaisedAt || 0);
+      const right = Number(b.handRaisedAt || 0);
+      if (left !== right) return left - right;
+      return String(a.joinedAt || '').localeCompare(String(b.joinedAt || ''));
+    })
+    .map((participant, index) => ({
+      socketId: participant.socketId,
+      userId: participant.socketId,
+      name: participant.name || participant.userName || 'Participant',
+      userName: participant.name || participant.userName || 'Participant',
+      handRaised: true,
+      handRaisedAt: participant.handRaisedAt || null,
+      handOrder: index + 1,
+    }));
+}
+
 // Breakout
 export function createBreakoutRooms(roomId, names) {
   return names.map(name => store.createBreakoutRoom(roomId, name));

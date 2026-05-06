@@ -124,11 +124,11 @@ export function useWebRTC(roomId, userName) {
       setActiveSpeakerId(maxId);
     });
 
-    socket.on(EVENTS.HAND_RAISED,  ({ userId }) => {
-      updateParticipant(userId, { handRaised: true });
+    socket.on(EVENTS.HAND_RAISED,  ({ userId, handOrder, handRaisedAt }) => {
+      updateParticipant(userId, { handRaised: true, handOrder, handRaisedAt });
     });
     socket.on(EVENTS.HAND_LOWERED, ({ userId }) => {
-      updateParticipant(userId, { handRaised: false });
+      updateParticipant(userId, { handRaised: false, handOrder: null, handRaisedAt: null });
     });
 
     socket.on(EVENTS.BREAKOUT_UPDATED,  ({ breakoutRooms }) => setBreakoutRooms(breakoutRooms));

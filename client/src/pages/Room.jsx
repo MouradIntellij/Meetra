@@ -144,8 +144,7 @@ function MeetingTimer() {
 }
 
 // ── Raised Hands Notification Panel ──────────────────────────
-function RaisedHandsAlert({ participants }) {
-  const raisedHands = participants.filter(p => p.handRaised);
+function RaisedHandsAlert({ raisedHands }) {
   if (raisedHands.length === 0) return null;
 
   return (
@@ -172,7 +171,7 @@ function RaisedHandsAlert({ participants }) {
           Main levée ({raisedHands.length})
         </div>
         {raisedHands.map(p => (
-            <div key={p.socketId} style={{
+            <div key={p.socketId || p.userId} style={{
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '4px 0',
               borderBottom: '1px solid rgba(255,255,255,0.05)',
@@ -183,10 +182,10 @@ function RaisedHandsAlert({ participants }) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 10, fontWeight: 700, color: '#fff', flexShrink: 0,
               }}>
-                {p.name?.[0]?.toUpperCase()}
+                {p.handOrder || '-'}
               </div>
               <span style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 500 }}>
-            {p.name}
+            {p.name || p.userName || 'Participant'}
           </span>
               <span style={{ marginLeft: 'auto', display: 'inline-flex', animation: 'wave 0.8s ease-in-out infinite alternate' }}>
                 <HandIcon size={14} color="#fbbf24" />
@@ -554,7 +553,7 @@ function InviteDialog({ roomId, onDismiss }) {
 // ── Room ──────────────────────────────────────────────────────
 export default function Room({ roomId, userName, onLeave }) {
   const { socket, connected }       = useSocket();
-  const { participants, hostId }    = useRoom();
+  const { participants, hostId, setParticipants }    = useRoom();
   const { screenStream, leaveRoom, screenShareError, clearScreenShareError, mediaAccessError } = useMedia();
   const { layout, toggleLayout, chatOpen, participantsOpen, transcriptOpen, settingsOpen, setChatOpen, setParticipantsOpen, setTranscriptOpen, setSettingsOpen }    = useUI();
 
@@ -562,6 +561,7 @@ export default function Room({ roomId, userName, onLeave }) {
   const [kicked,      setKicked]      = useState(false);
   const [showInvite,  setShowInvite]  = useState(false);
   const [handRaised,  setHandRaised]  = useState(false);
+  const [raisedHands, setRaisedHands] = useState([]);
   const [showHands,   setShowHands]   = useState(false);
   const [liveKitFallbackReason, setLiveKitFallbackReason] = useState('');
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
@@ -572,7 +572,7 @@ export default function Room({ roomId, userName, onLeave }) {
   const useLiveKitView = isLiveKitMediaEnabled() && !liveKitFallbackReason;
 
   // Auto-show raised hands panel when someone raises hand
-  const raisedCount = participants.filter(p => p.handRaised).length;
+  const raisedCount = raisedHands.length;
   const prevRaisedCount = useRef(0);
   useEffect(() => {
     const onResize = () => setViewportWidth(window.innerWidth);
@@ -586,6 +586,40 @@ export default function Room({ roomId, userName, onLeave }) {
     }
     prevRaisedCount.current = raisedCount;
   }, [raisedCount]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRaisedHandsUpdated = ({ raisedHands: nextRaisedHands = [] }) => {
+      const normalizedHands = nextRaisedHands
+        .slice()
+        .sort((a, b) => (a.handOrder || 9999) - (b.handOrder || 9999))
+        .map((hand, index) => ({
+          ...hand,
+          socketId: hand.socketId || hand.userId,
+          userId: hand.userId || hand.socketId,
+          handOrder: hand.handOrder || index + 1,
+        }));
+      const handBySocketId = new Map(normalizedHands.map((hand) => [hand.socketId, hand]));
+
+      setRaisedHands(normalizedHands);
+      setHandRaised(handBySocketId.has(socket.id));
+      setParticipants((currentParticipants) =>
+        currentParticipants.map((participant) => {
+          const hand = handBySocketId.get(participant.socketId);
+          return {
+            ...participant,
+            handRaised: Boolean(hand),
+            handOrder: hand?.handOrder ?? null,
+            handRaisedAt: hand?.handRaisedAt ?? null,
+          };
+        })
+      );
+    };
+
+    socket.on(EVENTS.RAISED_HANDS_UPDATED, handleRaisedHandsUpdated);
+    return () => socket.off(EVENTS.RAISED_HANDS_UPDATED, handleRaisedHandsUpdated);
+  }, [socket, setParticipants]);
 
   const closeCompactPanels = useCallback(() => {
     if (!isCompact) return;
@@ -902,7 +936,7 @@ export default function Room({ roomId, userName, onLeave }) {
         {/* ── RAISED HANDS FLOATING PANEL ── */}
         {showHands && raisedCount > 0 && (
             <div style={{ position: 'absolute', top: 54, right: 12, zIndex: 40 }}>
-              <RaisedHandsAlert participants={participants} />
+              <RaisedHandsAlert raisedHands={raisedHands} />
             </div>
         )}
 
