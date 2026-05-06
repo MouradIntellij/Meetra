@@ -90,18 +90,20 @@ function collectTrackItems(room) {
   return items;
 }
 
-function LiveKitTile({ item }) {
+function LiveKitTile({ item, compact = false }) {
   const hasVideo = Boolean(item.videoTrack) && !item.videoMuted;
+  const minHeight = compact ? 112 : 180;
 
   return (
     <div style={{
       position: 'relative',
-      minHeight: 180,
+      minHeight,
+      height: compact ? 112 : '100%',
       borderRadius: 14,
       overflow: 'hidden',
       background: 'linear-gradient(135deg, rgba(15,23,42,0.96), rgba(30,41,59,0.92))',
-      border: '1px solid rgba(148,163,184,0.14)',
-      boxShadow: '0 18px 40px rgba(2,6,23,0.28)',
+      border: item.screenTrack ? '2px solid rgba(250,204,21,0.88)' : '1px solid rgba(148,163,184,0.14)',
+      boxShadow: item.screenTrack ? '0 0 0 3px rgba(250,204,21,0.14), 0 18px 40px rgba(2,6,23,0.28)' : '0 18px 40px rgba(2,6,23,0.28)',
     }}>
       {hasVideo ? (
         <LiveKitTrackElement track={item.videoTrack} muted={item.isLocal} />
@@ -109,14 +111,14 @@ function LiveKitTile({ item }) {
         <div style={{
           width: '100%',
           height: '100%',
-          minHeight: 180,
+          minHeight,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
         }}>
           <div style={{
-            width: 72,
-            height: 72,
+            width: compact ? 46 : 72,
+            height: compact ? 46 : 72,
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
@@ -124,7 +126,7 @@ function LiveKitTile({ item }) {
             background: 'linear-gradient(135deg, #2563eb, #059669)',
             color: '#fff',
             fontWeight: 800,
-            fontSize: 24,
+            fontSize: compact ? 16 : 24,
             boxShadow: '0 16px 40px rgba(37,99,235,0.28)',
           }}>
             {initials(item.name)}
@@ -153,7 +155,77 @@ function LiveKitTile({ item }) {
         fontWeight: 700,
       }}>
         <span>{item.name}</span>
+        {item.screenTrack && <span style={{ color: '#facc15' }}>partage</span>}
         {item.audioMuted && <span style={{ color: '#f87171' }}>micro off</span>}
+      </div>
+    </div>
+  );
+}
+
+function ScreenShareStage({ item, expanded, onToggleExpanded }) {
+  const stageRef = useRef(null);
+  const label = item.isLocal ? 'Vous partagez votre ecran' : `${item.name} partage son ecran`;
+
+  const requestFullscreen = () => {
+    const element = stageRef.current;
+    if (!element?.requestFullscreen) return;
+    element.requestFullscreen().catch(() => {});
+  };
+
+  return (
+    <div
+      ref={stageRef}
+      style={{
+        position: 'relative',
+        borderRadius: 16,
+        overflow: 'hidden',
+        background: '#020617',
+        border: '3px solid #facc15',
+        boxShadow: '0 0 0 5px rgba(250,204,21,0.16), 0 24px 70px rgba(2,6,23,0.45)',
+        minHeight: 0,
+      }}
+    >
+      <LiveKitTrackElement track={item.screenTrack} muted={item.isLocal} style={{ objectFit: 'contain' }} />
+
+      <div style={{
+        position: 'absolute',
+        top: 12,
+        left: 12,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        borderRadius: 999,
+        padding: '7px 11px',
+        background: 'rgba(113,63,18,0.86)',
+        color: '#fef3c7',
+        border: '1px solid rgba(250,204,21,0.32)',
+        backdropFilter: 'blur(12px)',
+        fontSize: 12,
+        fontWeight: 800,
+      }}>
+        <span style={{
+          width: 7,
+          height: 7,
+          borderRadius: '50%',
+          background: '#facc15',
+          boxShadow: '0 0 12px rgba(250,204,21,0.72)',
+        }} />
+        {label}
+      </div>
+
+      <div style={{
+        position: 'absolute',
+        right: 12,
+        top: 12,
+        display: 'flex',
+        gap: 8,
+      }}>
+        <button type="button" onClick={onToggleExpanded} style={screenShareActionStyle}>
+          {expanded ? 'Reduire' : 'Agrandir'}
+        </button>
+        <button type="button" onClick={requestFullscreen} style={screenShareActionStyle}>
+          Plein ecran
+        </button>
       </div>
     </div>
   );
@@ -173,6 +245,7 @@ export default function LiveKitRoomView({
   const [version, setVersion] = useState(0);
   const [localAudioEnabled, setLocalAudioEnabled] = useState(true);
   const [localVideoEnabled, setLocalVideoEnabled] = useState(true);
+  const [presentationMode, setPresentationMode] = useState(false);
   const roomRef = useRef(null);
   const fallbackCalledRef = useRef(false);
   const onFallbackRef = useRef(onFallback);
@@ -254,6 +327,7 @@ export default function LiveKitRoomView({
   const cols = trackItems.length <= 1 ? 1 : trackItems.length <= 4 ? 2 : 3;
   const screenShareItem = trackItems.find((item) => item.screenTrack);
   const localScreenShareActive = Boolean(screenShareItem?.isLocal);
+  const screenShareOwnerName = screenShareItem?.isLocal ? 'Vous' : screenShareItem?.name || '';
 
   const toggleAudio = async () => {
     if (!roomRef.current) return;
@@ -356,25 +430,24 @@ export default function LiveKitRoomView({
               flex: 1,
               minHeight: 0,
               display: 'grid',
-              gridTemplateRows: '1fr 116px',
+              gridTemplateRows: presentationMode ? '1fr' : '1fr 124px',
               gap: 10,
               padding: 10,
             }}>
-              <div style={{
-                borderRadius: 14,
-                overflow: 'hidden',
-                background: '#020617',
-                border: '1px solid rgba(34,197,94,0.25)',
-              }}>
-                <LiveKitTrackElement track={screenShareItem.screenTrack} muted={screenShareItem.isLocal} style={{ objectFit: 'contain' }} />
-              </div>
-              <div style={{ display: 'flex', gap: 10, overflowX: 'auto' }}>
-                {trackItems.map((item) => (
-                  <div key={item.key} style={{ width: 170, flexShrink: 0 }}>
-                    <LiveKitTile item={item} />
-                  </div>
-                ))}
-              </div>
+              <ScreenShareStage
+                item={screenShareItem}
+                expanded={presentationMode}
+                onToggleExpanded={() => setPresentationMode((current) => !current)}
+              />
+              {!presentationMode && (
+                <div style={{ display: 'flex', gap: 10, overflowX: 'auto', minHeight: 0 }}>
+                  {trackItems.map((item) => (
+                    <div key={item.key} style={{ width: 180, height: 112, flexShrink: 0 }}>
+                      <LiveKitTile item={item} compact />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div style={{
@@ -404,9 +477,25 @@ export default function LiveKitRoomView({
             onLeave={onLeave}
             toggleHand={toggleHand}
             handRaised={handRaised}
+            screenShareOwnerName={screenShareOwnerName}
+            presentationMode={presentationMode}
+            onTogglePresentationMode={() => setPresentationMode((current) => !current)}
           />
         </>
       )}
     </div>
   );
 }
+
+const screenShareActionStyle = {
+  border: '1px solid rgba(250,204,21,0.32)',
+  background: 'rgba(2,6,23,0.78)',
+  color: '#fef3c7',
+  borderRadius: 999,
+  padding: '8px 11px',
+  fontSize: 12,
+  fontWeight: 800,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  backdropFilter: 'blur(12px)',
+};

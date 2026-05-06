@@ -1,12 +1,17 @@
 import { useUI } from '../../context/UIContext.jsx';
+import { useTranscription } from '../../context/TranscriptionContext.jsx';
 import ReactionBar from '../controls/ReactionBar.jsx';
+import SettingsPanel from '../controls/SettingsPanel.jsx';
 import {
   CameraOffIcon,
   ChatBubbleIcon,
   ComputerIcon,
+  GridIcon,
   DoorExitIcon,
   HandIcon,
   MicOffIcon,
+  SettingsIcon,
+  SpotlightIcon,
   TranscriptIcon,
   UsersIcon,
   VideoAppIcon,
@@ -22,11 +27,13 @@ function ControlButton({
   danger = false,
   muted = false,
   badge = 0,
+  disabled = false,
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       title={title || label}
       style={{
         position: 'relative',
@@ -46,7 +53,8 @@ function ControlButton({
               ? 'rgba(127,29,29,0.36)'
               : 'rgba(15,23,42,0.86)',
         color: danger ? '#fff' : active ? '#bfdbfe' : muted ? '#fecaca' : '#dbeafe',
-        cursor: 'pointer',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -111,6 +119,9 @@ export default function LiveKitControlBar({
   onLeave,
   toggleHand,
   handRaised,
+  screenShareOwnerName,
+  presentationMode,
+  onTogglePresentationMode,
 }) {
   const {
     chatOpen,
@@ -122,112 +133,190 @@ export default function LiveKitControlBar({
     setWhiteboardOpen,
     transcriptOpen,
     setTranscriptOpen,
+    settingsOpen,
+    setSettingsOpen,
   } = useUI();
+  const {
+    captionsEnabled,
+    setCaptionsEnabled,
+    transcriptionActive,
+    startTranscription,
+    stopTranscription,
+    translationAvailable,
+    translationTarget,
+    translationLabel,
+    cycleTranslationTarget,
+  } = useTranscription();
+
+  const handleTranscriptionToggle = () => {
+    setTranscriptOpen(true);
+
+    if (transcriptionActive) {
+      setCaptionsEnabled(false);
+      stopTranscription();
+      return;
+    }
+
+    setCaptionsEnabled(true);
+    startTranscription();
+  };
+
+  const switchToP2PForFeature = (featureName) => {
+    const confirmed = window.confirm(
+      `${featureName} est encore lie au mode WebRTC P2P. Voulez-vous basculer vers le mode P2P pour l'utiliser ?`
+    );
+    if (confirmed) onFallbackToP2P();
+  };
 
   return (
-    <div style={{
-      flexShrink: 0,
-      minHeight: 86,
-      borderTop: '1px solid rgba(255,255,255,0.08)',
-      background: 'linear-gradient(180deg, rgba(2,6,23,0.9) 0%, rgba(15,23,42,0.96) 100%)',
-      boxShadow: '0 -18px 50px rgba(2,6,23,0.42)',
-      backdropFilter: 'blur(18px)',
-      padding: '12px 14px',
-    }}>
+    <>
       <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-        overflowX: 'auto',
-        paddingBottom: 2,
+        flexShrink: 0,
+        minHeight: 92,
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+        background: 'linear-gradient(180deg, rgba(2,6,23,0.9) 0%, rgba(15,23,42,0.96) 100%)',
+        boxShadow: '0 -18px 50px rgba(2,6,23,0.42)',
+        backdropFilter: 'blur(18px)',
+        padding: '12px 14px',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <ControlButton
-            onClick={onToggleAudio}
-            active={localAudioEnabled}
-            muted={!localAudioEnabled}
-            icon={<MicOffIcon size={18} />}
-            label={localAudioEnabled ? 'Micro' : 'Muet'}
-            title={localAudioEnabled ? 'Couper le micro LiveKit' : 'Activer le micro LiveKit'}
-          />
-          <ControlButton
-            onClick={onToggleVideo}
-            active={localVideoEnabled}
-            muted={!localVideoEnabled}
-            icon={localVideoEnabled ? <VideoAppIcon size={18} /> : <CameraOffIcon size={18} />}
-            label={localVideoEnabled ? 'Camera' : 'Camera off'}
-            title={localVideoEnabled ? 'Couper la camera LiveKit' : 'Activer la camera LiveKit'}
-          />
-          <ControlButton
-            onClick={onToggleScreenShare}
-            active={screenShareActive}
-            icon={<ComputerIcon size={18} />}
-            label={screenShareActive ? 'Stop partage' : 'Partager'}
-            title={screenShareActive ? 'Arreter le partage LiveKit' : 'Partager votre ecran avec LiveKit'}
-          />
-        </div>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+          overflowX: 'auto',
+          paddingBottom: 2,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <ControlButton
+              onClick={onToggleAudio}
+              active={localAudioEnabled}
+              muted={!localAudioEnabled}
+              icon={<MicOffIcon size={18} />}
+              label={localAudioEnabled ? 'Micro' : 'Muet'}
+              title={localAudioEnabled ? 'Couper le micro LiveKit' : 'Activer le micro LiveKit'}
+            />
+            <ControlButton
+              onClick={onToggleVideo}
+              active={localVideoEnabled}
+              muted={!localVideoEnabled}
+              icon={localVideoEnabled ? <VideoAppIcon size={18} /> : <CameraOffIcon size={18} />}
+              label={localVideoEnabled ? 'Camera' : 'Camera off'}
+              title={localVideoEnabled ? 'Couper la camera LiveKit' : 'Activer la camera LiveKit'}
+            />
+            <ControlButton
+              onClick={onToggleScreenShare}
+              active={screenShareActive}
+              icon={<ComputerIcon size={18} />}
+              label={screenShareActive ? 'Stop partage' : screenShareOwnerName ? 'Partage actif' : 'Partager'}
+              title={screenShareActive ? 'Arreter le partage LiveKit' : 'Partager votre ecran avec LiveKit'}
+            />
+            <ControlButton
+              onClick={() => switchToP2PForFeature('Le fond virtuel')}
+              icon={<CameraOffIcon size={18} />}
+              label="Fond"
+              title="Fond virtuel disponible en mode P2P"
+            />
+          </div>
 
-        <Divider />
+          <Divider />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <ControlButton
-            onClick={toggleHand}
-            active={handRaised}
-            icon={<HandIcon size={18} />}
-            label={handRaised ? 'Main levee' : 'Lever main'}
-            title={handRaised ? 'Baisser la main' : 'Lever la main'}
-          />
-          <ReactionBar roomId={roomId} userName={userName} toggleHand={toggleHand} handRaised={handRaised} />
-        </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <ControlButton
+              onClick={() => switchToP2PForFeature("L'enregistrement")}
+              icon={<TranscriptIcon size={18} />}
+              label="Enregistrer"
+              title="Enregistrement disponible en mode P2P"
+            />
+            <ControlButton
+              onClick={handleTranscriptionToggle}
+              active={captionsEnabled && !transcriptionActive}
+              muted={!captionsEnabled}
+              icon={<TranscriptIcon size={18} />}
+              label={transcriptionActive ? 'CC on' : captionsEnabled ? 'CC pret' : 'Sous-titres'}
+              title="Sous-titres et transcription"
+            />
+            {translationAvailable && (
+              <ControlButton
+                onClick={cycleTranslationTarget}
+                active={translationTarget !== 'original'}
+                icon={<TranscriptIcon size={18} />}
+                label={`Trad ${translationLabel}`}
+                title="Basculer la langue des sous-titres"
+              />
+            )}
+            <ControlButton
+              onClick={toggleHand}
+              active={handRaised}
+              icon={<HandIcon size={18} />}
+              label={handRaised ? 'Main levee' : 'Lever main'}
+              title={handRaised ? 'Baisser la main' : 'Lever la main'}
+            />
+            <ReactionBar roomId={roomId} userName={userName} toggleHand={toggleHand} handRaised={handRaised} />
+          </div>
 
-        <Divider />
+          <Divider />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <ControlButton
-            onClick={() => setParticipantsOpen((open) => !open)}
-            active={participantsOpen}
-            icon={<UsersIcon size={18} />}
-            label="Participants"
-          />
-          <ControlButton
-            onClick={() => setChatOpen((open) => !open)}
-            active={chatOpen}
-            icon={<ChatBubbleIcon size={18} />}
-            label="Chat"
-            badge={chatUnread}
-          />
-          <ControlButton
-            onClick={() => setTranscriptOpen((open) => !open)}
-            active={transcriptOpen}
-            icon={<TranscriptIcon size={18} />}
-            label="Transcript"
-          />
-          <ControlButton
-            onClick={() => setWhiteboardOpen((open) => !open)}
-            active={whiteboardOpen}
-            icon={<WhiteboardIcon size={18} />}
-            label="Tableau"
-          />
-        </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <ControlButton
+              onClick={onTogglePresentationMode}
+              active={presentationMode}
+              icon={presentationMode ? <SpotlightIcon size={18} /> : <GridIcon size={18} />}
+              label={presentationMode ? 'Focus' : 'Grille'}
+              title="Agrandir ou reduire le partage affiche"
+            />
+            <ControlButton
+              onClick={() => setParticipantsOpen((open) => !open)}
+              active={participantsOpen}
+              icon={<UsersIcon size={18} />}
+              label="Participants"
+            />
+            <ControlButton
+              onClick={() => setChatOpen((open) => !open)}
+              active={chatOpen}
+              icon={<ChatBubbleIcon size={18} />}
+              label="Chat"
+              badge={chatUnread}
+            />
+            <ControlButton
+              onClick={() => setTranscriptOpen((open) => !open)}
+              active={transcriptOpen}
+              icon={<TranscriptIcon size={18} />}
+              label="Transcript"
+            />
+            <ControlButton
+              onClick={() => setWhiteboardOpen((open) => !open)}
+              active={whiteboardOpen}
+              icon={<WhiteboardIcon size={18} />}
+              label="Tableau"
+            />
+            <ControlButton
+              onClick={() => setSettingsOpen((open) => !open)}
+              active={settingsOpen}
+              icon={<SettingsIcon size={18} />}
+              label="Parametres"
+            />
+          </div>
 
-        <Divider />
+          <Divider />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <ControlButton
-            onClick={onFallbackToP2P}
-            icon={<VideoAppIcon size={18} />}
-            label="Mode P2P"
-            title="Basculer vers le mode WebRTC P2P"
-          />
-          <ControlButton
-            onClick={onLeave}
-            icon={<DoorExitIcon size={18} />}
-            label="Quitter"
-            danger
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <ControlButton
+              onClick={onFallbackToP2P}
+              icon={<VideoAppIcon size={18} />}
+              label="Mode P2P"
+              title="Basculer vers le mode WebRTC P2P"
+            />
+            <ControlButton
+              onClick={onLeave}
+              icon={<DoorExitIcon size={18} />}
+              label="Quitter"
+              danger
+            />
+          </div>
         </div>
       </div>
-    </div>
+      <SettingsPanel />
+    </>
   );
 }
