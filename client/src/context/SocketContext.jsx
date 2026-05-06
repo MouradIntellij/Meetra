@@ -10,7 +10,7 @@ export function SocketProvider({ children }) {
 
   const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
-  const [connectionError, setConnectionError] = useState('');
+  const [connectionError, setConnectionError] = useState('Connexion au serveur en cours...');
 
   const API_URL = getApiUrl();
 
@@ -31,8 +31,11 @@ export function SocketProvider({ children }) {
       setConnectionError('');
     };
 
-    const onDisconnect = () => {
+    const onDisconnect = (reason) => {
       setConnected(false);
+      if (reason !== 'io client disconnect') {
+        setConnectionError('Connexion serveur interrompue.');
+      }
     };
 
     const onConnectError = (error) => {

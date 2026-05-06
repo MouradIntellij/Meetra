@@ -198,6 +198,7 @@ export function useLiveKitVirtualBackground(localVideoTrack) {
   const [blurAmount, setBlurAmount] = useState(12);
   const [bgColor, setBgColor] = useState('#1a1f36');
   const processorRef = useRef(null);
+  const previewStreamRef = useRef(null);
 
   const applyProcessor = useCallback(async (nextMode, options = {}) => {
     if (!localVideoTrack?.setProcessor) {
@@ -213,6 +214,9 @@ export function useLiveKitVirtualBackground(localVideoTrack) {
       const processor = createProcessor({ mode: nextMode, ...options });
       await localVideoTrack.setProcessor(processor, true);
       processorRef.current = processor;
+      if (processor.processedTrack) {
+        previewStreamRef.current = new MediaStream([processor.processedTrack]);
+      }
       setMode(nextMode);
       setActive(nextMode !== 'none');
     } catch {
@@ -224,12 +228,19 @@ export function useLiveKitVirtualBackground(localVideoTrack) {
   }, [localVideoTrack]);
 
   const removeBackground = useCallback(async () => {
-    if (!localVideoTrack?.stopProcessor) return;
+    if (!localVideoTrack?.stopProcessor) {
+      processorRef.current = null;
+      previewStreamRef.current = null;
+      setMode('none');
+      setActive(false);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
       await localVideoTrack.stopProcessor();
       processorRef.current = null;
+      previewStreamRef.current = null;
       setMode('none');
       setActive(false);
     } catch {
@@ -253,6 +264,12 @@ export function useLiveKitVirtualBackground(localVideoTrack) {
     applyProcessor('color', { bgColor: color });
   }, [applyProcessor]);
 
+  const getOutputStream = useCallback(() => {
+    if (previewStreamRef.current) return previewStreamRef.current;
+    const track = localVideoTrack?.mediaStreamTrack;
+    return track ? new MediaStream([track]) : null;
+  }, [localVideoTrack]);
+
   return {
     mode,
     active,
@@ -265,5 +282,6 @@ export function useLiveKitVirtualBackground(localVideoTrack) {
     applyImage,
     applyColor,
     removeBackground,
+    getOutputStream,
   };
 }

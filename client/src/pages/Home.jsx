@@ -767,10 +767,10 @@ function NewMeetingModal({ open, onClose, onJoin, auth, onOpenAccount, onCreateM
         title: `Réunion instantanée · ${name.trim()}`,
         durationMinutes: 60,
       });
-      onJoin(meeting.roomId, name.trim(), { asHost: true });
+      onJoin(meeting.roomId, name.trim(), { asHost: true, sameWindow: true });
       onClose();
     } catch (createError) {
-      setError(createError.message || "Impossible de créer la réunion.");
+      setError(createError.message || "Serveur Meetra indisponible. Vérifiez Render puis réessayez.");
     } finally {
       setLoading(false);
     }
@@ -2126,19 +2126,24 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
       throw new Error("Connectez-vous avec votre accès Meetra pour créer une réunion.");
     }
 
-    const res = await fetch(`${API_URL}/api/rooms`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        authorization: `Bearer ${auth.token}`,
-      },
-      body: JSON.stringify({
-        title,
-        scheduledFor,
-        durationMinutes,
-        inviteeEmails,
-      }),
-    });
+    let res;
+    try {
+      res = await fetch(`${API_URL}/api/rooms`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${auth.token}`,
+        },
+        body: JSON.stringify({
+          title,
+          scheduledFor,
+          durationMinutes,
+          inviteeEmails,
+        }),
+      });
+    } catch {
+      throw new Error("Serveur Meetra indisponible. Render est peut-être en veille ou hors ligne.");
+    }
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
@@ -2232,7 +2237,7 @@ export default function Home({ onJoin, prefillRoomId = "" }) {
 
     try {
       const meeting = await createMeetingRequest({ title, durationMinutes: 60 });
-      onJoin(meeting.roomId, auth.profile?.name || "Hôte Meetra", { asHost: true });
+      onJoin(meeting.roomId, auth.profile?.name || "Hôte Meetra", { asHost: true, sameWindow: true });
     } catch {
       setModal("account");
     }

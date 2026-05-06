@@ -73,8 +73,8 @@ function ConnectionBanner() {
           Serveur indisponible
         </div>
         <div style={{ marginTop: 4, fontSize: 14, lineHeight: 1.5 }}>
-          Connexion impossible vers <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{apiUrl}</span>.
-          Le service est temporairement inaccessible. Réessayez dans quelques instants.
+          Connexion serveur en cours ou impossible vers <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{apiUrl}</span>.
+          Si Render est en veille, patientez quelques secondes puis réessayez.
         </div>
         {connectionError && (
             <div style={{ marginTop: 6, fontSize: 12, color: 'rgba(255,255,255,0.82)' }}>
@@ -111,7 +111,7 @@ export default function App() {
     // Only the main Meetra home page opens a compact meeting window.
     // A direct invitation link (/room/:id) must continue in the current window,
     // otherwise the guest gets duplicated and the waiting-room request is lost.
-    if (screen === 'home' && !urlRoomId) {
+    if (screen === 'home' && !urlRoomId && !options.sameWindow) {
       const popup = openMeetingWindow(rid, uname, options);
       if (popup) {
         popup.focus();
