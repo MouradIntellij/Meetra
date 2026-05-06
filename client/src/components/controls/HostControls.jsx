@@ -102,7 +102,7 @@ function WaitingEntry({ person, onAdmit, onReject }) {
 }
 
 // ─── HostControls principal ───────────────────────────────────
-export default function HostControls({ roomId }) {
+export default function HostControls({ roomId, forceHost = false }) {
   const { socket }              = useSocket();
   const { hostId, locked, coHostIds }      = useRoom();
   const { breakoutOpen, setBreakoutOpen } = useUI();
@@ -110,7 +110,7 @@ export default function HostControls({ roomId }) {
   const [showPanel,    setShowPanel]    = useState(false);
   const [waitingList,  setWaitingList]  = useState([]);  // ← file d'attente en temps réel
   const previousWaitingCount = useRef(0);
-  const iAmHost = socket?.id === hostId;
+  const iAmHost = Boolean(forceHost) || socket?.id === hostId;
   const iAmCoHost = coHostIds.includes(socket?.id);
 
   // ── Écouter les mises à jour de la file d'attente ─────────
@@ -160,11 +160,11 @@ export default function HostControls({ roomId }) {
   // ── Actions hôte ──────────────────────────────────────────
   const muteAll    = () => {
     setShowPanel(false);
-    socket.emit(EVENTS.MUTE_ALL, { roomId });
+    socket.emit(EVENTS.MUTE_ALL, { roomId, authToken: readStoredAuthToken() });
   };
   const toggleLock = () => {
     setShowPanel(false);
-    socket.emit(EVENTS.LOCK_ROOM, { roomId, locked: !locked });
+    socket.emit(EVENTS.LOCK_ROOM, { roomId, locked: !locked, authToken: readStoredAuthToken() });
   };
   const admit      = (targetSocketId) => {
     setShowPanel(false);

@@ -34,6 +34,8 @@ export const HOST_CHANGED         = 'host-changed';
 export const ASSIGN_COHOST        = 'assign-cohost';
 export const REMOVE_COHOST        = 'remove-cohost';
 export const COHOSTS_UPDATED      = 'cohosts-updated';
+export const HOST_STATUS_SYNC     = 'host-status-sync';
+export const HOST_STATUS_SYNCED   = 'host-status-synced';
 
 export const TOGGLE_AUDIO         = 'toggle-audio';
 export const TOGGLE_VIDEO         = 'toggle-video';
@@ -101,6 +103,8 @@ export const EVENTS = {
   ASSIGN_COHOST,
   REMOVE_COHOST,
   COHOSTS_UPDATED,
+  HOST_STATUS_SYNC,
+  HOST_STATUS_SYNCED,
 
   // Etats médias
   TOGGLE_AUDIO,

@@ -427,6 +427,7 @@ export default function App() {
                 <Room
                     roomId={roomId}
                     userName={userName}
+                    isHostSession={requestedHostJoin || isHost}
                     onLeave={handleLeave}
                 />
               </TranscriptionProvider>

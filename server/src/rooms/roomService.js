@@ -193,6 +193,26 @@ export function updateParticipantStatus(socketId, updates) {
   return store.updateParticipant(socketId, updates);
 }
 
+export function ensureHostPresence(roomId, { socketId, userId, userName }) {
+  let room = store.getRoom(roomId);
+  if (!room) {
+    room = store.createRoomWithId(roomId);
+  }
+
+  let participant = room.participants.get(socketId);
+  if (!participant) {
+    participant = store.addParticipant(roomId, {
+      id: userId || socketId,
+      socketId,
+      name: userName || 'Hôte',
+    });
+  }
+
+  room.hostId = socketId;
+  room.coHostIds?.delete(socketId);
+  return { room, participant };
+}
+
 export function getRaisedHands(roomId) {
   return store.getParticipantsList(roomId)
     .filter((participant) => participant.handRaised)

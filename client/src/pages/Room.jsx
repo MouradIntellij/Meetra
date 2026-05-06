@@ -551,7 +551,7 @@ function InviteDialog({ roomId, onDismiss }) {
 }
 
 // ── Room ──────────────────────────────────────────────────────
-export default function Room({ roomId, userName, onLeave }) {
+export default function Room({ roomId, userName, isHostSession = false, onLeave }) {
   const { socket, connected }       = useSocket();
   const { participants, hostId, setParticipants }    = useRoom();
   const { screenStream, leaveRoom, screenShareError, clearScreenShareError, mediaAccessError } = useMedia();
@@ -569,7 +569,7 @@ export default function Room({ roomId, userName, onLeave }) {
   const [isScreenShareActive, setIsScreenShareActive] = useState(false);
   const isCompact = viewportWidth < 1180;
   const isMobile = viewportWidth < 760;
-  const isCurrentHost = socket?.id === hostId;
+  const isCurrentHost = Boolean(isHostSession) || socket?.id === hostId;
   const useLiveKitView = isLiveKitMediaEnabled() && !liveKitFallbackReason;
 
   // Auto-show raised hands panel when someone raises hand
@@ -656,6 +656,7 @@ export default function Room({ roomId, userName, onLeave }) {
         roomId,
         backend: 'livekit',
         reason: 'HOST_SWITCHED_TO_LIVEKIT',
+        authToken: readStoredAuthToken(),
       });
       return;
     }
@@ -675,6 +676,7 @@ export default function Room({ roomId, userName, onLeave }) {
       roomId,
       backend: 'p2p',
       reason: 'HOST_SWITCHED_TO_P2P',
+      authToken: readStoredAuthToken(),
     });
   }, [isCurrentHost, roomId, socket]);
 
@@ -693,6 +695,16 @@ export default function Room({ roomId, userName, onLeave }) {
     socket.on(EVENTS.MEDIA_BACKEND_CHANGED, handleMediaBackendChanged);
     return () => socket.off(EVENTS.MEDIA_BACKEND_CHANGED, handleMediaBackendChanged);
   }, [socket]);
+
+  useEffect(() => {
+    if (!socket || !isHostSession) return;
+
+    socket.emit(EVENTS.HOST_STATUS_SYNC, {
+      roomId,
+      userName,
+      authToken: readStoredAuthToken(),
+    });
+  }, [isHostSession, roomId, socket, userName]);
 
   // ── KICKED ────────────────────────────────────────────────
   if (kicked) {
@@ -889,7 +901,7 @@ export default function Room({ roomId, userName, onLeave }) {
                 </button>
             )}
 
-            <HostControls roomId={roomId} />
+            <HostControls roomId={roomId} forceHost={isHostSession} />
 
             {/* Invite button */}
             {!isMobile && <button
