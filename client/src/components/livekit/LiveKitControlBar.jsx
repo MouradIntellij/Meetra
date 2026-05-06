@@ -117,7 +117,6 @@ export default function LiveKitControlBar({
   onToggleAudio,
   onToggleVideo,
   onToggleScreenShare,
-  onFallbackToP2P,
   onLeave,
   toggleHand,
   handRaised,
@@ -304,12 +303,6 @@ export default function LiveKitControlBar({
           <Divider />
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <ControlButton
-              onClick={onFallbackToP2P}
-              icon={<VideoAppIcon size={18} />}
-              label="Mode P2P"
-              title="Basculer vers le mode WebRTC P2P"
-            />
             <ControlButton
               onClick={onLeave}
               icon={<DoorExitIcon size={18} />}

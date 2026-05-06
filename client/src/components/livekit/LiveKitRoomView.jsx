@@ -603,7 +603,6 @@ export default function LiveKitRoomView({
             onToggleAudio={toggleAudio}
             onToggleVideo={toggleVideo}
             onToggleScreenShare={localScreenShareActive ? stopScreenShare : startScreenShare}
-            onFallbackToP2P={() => triggerFallback('USER_REQUESTED_P2P')}
             onLeave={onLeave}
             toggleHand={toggleHand}
             handRaised={handRaised}

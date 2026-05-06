@@ -649,6 +649,10 @@ export default function Room({ roomId, userName, onLeave }) {
     setLiveKitFallbackReason(reason || 'LIVEKIT_FALLBACK');
   }, []);
 
+  const handleRetryLiveKit = useCallback(() => {
+    setLiveKitFallbackReason('');
+  }, []);
+
   // ── KICKED ────────────────────────────────────────────────
   if (kicked) {
     return (
@@ -928,8 +932,32 @@ export default function Room({ roomId, userName, onLeave }) {
               padding: '10px 14px',
               fontSize: 13,
               boxShadow: '0 12px 30px rgba(2,6,23,0.18)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
             }}>
-              Mode P2P actif. LiveKit indisponible ou desactive: {liveKitFallbackReason}
+              <span>Mode P2P actif. LiveKit indisponible ou desactive: {liveKitFallbackReason}</span>
+              {isLiveKitMediaEnabled() && (
+                <button
+                  type="button"
+                  onClick={handleRetryLiveKit}
+                  style={{
+                    border: '1px solid rgba(147,197,253,0.28)',
+                    background: 'rgba(37,99,235,0.28)',
+                    color: '#dbeafe',
+                    borderRadius: 999,
+                    padding: '7px 12px',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Revenir à LiveKit
+                </button>
+              )}
             </div>
         )}
 
