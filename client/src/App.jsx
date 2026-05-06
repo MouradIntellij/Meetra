@@ -85,6 +85,137 @@ function ConnectionBanner() {
   );
 }
 
+function InviteOnlyJoin({ roomId, initialName = '', onJoin }) {
+  const [name, setName] = useState(initialName);
+  const [cancelled, setCancelled] = useState(false);
+
+  const join = () => {
+    const safeName = name.trim();
+    if (!safeName) return;
+    onJoin(roomId, safeName, { asHost: false, sameWindow: true });
+  };
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 24,
+      background: 'radial-gradient(ellipse 80% 55% at 50% 0%, rgba(99,102,241,0.13), transparent 70%), #050810',
+      color: '#e2e8f0',
+      fontFamily: "'DM Sans', system-ui, sans-serif",
+    }}>
+      <div style={{
+        width: 'min(440px, 100%)',
+        borderRadius: 24,
+        border: '1px solid rgba(255,255,255,0.08)',
+        background: 'linear-gradient(160deg, #111827, #0d1322)',
+        boxShadow: '0 40px 90px rgba(0,0,0,0.55)',
+        padding: 28,
+      }}>
+        <div style={{ fontSize: 12, color: '#818cf8', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+          Invitation Meetra
+        </div>
+        <h1 style={{ margin: '10px 0 8px', color: '#fff', fontSize: 26, lineHeight: 1.15 }}>
+          Rejoindre la réunion
+        </h1>
+        <p style={{ margin: '0 0 18px', color: '#94a3b8', fontSize: 14, lineHeight: 1.6 }}>
+          Vous avez reçu un lien d'invitation. Cette page permet uniquement d'entrer dans cette salle.
+        </p>
+
+        <div style={{
+          borderRadius: 14,
+          border: '1px solid rgba(99,102,241,0.18)',
+          background: 'rgba(99,102,241,0.08)',
+          padding: '12px 14px',
+          marginBottom: 14,
+        }}>
+          <div style={{ fontSize: 11, color: '#a5b4fc', fontWeight: 700, marginBottom: 6 }}>Salle</div>
+          <div style={{ fontFamily: 'monospace', color: '#fff', fontWeight: 800, wordBreak: 'break-all' }}>{roomId}</div>
+        </div>
+
+        <label style={{ display: 'block', color: '#cbd5e1', fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
+          Votre nom d'affichage
+        </label>
+        <input
+          autoFocus
+          value={name}
+          onChange={(event) => {
+            setName(event.target.value);
+            setCancelled(false);
+          }}
+          onKeyDown={(event) => event.key === 'Enter' && join()}
+          placeholder="Ex : Mourad"
+          style={{
+            width: '100%',
+            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(255,255,255,0.05)',
+            color: '#fff',
+            borderRadius: 12,
+            padding: '12px 14px',
+            fontSize: 14,
+            outline: 'none',
+            fontFamily: 'inherit',
+          }}
+        />
+
+        {cancelled && (
+          <div style={{
+            marginTop: 14,
+            borderRadius: 12,
+            border: '1px solid rgba(250,204,21,0.2)',
+            background: 'rgba(113,63,18,0.22)',
+            color: '#fef3c7',
+            padding: '10px 12px',
+            fontSize: 13,
+          }}>
+            Entrée annulée. Le lien reste ouvert si vous voulez rejoindre plus tard.
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+          <button
+            type="button"
+            onClick={() => setCancelled(true)}
+            style={{
+              flex: 0,
+              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'transparent',
+              color: '#94a3b8',
+              borderRadius: 12,
+              padding: '12px 16px',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              fontWeight: 700,
+            }}
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={join}
+            disabled={!name.trim()}
+            style={{
+              flex: 1,
+              border: 'none',
+              background: name.trim() ? 'linear-gradient(135deg,#10b981,#059669)' : 'rgba(255,255,255,0.06)',
+              color: name.trim() ? '#fff' : 'rgba(255,255,255,0.3)',
+              borderRadius: 12,
+              padding: '12px 18px',
+              cursor: name.trim() ? 'pointer' : 'not-allowed',
+              fontFamily: 'inherit',
+              fontWeight: 800,
+            }}
+          >
+            Demander l'admission
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const { socket } = useSocket();
   const urlRoomId = getRouteRoomId();
@@ -172,8 +303,33 @@ export default function App() {
     window.history.replaceState(null, '', '/');
   };
 
+  const handleGuestCancel = () => {
+    existingStream.current?.getTracks?.().forEach((track) => track.stop());
+    existingStream.current = null;
+    setUserName('');
+    setIsHost(false);
+    setRequestedHostJoin(false);
+    setRoomSession({
+      hostSocketId: '',
+      participants: [],
+      locked: false,
+      coHostIds: [],
+    });
+    setScreen('home-join');
+    window.history.replaceState(null, '', `/room/${roomId}`);
+  };
+
   // ── HOME ─────────────────────────────
-  if (screen === 'home' || screen === 'home-join') {
+  if (screen === 'home-join') {
+    return (
+      <>
+        <ConnectionBanner />
+        <InviteOnlyJoin roomId={roomId} initialName={userName} onJoin={handleJoin} />
+      </>
+    );
+  }
+
+  if (screen === 'home') {
     return (
         <>
           <ConnectionBanner />
@@ -196,6 +352,10 @@ export default function App() {
               isHost={requestedHostJoin || isHost}
               onJoin={handleEnterWaiting}
               onBack={() => {
+                if (urlRoomId && !requestedHostJoin) {
+                  handleGuestCancel();
+                  return;
+                }
                 setScreen('home');
                 window.history.replaceState(null, '', '/');
               }}
@@ -213,7 +373,7 @@ export default function App() {
               roomId={roomId}
               userName={userName}
               onAdmitted={(payload) => handleEnterWaiting(existingStream.current, true, payload)}
-              onDenied={handleLeave}
+              onDenied={urlRoomId && !requestedHostJoin ? handleGuestCancel : handleLeave}
           />
         </>
     );

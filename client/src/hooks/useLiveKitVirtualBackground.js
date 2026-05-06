@@ -95,10 +95,35 @@ function createProcessor({ mode, blurAmount = 12, bgImage = null, bgColor = '#1a
     net: null,
     segment: null,
     frame: 0,
+    segmenting: false,
+    lastSegmentAt: 0,
     destroyed: false,
   };
 
-  const render = async () => {
+  const scheduleSegmentation = () => {
+    if (!state.net || state.segmenting || !state.video || state.destroyed) return;
+
+    state.segmenting = true;
+    state.net.segmentPerson(state.video, {
+      flipHorizontal: false,
+      internalResolution: 'low',
+      segmentationThreshold: 0.7,
+    })
+      .then((segment) => {
+        if (!state.destroyed) {
+          state.segment = segment;
+          state.lastSegmentAt = performance.now();
+        }
+      })
+      .catch(() => {
+        if (!state.destroyed) state.segment = null;
+      })
+      .finally(() => {
+        state.segmenting = false;
+      });
+  };
+
+  const render = () => {
     if (state.destroyed || !state.video || !state.canvas) return;
 
     if (state.video.readyState < 2) {
@@ -109,21 +134,15 @@ function createProcessor({ mode, blurAmount = 12, bgImage = null, bgColor = '#1a
     const width = state.video.videoWidth || 1280;
     const height = state.video.videoHeight || 720;
     const canvas = state.canvas;
-    canvas.width = width;
-    canvas.height = height;
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
     const ctx = canvas.getContext('2d');
 
     state.frame += 1;
-    if (state.net && state.frame % SEGMENT_INTERVAL === 0) {
-      try {
-        state.segment = await state.net.segmentPerson(state.video, {
-          flipHorizontal: false,
-          internalResolution: 'medium',
-          segmentationThreshold: 0.7,
-        });
-      } catch {
-        state.segment = null;
-      }
+    if (state.frame % SEGMENT_INTERVAL === 0) {
+      scheduleSegmentation();
     }
 
     if (!state.segment) {
@@ -153,6 +172,8 @@ function createProcessor({ mode, blurAmount = 12, bgImage = null, bgColor = '#1a
     async init({ track }) {
       state.destroyed = false;
       state.canvas = document.createElement('canvas');
+      state.canvas.width = 1280;
+      state.canvas.height = 720;
       state.video = document.createElement('video');
       state.video.autoplay = true;
       state.video.playsInline = true;
@@ -167,6 +188,9 @@ function createProcessor({ mode, blurAmount = 12, bgImage = null, bgColor = '#1a
       await state.video.play().catch(() => {});
       state.stream = state.canvas.captureStream(FPS);
       this.processedTrack = state.stream.getVideoTracks()[0];
+      const ctx = state.canvas.getContext('2d');
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(0, 0, state.canvas.width, state.canvas.height);
       state.rafId = requestAnimationFrame(render);
     },
     async restart(options) {
