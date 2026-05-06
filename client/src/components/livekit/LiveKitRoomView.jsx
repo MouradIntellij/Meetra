@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RoomEvent, Track } from 'livekit-client';
 import { connectLiveKitRoom } from '../../services/livekit/livekitClient.js';
+import LiveKitControlBar from './LiveKitControlBar.jsx';
 
 function initials(name = '') {
   return String(name || 'M')
@@ -158,7 +159,14 @@ function LiveKitTile({ item }) {
   );
 }
 
-export default function LiveKitRoomView({ roomId, userName, onFallback, onLeave }) {
+export default function LiveKitRoomView({
+  roomId,
+  userName,
+  onFallback,
+  onLeave,
+  toggleHand,
+  handRaised,
+}) {
   const [room, setRoom] = useState(null);
   const [status, setStatus] = useState('connecting');
   const [error, setError] = useState('');
@@ -245,6 +253,7 @@ export default function LiveKitRoomView({ roomId, userName, onFallback, onLeave 
   const trackItems = useMemo(() => collectTrackItems(room), [room, version]);
   const cols = trackItems.length <= 1 ? 1 : trackItems.length <= 4 ? 2 : 3;
   const screenShareItem = trackItems.find((item) => item.screenTrack);
+  const localScreenShareActive = Boolean(screenShareItem?.isLocal);
 
   const toggleAudio = async () => {
     if (!roomRef.current) return;
@@ -382,69 +391,22 @@ export default function LiveKitRoomView({ roomId, userName, onFallback, onLeave 
             </div>
           )}
 
-          <div style={{
-            height: 68,
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-            background: 'rgba(2,6,23,0.92)',
-            borderTop: '1px solid rgba(255,255,255,0.08)',
-          }}>
-            <button onClick={toggleAudio} style={liveKitButtonStyle(localAudioEnabled)}>
-              {localAudioEnabled ? 'Micro on' : 'Micro off'}
-            </button>
-            <button onClick={toggleVideo} style={liveKitButtonStyle(localVideoEnabled)}>
-              {localVideoEnabled ? 'Camera on' : 'Camera off'}
-            </button>
-            <button onClick={screenShareItem?.isLocal ? stopScreenShare : startScreenShare} style={liveKitButtonStyle(Boolean(screenShareItem?.isLocal))}>
-              {screenShareItem?.isLocal ? 'Stop partage' : 'Partager'}
-            </button>
-            <button onClick={() => triggerFallback('USER_REQUESTED_P2P')} style={liveKitFallbackButtonStyle}>
-              Mode P2P
-            </button>
-            <button onClick={onLeave} style={liveKitLeaveButtonStyle}>
-              Quitter
-            </button>
-          </div>
+          <LiveKitControlBar
+            roomId={roomId}
+            userName={userName}
+            localAudioEnabled={localAudioEnabled}
+            localVideoEnabled={localVideoEnabled}
+            screenShareActive={localScreenShareActive}
+            onToggleAudio={toggleAudio}
+            onToggleVideo={toggleVideo}
+            onToggleScreenShare={localScreenShareActive ? stopScreenShare : startScreenShare}
+            onFallbackToP2P={() => triggerFallback('USER_REQUESTED_P2P')}
+            onLeave={onLeave}
+            toggleHand={toggleHand}
+            handRaised={handRaised}
+          />
         </>
       )}
     </div>
   );
 }
-
-function liveKitButtonStyle(active) {
-  return {
-    border: '1px solid rgba(255,255,255,0.12)',
-    background: active ? 'rgba(37,99,235,0.86)' : 'rgba(15,23,42,0.92)',
-    color: active ? '#fff' : '#cbd5e1',
-    borderRadius: 14,
-    padding: '10px 14px',
-    fontSize: 12,
-    fontWeight: 800,
-    cursor: 'pointer',
-  };
-}
-
-const liveKitFallbackButtonStyle = {
-  border: '1px solid rgba(248,113,113,0.26)',
-  background: 'rgba(127,29,29,0.72)',
-  color: '#fee2e2',
-  borderRadius: 14,
-  padding: '10px 14px',
-  fontSize: 12,
-  fontWeight: 800,
-  cursor: 'pointer',
-};
-
-const liveKitLeaveButtonStyle = {
-  border: '1px solid rgba(248,113,113,0.35)',
-  background: '#dc2626',
-  color: '#fff',
-  borderRadius: 14,
-  padding: '10px 14px',
-  fontSize: 12,
-  fontWeight: 800,
-  cursor: 'pointer',
-};

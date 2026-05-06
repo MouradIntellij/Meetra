@@ -929,6 +929,8 @@ export default function Room({ roomId, userName, onLeave }) {
                         userName={userName}
                         onFallback={handleLiveKitFallback}
                         onLeave={handleLeave}
+                        toggleHand={handleToggleHand}
+                        handRaised={handRaised}
                       />
                     </Suspense>
                   ) : (
