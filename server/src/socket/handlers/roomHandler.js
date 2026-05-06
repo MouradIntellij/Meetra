@@ -26,6 +26,7 @@ const WAITING_ROOM_GUEST  = 'waiting-room-guest';
 const GUEST_ADMITTED      = 'guest-admitted';
 const GUEST_DENIED        = 'guest-denied';
 const WAITING_ROOM_STATUS = 'waiting-room-status';
+const WAITING_ROOM_UPDATE = 'waiting-room-update';
 
 // ─── File d'attente locale (roomId → [{ socketId, userName, joinedAt }]) ──────
 // Séparée de roomStore pour ne pas modifier votre schéma existant.
@@ -44,6 +45,12 @@ function removeFromQueue(roomId, socketId) {
   const q = getQueue(roomId);
   const idx = q.findIndex((g) => g.socketId === socketId);
   if (idx !== -1) q.splice(idx, 1);
+}
+
+function broadcastWaitingQueue(io, roomId) {
+  io.to(roomId).emit(WAITING_ROOM_UPDATE, {
+    waitingList: listWaitingGuests(roomId),
+  });
 }
 
 function canManageMeeting(meeting, user) {
@@ -99,6 +106,7 @@ export function registerRoomHandlers(io, socket) {
             joinedAt: guest.joinedAt,
           });
         });
+        socket.emit(WAITING_ROOM_UPDATE, { waitingList: listWaitingGuests(roomId) });
         return;
       }
 
@@ -109,6 +117,8 @@ export function registerRoomHandlers(io, socket) {
       }
 
       // 4. Tous les invités passent par la salle d'attente.
+      removeFromQueue(roomId, socket.id);
+
       const guest = { socketId: socket.id, userName, userId, joinedAt: Date.now() };
       socket._meetraName  = userName;
       socket._meetraRoom  = roomId;
@@ -127,6 +137,7 @@ export function registerRoomHandlers(io, socket) {
         userName,
         joinedAt: guest.joinedAt,
       });
+      broadcastWaitingQueue(io, roomId);
 
       notifyHostWaitingGuest({
         meeting: meetingInfo,
@@ -146,7 +157,10 @@ export function registerRoomHandlers(io, socket) {
   });
 
   // ── ADMIT_GUEST ─────────────────────────────────────────────────────────────
-  socket.on(ADMIT_GUEST, async ({ roomId, guestSocketId }) => {
+  socket.on(ADMIT_GUEST, async ({ roomId, guestSocketId, targetSocketId }) => {
+    roomId = normalizeRoomId(roomId);
+    guestSocketId = guestSocketId || targetSocketId;
+
     // Vérifier que c'est bien l'hôte qui admet
     if (!roomService.isModerator(roomId, socket.id)) {
       logger.warn(`[ADMIT_GUEST] socket ${socket.id} n'est pas modérateur de ${roomId}`);
@@ -160,6 +174,7 @@ export function registerRoomHandlers(io, socket) {
     }
 
     removeFromQueue(roomId, guestSocketId);
+    broadcastWaitingQueue(io, roomId);
 
     const guestSocket = io.sockets.sockets.get(guestSocketId);
     if (!guestSocket) {
@@ -173,10 +188,14 @@ export function registerRoomHandlers(io, socket) {
   });
 
   // ── DENY_GUEST ──────────────────────────────────────────────────────────────
-  socket.on(DENY_GUEST, ({ roomId, guestSocketId }) => {
+  socket.on(DENY_GUEST, ({ roomId, guestSocketId, targetSocketId }) => {
+    roomId = normalizeRoomId(roomId);
+    guestSocketId = guestSocketId || targetSocketId;
+
     if (!roomService.isModerator(roomId, socket.id)) return;
 
     removeFromQueue(roomId, guestSocketId);
+    broadcastWaitingQueue(io, roomId);
 
     const guestSocket = io.sockets.sockets.get(guestSocketId);
     if (guestSocket) {
@@ -193,7 +212,10 @@ export function registerRoomHandlers(io, socket) {
   socket.on('disconnect', () => {
     // Nettoyer la file d'attente si le guest était en attente
     const roomId = socket._meetraRoom;
-    if (roomId) removeFromQueue(roomId, socket.id);
+    if (roomId) {
+      removeFromQueue(roomId, socket.id);
+      broadcastWaitingQueue(io, roomId);
+    }
 
     _handleLeave(io, socket);
   });
@@ -213,6 +235,7 @@ export function registerRoomHandlers(io, socket) {
         const s = io.sockets.sockets.get(socketId);
         if (s) s.emit(GUEST_DENIED, { reason: 'room_locked' });
       });
+      broadcastWaitingQueue(io, roomId);
     }
   });
 

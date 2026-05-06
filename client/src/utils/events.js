@@ -36,6 +36,7 @@ export const WAITING_ROOM_GUEST   = 'waiting-room-guest';
 export const GUEST_ADMITTED       = 'guest-admitted';
 export const GUEST_DENIED         = 'guest-denied';
 export const WAITING_ROOM_STATUS  = 'waiting-room-status';
+export const WAITING_ROOM_UPDATE  = 'waiting-room-update';
 
 // ─── Export groupé EVENTS (requis par MediaContext, RoomContext, etc.) ─────────
 // Permet : import { EVENTS } from '../utils/events.js'
@@ -91,4 +92,5 @@ export const EVENTS = {
   GUEST_ADMITTED,
   GUEST_DENIED,
   WAITING_ROOM_STATUS,
+  WAITING_ROOM_UPDATE,
 };

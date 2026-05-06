@@ -107,8 +107,19 @@ export default function HostControls({ roomId }) {
     const handler = ({ waitingList: wl }) => {
       if (wl !== undefined) setWaitingList(wl);
     };
-    socket.on(EVENTS.WAITING_UPDATE, handler);
-    return () => socket.off(EVENTS.WAITING_UPDATE, handler);
+    const handleGuest = (guest) => {
+      setWaitingList((current) => {
+        if (!guest?.socketId || current.some((item) => item.socketId === guest.socketId)) return current;
+        return [...current, guest];
+      });
+    };
+
+    socket.on(EVENTS.WAITING_ROOM_UPDATE, handler);
+    socket.on(EVENTS.WAITING_ROOM_GUEST, handleGuest);
+    return () => {
+      socket.off(EVENTS.WAITING_ROOM_UPDATE, handler);
+      socket.off(EVENTS.WAITING_ROOM_GUEST, handleGuest);
+    };
   }, [socket]);
 
   useEffect(() => {
@@ -137,12 +148,20 @@ export default function HostControls({ roomId }) {
   // ── Actions hôte ──────────────────────────────────────────
   const muteAll    = () => socket.emit(EVENTS.MUTE_ALL,    { roomId });
   const toggleLock = () => socket.emit(EVENTS.LOCK_ROOM,   { roomId, locked: !locked });
-  const admit      = (targetSocketId) =>
-    socket.emit(EVENTS.WAITING_ADMIT, { roomId, targetSocketId });
-  const reject     = (targetSocketId) =>
-    socket.emit(EVENTS.WAITING_REJECT, { roomId, targetSocketId });
-  const admitAll   = () =>
-    socket.emit(EVENTS.WAITING_ADMIT_ALL, { roomId });
+  const admit      = (targetSocketId) => {
+    setWaitingList((current) => current.filter((person) => person.socketId !== targetSocketId));
+    socket.emit(EVENTS.ADMIT_GUEST, { roomId, guestSocketId: targetSocketId });
+  };
+  const reject     = (targetSocketId) => {
+    setWaitingList((current) => current.filter((person) => person.socketId !== targetSocketId));
+    socket.emit(EVENTS.DENY_GUEST, { roomId, guestSocketId: targetSocketId });
+  };
+  const admitAll   = () => {
+    waitingList.forEach((person) => {
+      socket.emit(EVENTS.ADMIT_GUEST, { roomId, guestSocketId: person.socketId });
+    });
+    setWaitingList([]);
+  };
 
   const hasPending = waitingList.length > 0;
   const spotlightPending = waitingList[0] || null;

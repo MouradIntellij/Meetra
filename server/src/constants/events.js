@@ -38,6 +38,7 @@ export const WAITING_ROOM_GUEST   = 'waiting-room-guest';
 export const GUEST_ADMITTED       = 'guest-admitted';
 export const GUEST_DENIED         = 'guest-denied';
 export const WAITING_ROOM_STATUS  = 'waiting-room-status';
+export const WAITING_ROOM_UPDATE  = 'waiting-room-update';
 
 // ─── Export groupé EVENTS ─────────────────────────────────────────────────────
 // Requis par : mediaHandler.js, roomHandler.js, chatHandler.js, etc.
@@ -94,4 +95,5 @@ export const EVENTS = {
     GUEST_ADMITTED,
     GUEST_DENIED,
     WAITING_ROOM_STATUS,
+    WAITING_ROOM_UPDATE,
 };

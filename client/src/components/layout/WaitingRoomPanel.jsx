@@ -8,6 +8,7 @@ import { useSocket } from '../../context/SocketContext.jsx';
 import { getApiUrl } from '../../utils/appConfig.js';
 import {
   WAITING_ROOM_GUEST,
+  WAITING_ROOM_UPDATE,
   ADMIT_GUEST,
   DENY_GUEST,
 } from '../../utils/events.js';
@@ -72,9 +73,25 @@ export default function WaitingRoomPanel({ roomId }) {
         return [...prev, guest];
       });
     };
+    const handleQueueUpdate = ({ waitingList }) => {
+      if (Array.isArray(waitingList)) {
+        setQueue(waitingList);
+        setProcessing((current) => {
+          const next = {};
+          waitingList.forEach((guest) => {
+            if (current[guest.socketId]) next[guest.socketId] = current[guest.socketId];
+          });
+          return next;
+        });
+      }
+    };
 
     socket.on(WAITING_ROOM_GUEST, handleNewGuest);
-    return () => socket.off(WAITING_ROOM_GUEST, handleNewGuest);
+    socket.on(WAITING_ROOM_UPDATE, handleQueueUpdate);
+    return () => {
+      socket.off(WAITING_ROOM_GUEST, handleNewGuest);
+      socket.off(WAITING_ROOM_UPDATE, handleQueueUpdate);
+    };
   }, [socket]);
 
   const admit = (guest) => {
